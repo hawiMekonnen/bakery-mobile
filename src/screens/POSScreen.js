@@ -146,14 +146,27 @@ export default function POSScreen({ navigation }) {
     if (!lastCompletedOrder) return;
     const connected = await isBluetoothConnected();
     if (!connected) {
-      setBtModalVisible(true);
+      Alert.alert(
+        'Connect Receipt Printer 🖨️',
+        'Your 58mm thermal receipt printer is not connected. Please connect via Bluetooth to print the receipt roll slip.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Connect Printer',
+            onPress: () => setBtModalVisible(true),
+          },
+        ]
+      );
       return;
     }
     setIsPrinting(true);
     const result = await printToBluetoothPrinter(lastCompletedOrder, auth.businessName || 'Bakery');
     setIsPrinting(false);
     if (result.success) {
-      Alert.alert('Receipt Printed! 🖨️', `Receipt #${lastCompletedOrder.id} sent to ${result.printerName} via Bluetooth.`);
+      Alert.alert(
+        'Receipt Printed! 🧾🖨️',
+        `Receipt #${lastCompletedOrder.id} successfully printed on ${result.paperWidth || '58mm'} thermal roll (${result.printerName}).`
+      );
     } else {
       setBtModalVisible(true);
     }
@@ -444,7 +457,7 @@ export default function POSScreen({ navigation }) {
                 >
                   <Ionicons name="print" size={18} color="#FFF" style={{ marginRight: 6 }} />
                   <Text style={styles.printBtnText}>
-                    {isPrinting ? 'Printing...' : 'Print Receipt'}
+                    {isPrinting ? 'Printing...' : 'Print 58mm Slip'}
                   </Text>
                 </TouchableOpacity>
 

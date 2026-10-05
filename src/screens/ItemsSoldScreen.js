@@ -13,17 +13,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useBakery } from '../store/BakeryStore';
 import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
-import WifiSyncModal from '../components/WifiSyncModal';
 
 const CATEGORIES = ['All', 'Pastry', 'Savory', 'Bread', 'Cakes', 'Coffee', 'Sandwiches'];
 
 export default function ItemsSoldScreen({ navigation }) {
-  const { state, dispatch, wifiSyncStatus } = useBakery();
+  const { state, dispatch } = useBakery();
   const { products = [] } = state;
 
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [search, setSearch] = useState('');
-  const [wifiModalVisible, setWifiModalVisible] = useState(false);
 
   // Edit Single Item Prepared Count Modal
   const [editingProduct, setEditingProduct] = useState(null);
@@ -40,12 +38,27 @@ export default function ItemsSoldScreen({ navigation }) {
     return matchesCat && matchesSearch;
   });
 
+  // Strict Daily Calculation: Items sold starts from 0 every day based on today's orders
+  const todayDateStr = new Date().toISOString().slice(0, 10);
+  const todayOrders = (state.orders || []).filter(o => {
+    const od = (o.createdAt || o.date || '').slice(0, 10);
+    return od === todayDateStr;
+  });
+
+  // Product ID -> quantity sold TODAY map
+  const todaySoldMap = {};
+  todayOrders.forEach(order => {
+    (order.items || []).forEach(it => {
+      todaySoldMap[it.id] = (todaySoldMap[it.id] || 0) + (Number(it.quantity) || 1);
+    });
+  });
+
   // Aggregated Daily Metrics
   const totalPrepared = products.reduce((sum, p) => sum + (Number(p.preparedCount) || 0), 0);
-  const totalSold = products.reduce((sum, p) => sum + (Number(p.soldCount) || 0), 0);
+  const totalSold = products.reduce((sum, p) => sum + (todaySoldMap[p.id] || 0), 0);
   const totalRemaining = products.reduce((sum, p) => {
     const prep = Number(p.preparedCount) || 0;
-    const sold = Number(p.soldCount) || 0;
+    const sold = todaySoldMap[p.id] || 0;
     return sum + Math.max(0, prep - sold);
   }, 0);
   const sellThroughRate = totalPrepared > 0 ? Math.round((totalSold / totalPrepared) * 100) : 0;
@@ -121,7 +134,8 @@ export default function ItemsSoldScreen({ navigation }) {
 
   const renderProductItem = ({ item }) => {
     const prep = typeof item.preparedCount === 'number' ? item.preparedCount : 30;
-    const sold = Number(item.soldCount) || 0;
+    // Strictly starts from 0 every single day
+    const sold = todaySoldMap[item.id] || 0;
     const remaining = Math.max(0, prep - sold);
     const progressPercent = prep > 0 ? Math.min(100, Math.round((sold / prep) * 100)) : 0;
 
@@ -257,23 +271,6 @@ export default function ItemsSoldScreen({ navigation }) {
         emoji="🥐"
         title="Daily Items Sold"
         subtitle="Prepared vs Sold Inventory Tracker"
-        rightAction={
-          <TouchableOpacity
-            style={styles.headerWifiBtn}
-            onPress={() => setWifiModalVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name="wifi"
-              size={16}
-              color={wifiSyncStatus?.state === 'synced' ? '#16A34A' : COLORS.primary}
-              style={{ marginRight: 4 }}
-            />
-            <Text style={styles.headerWifiText}>
-              {wifiSyncStatus?.state === 'synced' ? 'Synced' : 'Wi-Fi'}
-            </Text>
-          </TouchableOpacity>
-        }
       />
 
       <FlatList
@@ -284,23 +281,50 @@ export default function ItemsSoldScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <>
-            {/* Top 4 Summary Metrics Cards */}
-            <View style={styles.summaryGrid}>
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryVal}>{totalPrepared}</Text>
-                <Text style={styles.summaryLbl}>Total Prepared</Text>
+            {/* Top Summary Metrics: 2x2 Grid with generous width, tall padding & zero cutoff */}
+            <View style={styles.summaryGrid2x2}>
+              <View style={styles.summaryRow}>
+                {/* Total Prepared */}
+                <View style={[styles.summaryCard, styles.cardPrepared]}>
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={styles.cardPreparedLbl}>TOTAL PREPARED</Text>
+                    <Ionicons name="basket-outline" size={16} color="#64748B" />
+                  </View>
+                  <Text style={styles.cardPreparedVal}>{totalPrepared}</Text>
+                  <Text style={styles.cardSubText}>Initial daily batch</Text>
+                </View>
+
+                {/* Sold in POS */}
+                <View style={[styles.summaryCard, styles.cardSold]}>
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={styles.cardSoldLbl}>SOLD IN POS</Text>
+                    <Ionicons name="cart-outline" size={16} color="#2563EB" />
+                  </View>
+                  <Text style={styles.cardSoldVal}>{totalSold}</Text>
+                  <Text style={styles.cardSubText}>Sold today (resets daily)</Text>
+                </View>
               </View>
-              <View style={[styles.summaryCard, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
-                <Text style={[styles.summaryVal, { color: '#2563EB' }]}>{totalSold}</Text>
-                <Text style={styles.summaryLbl}>Sold in POS</Text>
-              </View>
-              <View style={[styles.summaryCard, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
-                <Text style={[styles.summaryVal, { color: '#16A34A' }]}>{totalRemaining}</Text>
-                <Text style={styles.summaryLbl}>Remaining Stock</Text>
-              </View>
-              <View style={[styles.summaryCard, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }]}>
-                <Text style={[styles.summaryVal, { color: '#D97706' }]}>{sellThroughRate}%</Text>
-                <Text style={styles.summaryLbl}>Sell-Through</Text>
+
+              <View style={styles.summaryRow}>
+                {/* Remaining Stock */}
+                <View style={[styles.summaryCard, styles.cardRemaining]}>
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={styles.cardRemainingLbl}>REMAINING STOCK</Text>
+                    <Ionicons name="cube-outline" size={16} color="#16A34A" />
+                  </View>
+                  <Text style={styles.cardRemainingVal}>{totalRemaining}</Text>
+                  <Text style={styles.cardSubText}>Available to sell</Text>
+                </View>
+
+                {/* Sell-Through */}
+                <View style={[styles.summaryCard, styles.cardRate]}>
+                  <View style={styles.cardHeaderRow}>
+                    <Text style={styles.cardRateLbl}>SELL-THROUGH</Text>
+                    <Ionicons name="pie-chart-outline" size={16} color="#D97706" />
+                  </View>
+                  <Text style={styles.cardRateVal}>{sellThroughRate}%</Text>
+                  <Text style={styles.cardSubText}>Prepared vs sold</Text>
+                </View>
               </View>
             </View>
 
@@ -447,11 +471,7 @@ export default function ItemsSoldScreen({ navigation }) {
         </Modal>
       )}
 
-      {/* Wi-Fi Sync Modal */}
-      <WifiSyncModal
-        visible={wifiModalVisible}
-        onClose={() => setWifiModalVisible(false)}
-      />
+
     </View>
   );
 }
@@ -461,52 +481,103 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  headerWifiBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: RADIUS.full,
-  },
-  headerWifiText: {
-    fontSize: FONTS.xs,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
   listContent: {
     paddingHorizontal: 16,
-    paddingTop: 14,
+    paddingTop: 12,
     paddingBottom: 110,
   },
-  summaryGrid: {
+  summaryGrid2x2: {
+    gap: 10,
+    marginTop: 2,
+    marginBottom: 16,
+  },
+  summaryRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 14,
+    gap: 10,
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    paddingVertical: 10,
-    alignItems: 'center',
+    minHeight: 82,
+    justifyContent: 'space-between',
     ...SHADOWS.sm,
   },
-  summaryVal: {
-    fontSize: FONTS.lg,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
+  cardPrepared: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E2E8F0',
   },
-  summaryLbl: {
-    fontSize: 9,
+  cardPreparedLbl: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748B',
+    letterSpacing: 0.5,
+  },
+  cardPreparedVal: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: COLORS.textPrimary,
+    marginVertical: 2,
+  },
+  cardSold: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  cardSoldLbl: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#2563EB',
+    letterSpacing: 0.5,
+  },
+  cardSoldVal: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#1D4ED8',
+    marginVertical: 2,
+  },
+  cardRemaining: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  cardRemainingLbl: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#16A34A',
+    letterSpacing: 0.5,
+  },
+  cardRemainingVal: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#15803D',
+    marginVertical: 2,
+  },
+  cardRate: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+  },
+  cardRateLbl: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#D97706',
+    letterSpacing: 0.5,
+  },
+  cardRateVal: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#B45309',
+    marginVertical: 2,
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cardSubText: {
+    fontSize: 10,
     color: COLORS.textMuted,
-    fontWeight: '700',
-    marginTop: 2,
-    textTransform: 'uppercase',
+    fontWeight: '500',
   },
   actionToolbar: {
     flexDirection: 'row',

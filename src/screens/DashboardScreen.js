@@ -12,7 +12,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useBakery } from '../store/BakeryStore';
-import WifiSyncModal from '../components/WifiSyncModal';
 import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
 
 const { width } = Dimensions.get('window');
@@ -86,14 +85,21 @@ const FEATURES = [
 
 export default function DashboardScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { state, dispatch, wifiSyncStatus } = useBakery();
-  const [wifiModalVisible, setWifiModalVisible] = useState(false);
+  const { state, dispatch } = useBakery();
   const { products, orders, inventory, auth, notifications = [] } = state;
 
   const [notifModalVisible, setNotifModalVisible] = useState(false);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const todayOrders = orders.filter(o => o.createdAt && o.createdAt.startsWith(todayStr));
+  // Map of product ID -> quantity sold TODAY (starts at 0 every day)
+  const todaySoldMap = {};
+  todayOrders.forEach(o => {
+    (o.items || []).forEach(it => {
+      todaySoldMap[it.id] = (todaySoldMap[it.id] || 0) + (Number(it.quantity) || 1);
+    });
+  });
+
   const todayRevenue = todayOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
   const todayCash = todayOrders
     .filter(o => (o.paymentMethod || '').toLowerCase() === 'cash')
@@ -391,7 +397,7 @@ export default function DashboardScreen({ navigation }) {
                 <Text style={styles.topProductPrice}>${Number(p.price).toFixed(2)}</Text>
                 <View style={styles.topProductSoldBadge}>
                   <Text style={styles.topProductSoldText}>
-                    {(p.soldCount || 0) > 0 ? `${p.soldCount} sold` : p.category}
+                    {(todaySoldMap[p.id] || 0) > 0 ? `${todaySoldMap[p.id]} sold today` : p.category}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -476,53 +482,13 @@ export default function DashboardScreen({ navigation }) {
           </View>
         </View>
       </Modal>
-          <WifiSyncModal
-        visible={wifiModalVisible}
-        onClose={() => setWifiModalVisible(false)}
-      />
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  // Wi-Fi Status Bar
-  wifiStatusBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    marginBottom: 12,
-  },
-  wifiStatusSynced: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
-  },
-  wifiStatusOffline: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#FDE68A',
-  },
-  wifiStatusLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  wifiStatusText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  wifiStatusRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  wifiSyncActionText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: COLORS.primary,
-  },
+
   // Prepared Banner Card
   preparedBannerCard: {
     backgroundColor: COLORS.surface,

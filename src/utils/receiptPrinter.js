@@ -16,14 +16,22 @@ try {
   console.log('expo-sharing not available');
 }
 
-export function generateReceiptHTML(order, businessName = 'Bakery') {
+/**
+ * Generates an ESC/POS styled HTML receipt formatted specifically for
+ * 58mm (2.28 inch) continuous thermal receipt roll paper.
+ * Width is restricted to 58mm / 216pt to prevent standard A4 page rendering.
+ */
+export function generateReceiptHTML(order, businessName = 'Bakery', paperWidth = '58mm') {
   const dateStr = order.createdAt ? new Date(order.createdAt).toLocaleString() : new Date().toLocaleString();
   const items = order.items || [];
+  const is80mm = paperWidth === '80mm';
+  const widthMm = is80mm ? '80mm' : '58mm';
+  const maxPx = is80mm ? '280px' : '204px';
 
   const itemsRows = items.map(item => `
     <tr>
-      <td style="padding: 4px 0; font-size: 13px;">${item.name} x${item.quantity}</td>
-      <td style="padding: 4px 0; font-size: 13px; text-align: right;">$${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
+      <td style="padding: 3px 0; font-size: 11px; word-break: break-word;">${item.name} x${item.quantity}</td>
+      <td style="padding: 3px 0; font-size: 11px; text-align: right; white-space: nowrap;">$${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
     </tr>
   `).join('');
 
@@ -32,36 +40,55 @@ export function generateReceiptHTML(order, businessName = 'Bakery') {
     <html>
       <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <title>Receipt ${order.id}</title>
         <style>
-          @page { size: auto; margin: 10mm; }
+          @page {
+            size: ${widthMm} auto;
+            margin: 0mm;
+          }
+          @media print {
+            html, body {
+              width: ${widthMm} !important;
+              max-width: ${widthMm} !important;
+              margin: 0 auto !important;
+              padding: 2mm 3mm !important;
+            }
+          }
+          * {
+            box-sizing: border-box;
+          }
           body {
             font-family: 'Courier New', Courier, monospace;
-            width: 100%;
-            max-width: 340px;
+            width: ${widthMm};
+            max-width: ${maxPx};
             margin: 0 auto;
-            padding: 16px;
-            color: #111;
+            padding: 2mm 4mm 6mm 4mm;
+            color: #000;
             background: #fff;
+            font-size: 11px;
+            line-height: 1.25;
+            -webkit-print-color-adjust: exact;
           }
           .center { text-align: center; }
           .bold { font-weight: bold; }
-          .title { font-size: 22px; font-weight: 900; letter-spacing: 1.5px; margin-bottom: 2px; }
-          .subtitle { font-size: 12px; color: #555; margin-bottom: 12px; }
-          .dashed { border-top: 1px dashed #222; margin: 10px 0; }
-          .double-dashed { border-top: 2px dashed #222; margin: 10px 0; }
+          .title { font-size: 16px; font-weight: 900; letter-spacing: 0.5px; margin-bottom: 2px; }
+          .subtitle { font-size: 10px; color: #333; margin-bottom: 6px; }
+          .dashed { border-top: 1px dashed #000; margin: 6px 0; }
+          .double-dashed { border-top: 2px dashed #000; margin: 6px 0; }
           table { width: 100%; border-collapse: collapse; }
-          .info-table td { font-size: 12px; padding: 2px 0; }
-          .total-table td { font-size: 13px; padding: 3px 0; }
-          .grand-total { font-size: 17px; font-weight: 900; }
-          .footer { font-size: 11px; text-align: center; color: #444; margin-top: 16px; line-height: 1.4; }
+          .info-table td { font-size: 10px; padding: 1.5px 0; }
+          .total-table td { font-size: 11px; padding: 2px 0; }
+          .grand-total { font-size: 14px; font-weight: 900; }
+          .footer { font-size: 9px; text-align: center; color: #222; margin-top: 10px; line-height: 1.3; }
+          .tear-cut { text-align: center; font-size: 8px; color: #666; margin-top: 8px; letter-spacing: 1px; }
         </style>
       </head>
       <body>
         <div class="center">
           <div class="title">${businessName.toUpperCase()}</div>
           <div class="subtitle">Artisan Bakery & Cafe • Fresh Daily</div>
+          <div style="font-size: 9px; font-weight: 700; color: #555;">*** THERMAL POS SLIP ***</div>
         </div>
 
         <div class="dashed"></div>
@@ -72,7 +99,7 @@ export function generateReceiptHTML(order, businessName = 'Bakery') {
             <td style="text-align: right;">${order.id}</td>
           </tr>
           <tr>
-            <td><strong>Date & Time:</strong></td>
+            <td><strong>Date:</strong></td>
             <td style="text-align: right;">${dateStr}</td>
           </tr>
           <tr>
@@ -83,15 +110,19 @@ export function generateReceiptHTML(order, businessName = 'Bakery') {
             <td><strong>Payment:</strong></td>
             <td style="text-align: right;">${order.paymentMethod || 'Cash'}</td>
           </tr>
+          <tr>
+            <td><strong>Cashier:</strong></td>
+            <td style="text-align: right;">${order.createdBy || order.account || 'Staff'}</td>
+          </tr>
         </table>
 
         <div class="dashed"></div>
 
         <table>
           <thead>
-            <tr style="border-bottom: 1px solid #ddd;">
-              <th style="text-align: left; font-size: 12px; padding-bottom: 4px;">Item</th>
-              <th style="text-align: right; font-size: 12px; padding-bottom: 4px;">Amount</th>
+            <tr style="border-bottom: 1px dashed #000;">
+              <th style="text-align: left; font-size: 10px; padding-bottom: 3px;">ITEM</th>
+              <th style="text-align: right; font-size: 10px; padding-bottom: 3px;">AMOUNT</th>
             </tr>
           </thead>
           <tbody>
@@ -111,8 +142,8 @@ export function generateReceiptHTML(order, businessName = 'Bakery') {
             <td style="text-align: right;">$${Number(order.tax || 0).toFixed(2)}</td>
           </tr>
           <tr class="grand-total">
-            <td style="padding-top: 6px;">TOTAL:</td>
-            <td style="text-align: right; padding-top: 6px;">$${Number(order.total || 0).toFixed(2)}</td>
+            <td style="padding-top: 4px;">TOTAL:</td>
+            <td style="text-align: right; padding-top: 4px;">$${Number(order.total || 0).toFixed(2)}</td>
           </tr>
         </table>
 
@@ -121,8 +152,10 @@ export function generateReceiptHTML(order, businessName = 'Bakery') {
         <div class="footer">
           Thank you for choosing ${businessName}!<br>
           Please come again soon 🥐<br>
-          *** Retain for your records ***
+          Retain slip for your records
         </div>
+
+        <div class="tear-cut">- - - - - [ TEAR RECEIPT HERE ] - - - - -</div>
       </body>
     </html>
   `;
@@ -154,12 +187,19 @@ Thank you for your visit! 🥐
 `.trim();
 }
 
-export async function printReceipt(order, businessName = 'Bakery') {
-  const html = generateReceiptHTML(order, businessName);
+/**
+ * Print directly formatted for 58mm thermal receipt printer roll
+ */
+export async function printReceipt(order, businessName = 'Bakery', paperWidth = '58mm') {
+  const html = generateReceiptHTML(order, businessName, paperWidth);
+  const printWidth = paperWidth === '80mm' ? 288 : 216; // 216 pt = 58mm thermal roll standard
 
   try {
     if (Print && typeof Print.printAsync === 'function') {
-      await Print.printAsync({ html });
+      await Print.printAsync({
+        html,
+        width: printWidth,
+      });
       return { success: true };
     }
   } catch (error) {
@@ -167,20 +207,25 @@ export async function printReceipt(order, businessName = 'Bakery') {
   }
 
   // Fallback to PDF share if printAsync fails or on unsupported platform
-  return shareReceiptPDF(order, businessName);
+  return shareReceiptPDF(order, businessName, paperWidth);
 }
 
-export async function shareReceiptPDF(order, businessName = 'Bakery') {
-  const html = generateReceiptHTML(order, businessName);
+export async function shareReceiptPDF(order, businessName = 'Bakery', paperWidth = '58mm') {
+  const html = generateReceiptHTML(order, businessName, paperWidth);
+  const printWidth = paperWidth === '80mm' ? 288 : 216;
 
   try {
     if (Print && typeof Print.printToFileAsync === 'function') {
-      const { uri } = await Print.printToFileAsync({ html });
+      const { uri } = await Print.printToFileAsync({
+        html,
+        width: printWidth,
+        margins: { top: 0, bottom: 0, left: 0, right: 0 },
+      });
       if (Sharing && typeof Sharing.isAvailableAsync === 'function' && (await Sharing.isAvailableAsync())) {
         await Sharing.shareAsync(uri, {
           UTI: '.pdf',
           mimeType: 'application/pdf',
-          dialogTitle: `Receipt ${order.id}`,
+          dialogTitle: `Receipt ${order.id} (58mm Slip)`,
         });
         return { success: true };
       }

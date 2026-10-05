@@ -14,9 +14,7 @@ import { useBakery } from '../store/BakeryStore';
 import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
 import BluetoothPrinterModal from '../components/BluetoothPrinterModal';
-import WifiSyncModal from '../components/WifiSyncModal';
 import { getConnectedPrinter } from '../services/bluetoothPrinterService';
-import { getServerUrl, setServerUrl, getLastSyncInfo, pushSyncData, DEFAULT_SERVER_URL } from '../services/syncService';
 
 
 export default function ProfileScreen({ navigation }) {
@@ -31,53 +29,12 @@ export default function ProfileScreen({ navigation }) {
   const [businessName, setBusinessName] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
-  const [serverUrl, setServerUrlState] = useState(DEFAULT_SERVER_URL);
-  const [newServerUrl, setNewServerUrl] = useState('');
-  const [syncing, setSyncing] = useState(false);
   const [btModalVisible, setBtModalVisible] = useState(false);
-  const [wifiModalVisible, setWifiModalVisible] = useState(false);
   const [connectedBtPrinter, setConnectedBtPrinter] = useState(null);
-  const [lastSyncInfo, setLastSyncInfo] = useState(null);
 
   React.useEffect(() => {
-    getServerUrl().then(url => {
-      setServerUrlState(url);
-      setNewServerUrl(url);
-    });
-    getLastSyncInfo().then(info => setLastSyncInfo(info));
     getConnectedPrinter().then(p => setConnectedBtPrinter(p));
   }, []);
-
-  const handleSyncNow = async () => {
-    setSyncing(true);
-    const result = await pushSyncData(state);
-    setSyncing(false);
-    if (result.success) {
-      setLastSyncInfo(result);
-      Alert.alert(
-        'Cloud Sync Successful! 🚀',
-        `Successfully synced ${state.orders.length} orders and ${state.products.length} menu items to your Admin Server.`
-      );
-    } else {
-      Alert.alert(
-        'Server Unreachable ⚠️',
-        `${result.message}
-
-Please verify your phone is connected to the same Wi-Fi/network and check your Server URL.`
-      );
-    }
-  };
-
-  const handleSaveServerUrl = async () => {
-    if (!newServerUrl.trim()) {
-      Alert.alert('Error', 'Server URL cannot be empty.');
-      return;
-    }
-    const saved = await setServerUrl(newServerUrl.trim());
-    setServerUrlState(saved);
-    setEditMode(null);
-    Alert.alert('Saved', `Server URL set to: ${saved}`);
-  };
 
 
   const canGoBack = navigation && typeof navigation.canGoBack === 'function' && navigation.canGoBack();
@@ -311,7 +268,7 @@ Please verify your phone is connected to the same Wi-Fi/network and check your S
           </TouchableOpacity>
         </View>
 
-        {/* Bluetooth Receipt Printer Section */}
+        {/* Bluetooth Thermal Receipt Printer Section */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>RECEIPT PRINTING (BLUETOOTH)</Text>
 
@@ -321,47 +278,15 @@ Please verify your phone is connected to the same Wi-Fi/network and check your S
             activeOpacity={0.7}
           >
             <View style={[styles.settingIcon, { backgroundColor: COLORS.primaryLight }]}>
-              <Ionicons name="bluetooth" size={18} color={COLORS.primary} />
+              <Ionicons name="print" size={18} color={COLORS.primary} />
             </View>
             <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Bluetooth Thermal Printer</Text>
+              <Text style={styles.settingTitle}>Thermal Receipt Printer</Text>
               <Text style={[styles.settingValue, connectedBtPrinter && { color: '#16A34A', fontWeight: '700' }]}>
-                {connectedBtPrinter ? `Connected: ${connectedBtPrinter.name}` : 'Not Connected • Tap to Connect'}
+                {connectedBtPrinter ? `Connected: ${connectedBtPrinter.name} (58mm Roll)` : 'Not Connected • Tap to Pair Printer'}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Wi-Fi Admin Sync Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>WI-FI ADMIN PORTAL SYNC</Text>
-
-          <TouchableOpacity
-            style={styles.settingRow}
-            onPress={() => setWifiModalVisible(true)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.settingIcon, { backgroundColor: '#EFF6FF' }]}>
-              <Ionicons name="wifi" size={18} color="#2563EB" />
-            </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Admin Server URL</Text>
-              <Text style={styles.settingValue} numberOfLines={1}>{serverUrl}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.syncNowBtn}
-            onPress={handleSyncNow}
-            disabled={syncing}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="cloud-upload-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
-            <Text style={styles.syncNowBtnText}>
-              {syncing ? 'Syncing to Admin...' : 'Sync Data Now to Admin'}
-            </Text>
           </TouchableOpacity>
         </View>
 
@@ -515,14 +440,7 @@ Please verify your phone is connected to the same Wi-Fi/network and check your S
         }}
         businessName={auth.businessName || 'Bakery'}
       />
-      <WifiSyncModal
-        visible={wifiModalVisible}
-        onClose={() => setWifiModalVisible(false)}
-        onSyncComplete={(res) => {
-          setServerUrlState(res.serverUrl);
-          setLastSyncInfo(res);
-        }}
-      />
+
     </View>
   );
 }

@@ -76,9 +76,33 @@ export default function BluetoothPrinterModal({
       });
       setConnected(saved);
       setConnectingId(null);
+
+      // Auto-print receipt if an order was queued
+      if (orderToPrint) {
+        setPrinting(true);
+        const result = await printToBluetoothPrinter(orderToPrint, businessName);
+        setPrinting(false);
+        if (result.success) {
+          Alert.alert(
+            'Connected & Printed! 🧾🖨️',
+            `Connected to ${printer.name} and Receipt #${orderToPrint.id} was printed on ${paperWidth} thermal roll paper.`,
+            [
+              {
+                text: 'Done',
+                onPress: () => {
+                  if (onPrintSuccess) onPrintSuccess(result);
+                  onClose();
+                },
+              },
+            ]
+          );
+          return;
+        }
+      }
+
       Alert.alert(
         'Printer Connected! 🖨️',
-        `Successfully paired with ${printer.name}. You can now print receipts wirelessly over Bluetooth.`
+        `Successfully paired with ${printer.name} (${paperWidth} Roll). Receipts will now be printed on thermal roll paper.`
       );
     }, 900);
   };
@@ -166,9 +190,9 @@ export default function BluetoothPrinterModal({
                 <Ionicons name="bluetooth" size={20} color={COLORS.primary} />
               </View>
               <View>
-                <Text style={styles.title}>Bluetooth Thermal Printer</Text>
+                <Text style={styles.title}>Thermal Receipt Printer</Text>
                 <Text style={styles.subtitle}>
-                  {connectedPrinter ? 'Connected & Ready' : 'Pair with POS Thermal Printer'}
+                  {connectedPrinter ? `Connected • ${paperWidth} Thermal Roll` : 'Connect 58mm Thermal Receipt Printer'}
                 </Text>
               </View>
             </View>
@@ -253,9 +277,9 @@ export default function BluetoothPrinterModal({
               /* No Printer Connected Prompt */
               <View style={styles.unconnectedPrompt}>
                 <Ionicons name="print-outline" size={38} color={COLORS.primary} />
-                <Text style={styles.promptTitle}>Bluetooth Printer Required</Text>
+                <Text style={styles.promptTitle}>Receipt Printer Connection</Text>
                 <Text style={styles.promptDesc}>
-                  To print physical paper receipts, please turn on your Bluetooth receipt printer (e.g. POS-58, MPT-II, Sunmi) and tap Connect below.
+                  The app prints slips directly on 58mm continuous thermal roll paper (not full sheet). Please select your Bluetooth receipt printer below to pair and print.
                 </Text>
               </View>
             )}

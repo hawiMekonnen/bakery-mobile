@@ -86,6 +86,7 @@ const INITIAL_STATE = {
   orders: INITIAL_ORDERS,
   notifications: INITIAL_NOTIFICATIONS,
   auth: DEFAULT_AUTH,
+  lastActiveDate: new Date().toISOString().slice(0, 10),
 };
 
 // Safe async storage helper functions
@@ -208,10 +209,14 @@ function reducer(state, action) {
         createdBy: state.auth?.username || 'admin',
       };
 
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const isNewDay = state.lastActiveDate && state.lastActiveDate !== todayStr;
+      
       const updatedProducts = state.products.map(p => {
         const matchingItem = order.items.find(i => i.id === p.id);
+        const currentSold = isNewDay ? 0 : (p.soldCount || 0);
         if (matchingItem) {
-          const newSoldCount = (p.soldCount || 0) + (matchingItem.quantity || 1);
+          const newSoldCount = currentSold + (matchingItem.quantity || 1);
           const prep = typeof p.preparedCount === 'number' ? p.preparedCount : 30;
           return {
             ...p,
@@ -219,7 +224,7 @@ function reducer(state, action) {
             remainingCount: Math.max(0, prep - newSoldCount),
           };
         }
-        return p;
+        return isNewDay ? { ...p, soldCount: 0, remainingCount: typeof p.preparedCount === 'number' ? p.preparedCount : 30 } : p;
       });
 
       const updatedOrders = [order, ...state.orders];
@@ -602,9 +607,24 @@ export function BakeryProvider({ children }) {
         const savedProducts = (loadedData && Array.isArray(loadedData.products)) ? loadedData.products : [];
         const existingProdNames = new Set(savedProducts.map(p => (p.name || '').toLowerCase()));
         const missingDefaultProds = INITIAL_PRODUCTS.filter(p => !existingProdNames.has((p.name || '').toLowerCase()));
+        
+        // Strict Daily Reset: Count items sold today from today's orders only (starts at 0 every day)
+        const todayDateStr = new Date().toISOString().slice(0, 10);
+        const todayOrdersList = (combinedOrders || []).filter(o => {
+          const od = (o.createdAt || o.date || '').slice(0, 10);
+          return od === todayDateStr;
+        });
+        const todaySoldMap = {};
+        todayOrdersList.forEach(o => {
+          (o.items || []).forEach(it => {
+            todaySoldMap[it.id] = (todaySoldMap[it.id] || 0) + (Number(it.quantity) || 1);
+          });
+        });
+
         const mergedProducts = [...savedProducts, ...missingDefaultProds].map(p => {
           const prep = typeof p.preparedCount === 'number' ? p.preparedCount : 30;
-          const sold = Number(p.soldCount) || 0;
+          // Starts from 0 every day unless sold in today's orders
+          const sold = todaySoldMap[p.id] || 0;
           return {
             ...p,
             preparedCount: prep,
@@ -629,6 +649,7 @@ export function BakeryProvider({ children }) {
           inventory: mergedInventory,
           orders: combinedOrders,
           notifications: savedNotifs,
+          lastActiveDate: todayDateStr,
           auth: {
             ...DEFAULT_AUTH,
             ...savedAuth,
