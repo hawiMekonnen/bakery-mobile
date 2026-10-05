@@ -297,9 +297,9 @@ export default function ProfileScreen({ navigation }) {
               <Ionicons name="print" size={18} color={COLORS.primary} />
             </View>
             <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Thermal Receipt Printer</Text>
+              <Text style={styles.settingTitle}>Printer</Text>
               <Text style={[styles.settingValue, connectedBtPrinter && { color: '#16A34A', fontWeight: '700' }]}>
-                {connectedBtPrinter ? `Connected: ${connectedBtPrinter.name} (58mm Roll)` : 'Not Connected • Tap to Pair Printer'}
+                {connectedBtPrinter ? `Connected: ${connectedBtPrinter.name}` : 'Not Connected • Tap to Pair'}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
@@ -334,7 +334,7 @@ export default function ProfileScreen({ navigation }) {
             <View style={styles.settingInfo}>
               <Text style={styles.settingTitle}>Receipt Anti-Tamper Hash</Text>
               <Text style={[styles.settingValue, { color: '#16A34A' }]}>
-                Active • Verification hash on all 58mm slips
+                Active • Verification hash on all receipts
               </Text>
             </View>
           </View>
