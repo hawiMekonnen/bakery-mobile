@@ -1,0 +1,82 @@
+{
+  "business": {
+    "name": "Bakery",
+    "currency": "$",
+    "taxRate": 0.05,
+    "updatedAt": "2026-10-04T09:29:33.251Z"
+  },
+  "terminals": {
+    "mobile-terminal-01": {
+      "id": "mobile-terminal-01",
+      "name": "Mobile POS (Android)",
+      "lastSeen": "2026-10-04T11:11:36.666Z",
+      "clientIp": "127.0.0.1",
+      "appVersion": "2.0",
+      "ordersCount": 0,
+      "status": "online"
+    },
+    "test-audit-01": {
+      "id": "test-audit-01",
+      "name": "Audit Phone Terminal",
+      "lastSeen": "2026-10-04T11:33:00.421Z",
+      "clientIp": "127.0.0.1",
+      "appVersion": "2.0",
+      "ordersCount": 1,
+      "status": "online"
+    }
+  },
+  "orders": [
+    {
+      "id": "ORD-AUDIT-999",
+      "createdAt": "2026-10-04T11:33:00.420Z",
+      "customerName": "Audit Customer",
+      "paymentMethod": "Cash",
+      "total": 150,
+      "subtotal": 142.85,
+      "tax": 7.15,
+      "items": [
+        {
+          "id": 1,
+          "name": "Crispy Honey Fetira",
+          "quantity": 2,
+          "price": 75
+        }
+      ],
+      "syncedAt": "2026-10-04T11:33:00.421Z",
+      "terminalId": "test-audit-01"
+    }
+  ],
+  "products": [
+    {
+      "id": 1,
+      "name": "Crispy Honey Fetira",
+      "category": "Pastry",
+      "price": 75,
+      "preparedCount": 50,
+      "soldCount": 14,
+      "remainingCount": 36,
+      "available": true
+    }
+  ],
+  "inventory": [],
+  "syncLogs": [
+    {
+      "id": "log-1791113580421",
+      "terminalId": "test-audit-01",
+      "terminalName": "Audit Phone Terminal",
+      "timestamp": "2026-10-04T11:33:00.421Z",
+      "incomingOrdersCount": 1,
+      "newOrdersCount": 1,
+      "clientIp": "127.0.0.1"
+    },
+    {
+      "id": "log-1791112296666",
+      "terminalId": "mobile-terminal-01",
+      "terminalName": "Mobile POS (Android)",
+      "timestamp": "2026-10-04T11:11:36.666Z",
+      "incomingOrdersCount": 0,
+      "newOrdersCount": 0,
+      "clientIp": "127.0.0.1"
+    }
+  ]
+}

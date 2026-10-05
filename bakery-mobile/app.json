@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Bakery",
+    "slug": "bakery",
+    "version": "1.0.2",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.bakery.bakerypos",
+      "versionCode": 3,
+      "adaptiveIcon": {
+        "backgroundColor": "#C25E00",
+        "foregroundImage": "./assets/icon.png"
+      },
+      "permissions": [
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sharing"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "dced2cc3-bd5d-4bb1-9066-42eb8d0eb003"
+      }
+    }
+  }
+}

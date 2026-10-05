@@ -1,0 +1,12 @@
+{
+  "name": "artisan-bakery-suite",
+  "version": "1.0.2",
+  "description": "Comprehensive Bakery System Suite: React Native Mobile POS, Web POS, and Admin Portal",
+  "scripts": {
+    "start:mobile": "cd bakery-mobile && npm start",
+    "start:web": "cd bakery-system && npm run dev",
+    "start:admin": "cd bakery-admin && npm run dev"
+  },
+  "author": "Hawi Mekonnen",
+  "license": "MIT"
+}
