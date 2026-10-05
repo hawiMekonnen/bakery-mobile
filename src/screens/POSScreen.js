@@ -148,7 +148,7 @@ export default function POSScreen({ navigation }) {
     if (!connected) {
       Alert.alert(
         'Connect Receipt Printer 🖨️',
-        'Your 58mm thermal receipt printer is not connected. Please connect via Bluetooth to print the receipt roll slip.',
+        'Your printer is not connected. Please connect via Bluetooth to print the receipt.',
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -165,7 +165,7 @@ export default function POSScreen({ navigation }) {
     if (result.success) {
       Alert.alert(
         'Receipt Printed! 🧾🖨️',
-        `Receipt #${lastCompletedOrder.id} successfully printed on ${result.paperWidth || '58mm'} thermal roll (${result.printerName}).`
+        `Receipt #${lastCompletedOrder.id} successfully printed (${result.printerName}).`
       );
     } else {
       setBtModalVisible(true);
@@ -457,7 +457,7 @@ export default function POSScreen({ navigation }) {
                 >
                   <Ionicons name="print" size={18} color="#FFF" style={{ marginRight: 6 }} />
                   <Text style={styles.printBtnText}>
-                    {isPrinting ? 'Printing...' : 'Print 58mm Slip'}
+                    {isPrinting ? 'Printing...' : 'Print Receipt'}
                   </Text>
                 </TouchableOpacity>
 

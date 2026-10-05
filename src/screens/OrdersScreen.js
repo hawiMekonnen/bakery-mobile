@@ -92,7 +92,7 @@ export default function OrdersScreen({ navigation }) {
     if (result.success) {
       Alert.alert(
         'Receipt Printed! 🧾🖨️',
-        `Receipt #${selectedOrder.id} successfully printed on ${result.paperWidth || '58mm'} thermal roll (${result.printerName}).`
+        `Receipt #${selectedOrder.id} successfully printed (${result.printerName}).`
       );
     } else {
       setBtModalVisible(true);
@@ -431,7 +431,7 @@ export default function OrdersScreen({ navigation }) {
                 >
                   <Ionicons name="print" size={17} color="#FFF" style={{ marginRight: 6 }} />
                   <Text style={styles.modalPrintText}>
-                    {isPrinting ? 'Printing...' : 'Print 58mm Slip'}
+                    {isPrinting ? 'Printing...' : 'Print Receipt'}
                   </Text>
                 </TouchableOpacity>
 

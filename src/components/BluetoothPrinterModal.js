@@ -180,7 +180,7 @@ export default function BluetoothPrinterModal({
     const result = await testPrintReceipt(connectedPrinter, businessName);
     setPrinting(false);
     if (result.success) {
-      Alert.alert('Test Receipt Sent! 🧾', `Test 58mm slip sent to ${result.printerName}.`);
+      Alert.alert('Test Receipt Sent! 🧾', `Test slip sent to ${result.printerName}.`);
     } else {
       Alert.alert('Print Error', result.message || 'Could not print to device.');
     }
@@ -194,7 +194,7 @@ export default function BluetoothPrinterModal({
     if (result.success) {
       Alert.alert(
         'Receipt Printed! 🖨️',
-        `Receipt #${orderToPrint.id} printed on ${result.paperWidth || '58mm'} thermal roll paper.`,
+        `Receipt #${orderToPrint.id} printed successfully (${result.printerName}).`,
         [
           {
             text: 'OK',
@@ -240,9 +240,9 @@ export default function BluetoothPrinterModal({
                 <Ionicons name="print" size={20} color={COLORS.primary} />
               </View>
               <View>
-                <Text style={styles.title}>Thermal Receipt Printer</Text>
+                <Text style={styles.title}>Printer</Text>
                 <Text style={styles.subtitle}>
-                  {connectedPrinter ? `Connected • ${paperWidth} Thermal Roll` : '58mm Thermal Roll Printing'}
+                  {connectedPrinter ? 'Connected & Ready' : 'Connect & Print'}
                 </Text>
               </View>
             </View>
@@ -318,7 +318,7 @@ export default function BluetoothPrinterModal({
                 </View>
 
                 <Text style={styles.printerName}>{connectedPrinter.name}</Text>
-                <Text style={styles.printerAddress}>Status: Paired & Ready for 58mm roll slips</Text>
+                <Text style={styles.printerAddress}>Status: Paired & Ready</Text>
 
                 {/* Paper Width Selector */}
                 <View style={styles.paperSelectorRow}>
@@ -357,7 +357,7 @@ export default function BluetoothPrinterModal({
                       <>
                         <Ionicons name="print" size={20} color="#FFF" style={{ marginRight: 8 }} />
                         <Text style={styles.printOrderPrimaryText}>
-                          Print 58mm Receipt #{orderToPrint.id}
+                          Print Receipt #{orderToPrint.id}
                         </Text>
                       </>
                     )}
@@ -372,34 +372,25 @@ export default function BluetoothPrinterModal({
                   activeOpacity={0.8}
                 >
                   <Ionicons name="receipt-outline" size={18} color={COLORS.primary} style={{ marginRight: 6 }} />
-                  <Text style={styles.testPrintBtnText}>Print Test 58mm Slip</Text>
+                  <Text style={styles.testPrintBtnText}>Print Test Slip</Text>
                 </TouchableOpacity>
               </View>
-            ) : (
-              /* No Printer Connected Prompt */
-              <View style={styles.unconnectedPrompt}>
-                <Ionicons name="receipt-outline" size={36} color={COLORS.primary} />
-                <Text style={styles.promptTitle}>Connect 58mm Thermal Printer</Text>
-                <Text style={styles.promptDesc}>
-                  The app prints physical receipts on continuous 58mm roll paper. Please pair your Bluetooth printer above, then add it to print.
-                </Text>
-              </View>
-            )}
+            ) : null}
 
             {/* Saved Printers List */}
             <View style={styles.devicesSection}>
               <View style={styles.devicesSectionHeader}>
                 <Text style={styles.devicesSectionTitle}>
-                  {connectedPrinter ? 'SAVED THERMAL PRINTERS' : 'PAIRED RECEIPT PRINTERS'}
+                  {connectedPrinter ? 'SAVED PRINTERS' : 'PAIRED PRINTERS'}
                 </Text>
               </View>
 
               {printersList.length === 0 ? (
                 <View style={styles.emptyPrintersBox}>
                   <Text style={styles.emptyPrintersEmoji}>🖨️</Text>
-                  <Text style={styles.emptyPrintersTitle}>No Thermal Printers Added Yet</Text>
+                  <Text style={styles.emptyPrintersTitle}>No Printers Added Yet</Text>
                   <Text style={styles.emptyPrintersDesc}>
-                    Tap "+ Add Paired Thermal Printer" below and enter your printer's name (e.g. POS-58, MPT-II).
+                    Tap "+ Add Paired Printer" below and enter your printer's name.
                   </Text>
                 </View>
               ) : (
@@ -474,13 +465,13 @@ export default function BluetoothPrinterModal({
                   activeOpacity={0.8}
                 >
                   <Ionicons name="add-circle" size={18} color={COLORS.primary} style={{ marginRight: 6 }} />
-                  <Text style={styles.addCustomToggleText}>Add Paired Thermal Printer</Text>
+                  <Text style={styles.addCustomToggleText}>Add Paired Printer</Text>
                 </TouchableOpacity>
               ) : (
                 <View style={styles.customAddCard}>
-                  <Text style={styles.customAddTitle}>Add Paired Thermal Printer</Text>
+                  <Text style={styles.customAddTitle}>Add Paired Printer</Text>
                   <Text style={styles.customAddSub}>
-                    Enter the name of the printer paired in your Bluetooth settings (e.g. POS-58, MPT-II, Bluetooth Printer).
+                    Enter the name of the printer paired in your Bluetooth settings.
                   </Text>
                   <TextInput
                     style={styles.input}
@@ -520,10 +511,10 @@ export default function BluetoothPrinterModal({
                   activeOpacity={0.8}
                 >
                   <Ionicons name="paper-plane-outline" size={18} color={COLORS.primary} style={{ marginRight: 8 }} />
-                  <Text style={styles.systemPrintText}>Direct Thermal Print (System Spooler)</Text>
+                  <Text style={styles.systemPrintText}>Direct Print (System Spooler)</Text>
                 </TouchableOpacity>
                 <Text style={styles.fallbackHint}>
-                  Sends 58mm roll format directly to your phone's print service
+                  Print directly using your phone's print service
                 </Text>
               </View>
             )}
