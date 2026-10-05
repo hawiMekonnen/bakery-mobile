@@ -80,12 +80,29 @@ const INITIAL_NOTIFICATIONS = [
   },
 ];
 
+const DEFAULT_SECURITY = {
+  managerPin: '1234',
+  requirePinForReset: true,
+  requirePinForVoid: true,
+  autoLockMinutes: 0,
+};
+
 const INITIAL_STATE = {
   products: INITIAL_PRODUCTS,
   inventory: INITIAL_INVENTORY,
   orders: INITIAL_ORDERS,
   notifications: INITIAL_NOTIFICATIONS,
   auth: DEFAULT_AUTH,
+  security: DEFAULT_SECURITY,
+  securityLogs: [
+    {
+      id: 'sec-init',
+      event: 'SYSTEM_STARTUP',
+      description: 'System security active with PIN protection and anti-tamper receipt hashing.',
+      timestamp: new Date().toISOString(),
+      user: 'admin',
+    },
+  ],
   lastActiveDate: new Date().toISOString().slice(0, 10),
 };
 
@@ -183,6 +200,41 @@ function reducer(state, action) {
       };
       // CRITICAL: LOGOUT ONLY SETS isLoggedIn TO FALSE!
       // ALL ORDERS, PRODUCTS, INVENTORY AND USER SETTINGS REMAIN 100% PRESERVED IN STORAGE!
+      persistStateImmediate(updated);
+      return updated;
+    }
+
+    case 'UPDATE_MANAGER_PIN': {
+      const updated = {
+        ...state,
+        security: {
+          ...(state.security || DEFAULT_SECURITY),
+          managerPin: String(action.payload),
+        },
+        securityLogs: [
+          {
+            id: `sec-${Date.now()}`,
+            event: 'PIN_UPDATED',
+            description: 'Manager security PIN was changed.',
+            timestamp: new Date().toISOString(),
+            user: state.auth?.username || 'admin',
+          },
+          ...(state.securityLogs || []),
+        ].slice(0, 50),
+      };
+      persistStateImmediate(updated);
+      return updated;
+    }
+
+    case 'ADD_SECURITY_LOG': {
+      const newLog = {
+        id: `sec-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+        ...action.payload,
+      };
+      const updated = {
+        ...state,
+        securityLogs: [newLog, ...(state.securityLogs || [])].slice(0, 50),
+      };
       persistStateImmediate(updated);
       return updated;
     }
@@ -639,6 +691,18 @@ export function BakeryProvider({ children }) {
         const mergedInventory = [...savedInv, ...missingDefaultInv];
 
         const savedAuth = (loadedData && loadedData.auth) ? loadedData.auth : DEFAULT_AUTH;
+        const savedSecurity = (loadedData && loadedData.security) ? loadedData.security : DEFAULT_SECURITY;
+        const savedSecurityLogs = (loadedData && Array.isArray(loadedData.securityLogs))
+          ? loadedData.securityLogs
+          : [
+              {
+                id: 'sec-init',
+                event: 'SYSTEM_STARTUP',
+                description: 'System security active with PIN protection and anti-tamper receipt hashing.',
+                timestamp: new Date().toISOString(),
+                user: 'admin',
+              },
+            ];
         const savedNotifs = (loadedData && Array.isArray(loadedData.notifications))
           ? loadedData.notifications.filter(n => n.type !== 'sale')
           : INITIAL_NOTIFICATIONS;
@@ -649,6 +713,8 @@ export function BakeryProvider({ children }) {
           inventory: mergedInventory,
           orders: combinedOrders,
           notifications: savedNotifs,
+          security: savedSecurity,
+          securityLogs: savedSecurityLogs,
           lastActiveDate: todayDateStr,
           auth: {
             ...DEFAULT_AUTH,

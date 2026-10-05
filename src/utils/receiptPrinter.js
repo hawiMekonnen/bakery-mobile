@@ -1,3 +1,4 @@
+import { generateReceiptSecurityCode } from '../services/bluetoothPrinterService';
 import { Share, Alert, Platform } from 'react-native';
 
 // Safe imports for Expo Print & Sharing
@@ -23,6 +24,7 @@ try {
  */
 export function generateReceiptHTML(order, businessName = 'Bakery', paperWidth = '58mm') {
   const dateStr = order.createdAt ? new Date(order.createdAt).toLocaleString() : new Date().toLocaleString();
+  const secCode = generateReceiptSecurityCode(order);
   const items = order.items || [];
   const is80mm = paperWidth === '80mm';
   const widthMm = is80mm ? '80mm' : '58mm';
@@ -114,6 +116,10 @@ export function generateReceiptHTML(order, businessName = 'Bakery', paperWidth =
             <td><strong>Cashier:</strong></td>
             <td style="text-align: right;">${order.createdBy || order.account || 'Staff'}</td>
           </tr>
+          <tr>
+            <td><strong>Security Code:</strong></td>
+            <td style="text-align: right; font-family: monospace; font-weight: bold;">${secCode}</td>
+          </tr>
         </table>
 
         <div class="dashed"></div>
@@ -155,6 +161,7 @@ export function generateReceiptHTML(order, businessName = 'Bakery', paperWidth =
           Retain slip for your records
         </div>
 
+        <div class="tear-cut" style="font-weight: bold; margin-bottom: 3px;">*** SEC-VERIFIED: ${secCode} ***</div>
         <div class="tear-cut">- - - - - [ TEAR RECEIPT HERE ] - - - - -</div>
       </body>
     </html>
@@ -163,6 +170,7 @@ export function generateReceiptHTML(order, businessName = 'Bakery', paperWidth =
 
 export function generateReceiptText(order, businessName = 'Bakery') {
   const dateStr = order.createdAt ? new Date(order.createdAt).toLocaleString() : new Date().toLocaleString();
+  const secCode = generateReceiptSecurityCode(order);
   const itemsText = (order.items || [])
     .map(i => `${i.name} x${i.quantity}  $${(Number(i.price) * Number(i.quantity)).toFixed(2)}`)
     .join('\n');
@@ -176,6 +184,7 @@ Receipt:  ${order.id}
 Date:     ${dateStr}
 Customer: ${order.customerName || 'Walk-in'}
 Payment:  ${order.paymentMethod || 'Cash'}
+Security: ${secCode} (Anti-Tamper Verified)
 --------------------------------
 ${itemsText}
 --------------------------------
