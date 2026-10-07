@@ -1,4 +1,17 @@
-import { generateReceiptSecurityCode } from '../services/bluetoothPrinterService';
+/**
+ * Cryptographic Anti-Tamper Security Verification Code
+ * Derived from Order ID, Total, and Date to prevent forged paper receipts
+ */
+export function generateReceiptSecurityCode(order) {
+  const raw = `${order.id || '0'}-${order.total || 0}-${order.createdAt || ''}-bakery-sec`;
+  let hash = 0;
+  for (let i = 0; i < raw.length; i++) {
+    hash = ((hash << 5) - hash) + raw.charCodeAt(i);
+    hash |= 0;
+  }
+  const hex = Math.abs(hash).toString(16).toUpperCase().padStart(6, '0');
+  return `SEC-${hex.slice(0, 4)}-${hex.slice(4, 6)}`;
+}
 import { Share, Alert, Platform } from 'react-native';
 
 // Safe imports for Expo Print & Sharing

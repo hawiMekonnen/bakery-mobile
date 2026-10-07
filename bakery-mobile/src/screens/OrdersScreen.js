@@ -14,7 +14,7 @@ import { useBakery } from '../store/BakeryStore';
 import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
 import BluetoothPrinterModal from '../components/BluetoothPrinterModal';
-import { isBluetoothConnected, printToBluetoothPrinter } from '../services/bluetoothPrinterService';
+import { isBluetoothConnected, printToBluetoothPrinter, getPrinterPaperWidth } from '../services/bluetoothPrinterService';
 import CalendarModal from '../components/CalendarModal';
 import { printReceipt, shareReceiptPDF } from '../utils/receiptPrinter';
 
@@ -71,31 +71,24 @@ export default function OrdersScreen({ navigation }) {
 
   const handlePrint = async () => {
     if (!selectedOrder) return;
-    const connected = await isBluetoothConnected();
-    if (!connected) {
-      Alert.alert(
-        'Connect Receipt Printer 🖨️',
-        'Your 58mm thermal receipt printer is not connected. Please connect your Bluetooth printer to print the receipt roll slip.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Connect Printer',
-            onPress: () => setBtModalVisible(true),
-          },
-        ]
-      );
-      return;
-    }
     setIsPrinting(true);
-    const result = await printToBluetoothPrinter(selectedOrder, auth.businessName || 'Bakery');
-    setIsPrinting(false);
-    if (result.success) {
-      Alert.alert(
-        'Receipt Printed! 🧾🖨️',
-        `Receipt #${selectedOrder.id} successfully printed (${result.printerName}).`
-      );
-    } else {
-      setBtModalVisible(true);
+    try {
+      const paperWidth = await getPrinterPaperWidth();
+      const result = await printToBluetoothPrinter(selectedOrder, auth.businessName || 'Bakery', paperWidth);
+      if (result.success) {
+        Alert.alert(
+          'Receipt Sent! 🧾🖨️',
+          `Receipt #${selectedOrder.id} sent to printer (${paperWidth} roll).`
+        );
+      } else {
+        if (result.error !== 'PRINT_FAILED') {
+          setBtModalVisible(true);
+        }
+      }
+    } catch (err) {
+      Alert.alert('Print Error', 'Could not complete print job. Please check printer connection.');
+    } finally {
+      setIsPrinting(false);
     }
   };
 
