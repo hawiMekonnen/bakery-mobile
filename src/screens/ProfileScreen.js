@@ -299,7 +299,7 @@ export default function ProfileScreen({ navigation }) {
             <View style={styles.settingInfo}>
               <Text style={styles.settingTitle}>Printer</Text>
               <Text style={[styles.settingValue, connectedBtPrinter && { color: '#16A34A', fontWeight: '700' }]}>
-                {connectedBtPrinter ? `Connected: ${connectedBtPrinter.name}` : 'Not Connected • Tap to Pair'}
+                {`Thermal Roll (${connectedBtPrinter?.paperWidth || '58mm'}) • Tap to Test / Setup`}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
