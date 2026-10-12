@@ -7,7 +7,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BakeryProvider, useBakery } from './src/store/BakeryStore';
+import EulaModal, { EULA_STORAGE_KEY } from './src/components/EulaModal';
 import { COLORS, FONTS } from './src/theme/colors';
 
 // Auth
@@ -104,9 +106,22 @@ function TabNavigator() {
 // Root app that gates between Loading, Login, and Main tabs
 function RootNavigator() {
   const { state, isReady } = useBakery();
+  const [eulaAccepted, setEulaAccepted] = React.useState(true);
+  const [checkedEula, setCheckedEula] = React.useState(false);
+
+  React.useEffect(() => {
+    AsyncStorage.getItem(EULA_STORAGE_KEY)
+      .then(val => {
+        setEulaAccepted(!!val);
+        setCheckedEula(true);
+      })
+      .catch(() => {
+        setCheckedEula(true);
+      });
+  }, []);
 
   // Show premium loading splash while loading from phone storage
-  if (!isReady) {
+  if (!isReady || !checkedEula) {
     return (
       <View style={{ flex: 1, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' }}>
         <Text style={{ fontSize: 50, marginBottom: 12 }}>🥐</Text>
@@ -127,7 +142,19 @@ function RootNavigator() {
     return <LoginScreen />;
   }
 
-  return <TabNavigator />;
+  return (
+    <>
+      <TabNavigator />
+      {!eulaAccepted && (
+        <EulaModal
+          visible={!eulaAccepted}
+          isFirstTimeSetup={true}
+          onAccept={() => setEulaAccepted(true)}
+          onClose={() => setEulaAccepted(true)}
+        />
+      )}
+    </>
+  );
 }
 
 export default function App() {

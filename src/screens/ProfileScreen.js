@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useBakery } from '../store/BakeryStore';
 import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
-import ManagerPinModal from '../components/ManagerPinModal';
+import EulaModal from '../components/EulaModal';
 import BluetoothPrinterModal from '../components/BluetoothPrinterModal';
 import { getConnectedPrinter } from '../services/bluetoothPrinterService';
 
@@ -32,10 +32,7 @@ export default function ProfileScreen({ navigation }) {
   const [showNewPass, setShowNewPass] = useState(false);
   const [btModalVisible, setBtModalVisible] = useState(false);
   const [connectedBtPrinter, setConnectedBtPrinter] = useState(null);
-  const [pinModalVisible, setPinModalVisible] = useState(false);
-  const [changePinModalVisible, setChangePinModalVisible] = useState(false);
-  const [newPinInput, setNewPinInput] = useState('');
-  const [auditLogsModalVisible, setAuditLogsModalVisible] = useState(false);
+  const [eulaModalVisible, setEulaModalVisible] = useState(false);
 
   React.useEffect(() => {
     getConnectedPrinter().then(p => setConnectedBtPrinter(p));
@@ -306,51 +303,56 @@ export default function ProfileScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Security & Access Control Section */}
+        {/* Legal & Regulatory Disclaimers Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>SECURITY & ACCESS CONTROL</Text>
+          <Text style={styles.sectionLabel}>LEGAL & REGULATORY DISCLAIMERS</Text>
 
           <TouchableOpacity
             style={styles.settingRow}
-            onPress={() => setChangePinModalVisible(true)}
+            onPress={() => setEulaModalVisible(true)}
             activeOpacity={0.7}
           >
-            <View style={[styles.settingIcon, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="keypad" size={18} color="#D97706" />
+            <View style={[styles.settingIcon, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="document-text" size={18} color="#2563EB" />
             </View>
             <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Manager Security PIN</Text>
+              <Text style={styles.settingTitle}>License Agreement (EULA)</Text>
               <Text style={styles.settingValue}>
-                •••• • Tap to Change (Default: {state.security?.managerPin || '1234'})
+                SkyKin Technologies PLC • Single-Shop License
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
           </TouchableOpacity>
 
-          <View style={styles.settingRow}>
-            <View style={[styles.settingIcon, { backgroundColor: '#DCFCE7' }]}>
-              <Ionicons name="shield-checkmark" size={18} color="#16A34A" />
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => setEulaModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.settingIcon, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="alert-circle" size={18} color="#D97706" />
             </View>
             <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Receipt Anti-Tamper Hash</Text>
-              <Text style={[styles.settingValue, { color: '#16A34A' }]}>
-                Active • Verification hash on all receipts
+              <Text style={styles.settingTitle}>Tax & Regulatory Compliance</Text>
+              <Text style={styles.settingValue}>
+                Internal Tool Notice • Non-Fiscal POS
               </Text>
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.settingRow, styles.lastRow]}
-            onPress={() => setAuditLogsModalVisible(true)}
+            onPress={() => setEulaModalVisible(true)}
             activeOpacity={0.7}
           >
-            <View style={[styles.settingIcon, { backgroundColor: '#EFF6FF' }]}>
-              <Ionicons name="list" size={18} color="#2563EB" />
+            <View style={[styles.settingIcon, { backgroundColor: '#DCFCE7' }]}>
+              <Ionicons name="server" size={18} color="#16A34A" />
             </View>
             <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Security Audit Logs</Text>
+              <Text style={styles.settingTitle}>Data Ownership & Liability</Text>
               <Text style={styles.settingValue}>
-                {(state.securityLogs || []).length} recorded security events
+                Client-owned data • Local offline storage
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
@@ -508,96 +510,12 @@ export default function ProfileScreen({ navigation }) {
         businessName={auth.businessName || 'Bakery'}
       />
 
-          {/* Manager PIN Guard for Sales Reset */}
-      <ManagerPinModal
-        visible={pinModalVisible}
-        onClose={() => setPinModalVisible(false)}
-        onSuccess={handleAuthorizedSalesWipe}
-        actionTitle="Authorize Sales Wipe"
-        actionDescription="Enter 4-digit Manager PIN to confirm resetting all sales history."
+          {/* SkyKin Technologies EULA & Terms Modal */}
+      <EulaModal
+        visible={eulaModalVisible}
+        onClose={() => setEulaModalVisible(false)}
+        isFirstTimeSetup={false}
       />
-
-      {/* Change Manager PIN Modal */}
-      {changePinModalVisible && (
-        <Modal visible={true} transparent animationType="fade">
-          <View style={styles.editModalOverlay}>
-            <View style={styles.editModalCard}>
-              <View style={[styles.settingIcon, { backgroundColor: '#FEF3C7', alignSelf: 'center', marginBottom: 12 }]}>
-                <Ionicons name="keypad" size={24} color="#D97706" />
-              </View>
-              <Text style={styles.editModalTitle}>Change Manager PIN</Text>
-              <Text style={styles.editModalSub}>
-                Enter a new 4-digit security PIN for authorizing shift resets, price changes, and data wipes.
-              </Text>
-              <TextInput
-                style={[styles.editModalInput, { textAlign: 'center', fontSize: 24, letterSpacing: 8 }]}
-                value={newPinInput}
-                onChangeText={setNewPinInput}
-                keyboardType="numeric"
-                maxLength={4}
-                autoFocus
-                placeholder="••••"
-              />
-              <View style={styles.editModalBtnRow}>
-                <TouchableOpacity
-                  style={styles.editModalCancel}
-                  onPress={() => {
-                    setNewPinInput('');
-                    setChangePinModalVisible(false);
-                  }}
-                >
-                  <Text style={styles.editModalCancelText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.editModalSave}
-                  onPress={handleSaveNewPin}
-                >
-                  <Text style={styles.editModalSaveText}>Save PIN</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-      )}
-
-      {/* Security Audit Logs Modal */}
-      {auditLogsModalVisible && (
-        <Modal visible={true} transparent animationType="slide">
-          <View style={styles.editModalOverlay}>
-            <View style={[styles.editModalCard, { maxHeight: '80%', width: '92%' }]}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="shield-checkmark" size={20} color="#2563EB" style={{ marginRight: 6 }} />
-                  <Text style={styles.editModalTitle}>Security Audit Log</Text>
-                </View>
-                <TouchableOpacity onPress={() => setAuditLogsModalVisible(false)}>
-                  <Ionicons name="close-circle" size={24} color={COLORS.textMuted} />
-                </TouchableOpacity>
-              </View>
-              <ScrollView style={{ maxHeight: 350 }}>
-                {(state.securityLogs || []).map((log, idx) => (
-                  <View key={log.id || idx} style={{ borderBottomWidth: 1, borderBottomColor: COLORS.border, paddingVertical: 8 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.textPrimary }}>
-                        {log.event}
-                      </Text>
-                      <Text style={{ fontSize: 9, color: COLORS.textMuted }}>
-                        {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                      </Text>
-                    </View>
-                    <Text style={{ fontSize: 11, color: COLORS.textSecondary, marginTop: 2 }}>
-                      {log.description}
-                    </Text>
-                    <Text style={{ fontSize: 9, color: COLORS.textMuted, marginTop: 2 }}>
-                      User: {log.user || 'admin'} • {new Date(log.timestamp).toLocaleDateString()}
-                    </Text>
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-      )}
     </View>
   );
 }
