@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useBakery } from '../store/BakeryStore';
 import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
-import ManagerPinModal from '../components/ManagerPinModal';
+
 
 const CATEGORIES = ['All', 'Pastry', 'Savory', 'Bread', 'Cakes', 'Coffee', 'Sandwiches'];
 
@@ -31,7 +31,7 @@ export default function ItemsSoldScreen({ navigation }) {
   // Quick Set All Prepared Modal
   const [batchSetModalVisible, setBatchSetModalVisible] = useState(false);
   const [batchPreparedInput, setBatchPreparedInput] = useState('30');
-  const [pinModalVisible, setPinModalVisible] = useState(false);
+
 
   // Filtered Products
   const filteredProducts = products.filter(p => {
@@ -117,7 +117,21 @@ export default function ItemsSoldScreen({ navigation }) {
   };
 
   const handleResetDay = () => {
-    setPinModalVisible(true);
+    Alert.alert(
+      'Reset Daily Sales Count',
+      'Are you sure you want to reset today\'s sales counts to zero?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset to 0',
+          style: 'destructive',
+          onPress: () => {
+            dispatch({ type: 'RESET_DAILY_ITEMS_SOLD', payload: { resetPrepared: false } });
+            Alert.alert('Reset Complete', 'Today\'s sales counts have been reset to 0.');
+          },
+        },
+      ]
+    );
   };
 
   const handleAuthorizedReset = () => {
@@ -465,14 +479,7 @@ export default function ItemsSoldScreen({ navigation }) {
       )}
 
 
-      {/* Manager PIN Security Guard */}
-      <ManagerPinModal
-        visible={pinModalVisible}
-        onClose={() => setPinModalVisible(false)}
-        onSuccess={handleAuthorizedReset}
-        actionTitle="Authorize Shift Reset"
-        actionDescription="Enter 4-digit Manager PIN to reset today's shift counters to zero."
-      />
+
     </View>
   );
 }

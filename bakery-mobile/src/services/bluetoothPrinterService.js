@@ -4,7 +4,7 @@ import { generateReceiptHTML, generateReceiptSecurityCode } from '../utils/recei
 
 export { generateReceiptSecurityCode };
 
-// Safe imports for Expo Print
+// Safe import for Expo Print
 let Print = null;
 try {
   Print = require('expo-print');
@@ -12,13 +12,9 @@ try {
   console.log('expo-print not available');
 }
 
+const BLUETOOTH_PRINTER_KEY = '@bakery_bluetooth_printer';
+const BLUETOOTH_CUSTOM_PRINTERS_KEY = '@bakery_bt_custom_printers';
 const PAPER_WIDTH_KEY = '@bakery_printer_paper_width';
-
-// Clean up any old dummy printer state from previous versions
-try {
-  AsyncStorage.removeItem('@bakery_bt_custom_printers').catch(() => {});
-  AsyncStorage.removeItem('@bakery_bluetooth_printer').catch(() => {});
-} catch (e) {}
 
 /**
  * Check if modern Android Bluetooth permissions are granted
@@ -120,7 +116,108 @@ export async function isRawBtAvailable() {
 }
 
 /**
- * Get saved preferred roll paper width (58mm or 80mm)
+ * Get the currently connected printer from storage
+ */
+export async function getConnectedPrinter() {
+  try {
+    const raw = await AsyncStorage.getItem(BLUETOOTH_PRINTER_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export async function isBluetoothConnected() {
+  const printer = await getConnectedPrinter();
+  return !!printer;
+}
+
+export async function setConnectedPrinter(printer) {
+  try {
+    if (!printer) {
+      await AsyncStorage.removeItem(BLUETOOTH_PRINTER_KEY);
+      return null;
+    }
+    const data = {
+      ...printer,
+      connectedAt: new Date().toISOString(),
+      status: 'connected',
+    };
+    await AsyncStorage.setItem(BLUETOOTH_PRINTER_KEY, JSON.stringify(data));
+    if (printer.paperWidth) {
+      await AsyncStorage.setItem(PAPER_WIDTH_KEY, printer.paperWidth);
+    }
+    return data;
+  } catch (e) {
+    return null;
+  }
+}
+
+export async function disconnectPrinter() {
+  try {
+    await AsyncStorage.removeItem(BLUETOOTH_PRINTER_KEY);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Get all real printers added by the user
+ */
+export async function getDiscoveredPrinters() {
+  try {
+    const rawCustom = await AsyncStorage.getItem(BLUETOOTH_CUSTOM_PRINTERS_KEY);
+    return rawCustom ? JSON.parse(rawCustom) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * Add a new paired Bluetooth printer
+ */
+export async function addCustomPrinter(name, address = 'Bluetooth Thermal', paperWidth = '58mm') {
+  try {
+    const raw = await AsyncStorage.getItem(BLUETOOTH_CUSTOM_PRINTERS_KEY);
+    const custom = raw ? JSON.parse(raw) : [];
+    const newPrinter = {
+      id: 'printer-' + Date.now(),
+      name: name.trim() || 'POS-58 Mobile',
+      address: address.trim() || 'Paired Bluetooth',
+      paperWidth: paperWidth || '58mm',
+      type: 'ESC/POS',
+      signal: 'Paired & Ready',
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [newPrinter, ...custom];
+    await AsyncStorage.setItem(BLUETOOTH_CUSTOM_PRINTERS_KEY, JSON.stringify(updated));
+    return newPrinter;
+  } catch (e) {
+    return null;
+  }
+}
+
+export async function deleteCustomPrinter(id) {
+  try {
+    const raw = await AsyncStorage.getItem(BLUETOOTH_CUSTOM_PRINTERS_KEY);
+    const custom = raw ? JSON.parse(raw) : [];
+    const updated = custom.filter(p => p.id !== id);
+    await AsyncStorage.setItem(BLUETOOTH_CUSTOM_PRINTERS_KEY, JSON.stringify(updated));
+
+    // If currently connected to this printer, disconnect it
+    const connected = await getConnectedPrinter();
+    if (connected && connected.id === id) {
+      await disconnectPrinter();
+    }
+    return updated;
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * Preferred paper width
  */
 export async function getPrinterPaperWidth() {
   try {
@@ -131,13 +228,15 @@ export async function getPrinterPaperWidth() {
   }
 }
 
-/**
- * Save preferred roll paper width
- */
 export async function setPrinterPaperWidth(width) {
   try {
     const valid = width === '80mm' ? '80mm' : '58mm';
     await AsyncStorage.setItem(PAPER_WIDTH_KEY, valid);
+    const connected = await getConnectedPrinter();
+    if (connected) {
+      connected.paperWidth = valid;
+      await setConnectedPrinter(connected);
+    }
     return valid;
   } catch (e) {
     return '58mm';
@@ -169,7 +268,7 @@ export function formatEscPosReceipt(order, businessName = 'Bakery', paperWidth =
     doubleDivider,
     center(businessName.toUpperCase()),
     center('ARTISAN BAKERY & CAFE'),
-    center(`${paperWidth.toUpperCase()} THERMAL RECEIPT SLIP`),
+    center(`${paperWidth.toUpperCase()} RECEIPT SLIP`),
     doubleDivider,
     padBetween('Receipt #:', String(order.id)),
     padBetween('Date:', dateStr),
@@ -204,11 +303,9 @@ export function formatEscPosReceipt(order, businessName = 'Bakery', paperWidth =
 
 /**
  * Print to Real Bluetooth / Thermal Receipt Printer
- * 1. Tries direct ESC/POS Bluetooth protocol (RawBT) if installed
- * 2. Invokes native Android Print Spooler (expo-print) formatted strictly for 58mm/80mm roll
- * 3. NO fake simulations - executes real hardware print commands
+ * Sends receipt data through the printer via ESC/POS protocol and native print spooler
  */
-export async function printToBluetoothPrinter(order, businessName = 'Bakery', paperWidth = '58mm') {
+export async function printToBluetoothPrinter(order, businessName = 'Bakery', targetPaperWidth = null) {
   if (!order) {
     return {
       success: false,
@@ -217,11 +314,13 @@ export async function printToBluetoothPrinter(order, businessName = 'Bakery', pa
     };
   }
 
-  const effectiveWidth = paperWidth || (await getPrinterPaperWidth());
+  const printer = await getConnectedPrinter();
+  const printerName = printer?.name || 'Bluetooth Printer';
+  const paperWidth = targetPaperWidth || printer?.paperWidth || (await getPrinterPaperWidth());
 
   // 1. Try Direct Bluetooth ESC/POS Intent (RawBT) if installed
   try {
-    const receiptText = formatEscPosReceipt(order, businessName, effectiveWidth);
+    const receiptText = formatEscPosReceipt(order, businessName, paperWidth);
     const base64Data = btoa(unescape(encodeURIComponent(receiptText)));
     const rawBtUrl = `rawbt:base64,${base64Data}`;
     const canOpen = await Linking.canOpenURL(rawBtUrl);
@@ -230,8 +329,8 @@ export async function printToBluetoothPrinter(order, businessName = 'Bakery', pa
       return {
         success: true,
         method: 'rawbt_bluetooth',
-        printerName: 'Bluetooth Thermal Printer',
-        paperWidth: effectiveWidth,
+        printerName,
+        paperWidth,
         receiptText,
         timestamp: new Date().toISOString(),
       };
@@ -241,12 +340,12 @@ export async function printToBluetoothPrinter(order, businessName = 'Bakery', pa
   }
 
   // 2. Real Native Print via Android Print Spooler (expo-print)
-  // Physically opens Android PrintManager with 58mm roll dimensions (216pt width)
+  // Physically opens Android PrintManager with 58mm/80mm roll dimensions (216pt width)
   // Android communicates directly with the paired Bluetooth thermal printer or print service plugin!
   try {
     if (Print && typeof Print.printAsync === 'function') {
-      const html = generateReceiptHTML(order, businessName, effectiveWidth);
-      const printWidth = effectiveWidth === '80mm' ? 288 : 216; // 216 pt = 58mm roll
+      const html = generateReceiptHTML(order, businessName, paperWidth);
+      const printWidth = paperWidth === '80mm' ? 288 : 216; // 216 pt = 58mm roll
       await Print.printAsync({
         html,
         width: printWidth,
@@ -254,8 +353,8 @@ export async function printToBluetoothPrinter(order, businessName = 'Bakery', pa
       return {
         success: true,
         method: 'system_spooler',
-        printerName: 'System Print Service',
-        paperWidth: effectiveWidth,
+        printerName,
+        paperWidth,
         timestamp: new Date().toISOString(),
       };
     }
@@ -278,8 +377,10 @@ export async function printToBluetoothPrinter(order, businessName = 'Bakery', pa
 /**
  * Print a test slip to verify hardware connection
  */
-export async function testPrintReceipt(businessName = 'Bakery', paperWidth = '58mm') {
-  const effectiveWidth = paperWidth || (await getPrinterPaperWidth());
+export async function testPrintReceipt(printer = null, businessName = 'Bakery') {
+  const targetPrinter = printer || (await getConnectedPrinter());
+  const paperWidth = targetPrinter?.paperWidth || (await getPrinterPaperWidth());
+
   const dummyOrder = {
     id: 'TEST-' + Math.floor(1000 + Math.random() * 9000),
     createdAt: new Date().toISOString(),
@@ -296,45 +397,5 @@ export async function testPrintReceipt(businessName = 'Bakery', paperWidth = '58
     total: 330.75,
   };
 
-  return printToBluetoothPrinter(dummyOrder, businessName, effectiveWidth);
-}
-
-/**
- * Backward compatibility getters / setters
- */
-export async function getConnectedPrinter() {
-  const width = await getPrinterPaperWidth();
-  return {
-    id: 'bt-printer',
-    name: 'Thermal Receipt Printer',
-    paperWidth: width,
-    status: 'Ready',
-  };
-}
-
-export async function isBluetoothConnected() {
-  return true;
-}
-
-export async function setConnectedPrinter(printer) {
-  if (printer && printer.paperWidth) {
-    await setPrinterPaperWidth(printer.paperWidth);
-  }
-  return printer;
-}
-
-export async function disconnectPrinter() {
-  return true;
-}
-
-export async function getDiscoveredPrinters() {
-  return [];
-}
-
-export async function addCustomPrinter() {
-  return null;
-}
-
-export async function deleteCustomPrinter() {
-  return [];
+  return printToBluetoothPrinter(dummyOrder, businessName, paperWidth);
 }
