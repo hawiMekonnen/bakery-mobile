@@ -22,9 +22,11 @@ import {
   deleteCustomPrinter,
   printToBluetoothPrinter,
   testPrintReceipt,
+  printViaSystemSpooler,
   requestBluetoothPermissions,
   checkBluetoothPermissions,
   openPhoneBluetoothSettings,
+  openRawBtPlayStore,
 } from '../services/bluetoothPrinterService';
 
 export default function BluetoothPrinterModal({
@@ -70,7 +72,7 @@ export default function BluetoothPrinterModal({
     setHasBtPermission(granted);
     setCheckingPermission(false);
     if (granted) {
-      Alert.alert('Permission Granted! ✓', 'Bluetooth access is enabled. You can now connect to your thermal printer.');
+      Alert.alert('Permission Granted! ✓', 'Bluetooth access is enabled. You can now communicate with your thermal printer.');
     } else {
       Alert.alert(
         'Permission Denied',
@@ -93,32 +95,10 @@ export default function BluetoothPrinterModal({
     setPrintersList(list);
   };
 
-  const handleOpenPhoneBluetooth = async () => {
-    await openPhoneBluetoothSettings();
-  };
-
   const handleConnect = async (printer) => {
     setConnectingId(printer.id);
-    
-    // Background check: verify Bluetooth permissions & status at the back
-    const hasPerm = await checkBluetoothPermissions();
-    if (!hasPerm) {
-      const granted = await requestBluetoothPermissions();
-      if (!granted) {
-        setConnectingId(null);
-        Alert.alert(
-          'Bluetooth Permission Required',
-          'Please allow Bluetooth permission so the app can communicate with your printer.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Settings', onPress: openPhoneBluetoothSettings },
-          ]
-        );
-        return;
-      }
-      setHasBtPermission(true);
-    }
 
+    // Save as connected printer
     const saved = await setConnectedPrinter({
       ...printer,
       paperWidth,
@@ -126,15 +106,15 @@ export default function BluetoothPrinterModal({
     setConnected(saved);
     setConnectingId(null);
 
-    // Auto-print receipt if an order was requested to be printed
+    // If an order is waiting to print, attempt real print now
     if (orderToPrint) {
       setPrinting(true);
       const result = await printToBluetoothPrinter(orderToPrint, businessName, paperWidth);
       setPrinting(false);
       if (result.success) {
         Alert.alert(
-          'Connected & Printed! 🧾🖨️',
-          `Connected to ${printer.name} and Receipt #${orderToPrint.id} was printed on ${paperWidth} thermal roll paper.`,
+          'Receipt Sent to Printer! 🧾🖨️',
+          `Receipt #${orderToPrint.id} sent to ${printer.name}. Check your printer output.`,
           [
             {
               text: 'Done',
@@ -146,12 +126,26 @@ export default function BluetoothPrinterModal({
           ]
         );
         return;
+      } else if (result.error === 'DRIVER_REQUIRED') {
+        Alert.alert(
+          'Bluetooth Driver Needed 🖨️',
+          `Connected to "${printer.name}".\n\nTo send print commands to your printer, Android requires the free RawBT ESC/POS driver from Google Play.`,
+          [
+            { text: 'Later', style: 'cancel' },
+            {
+              text: 'Install Driver (Free)',
+              style: 'default',
+              onPress: openRawBtPlayStore,
+            },
+          ]
+        );
+        return;
       }
     }
 
     Alert.alert(
-      'Printer Connected! 🖨️',
-      `Successfully paired with ${printer.name} (${paperWidth} Roll). Receipts will now print on this thermal printer.`
+      'Printer Selected! 🖨️',
+      `Selected "${printer.name}" (${paperWidth} Roll).\n\nMake sure your printer is turned on and paired in Bluetooth.`
     );
   };
 
@@ -199,7 +193,38 @@ export default function BluetoothPrinterModal({
     const result = await testPrintReceipt(connectedPrinter, businessName);
     setPrinting(false);
     if (result.success) {
-      Alert.alert('Test Receipt Sent! 🧾', `Test slip sent to ${result.printerName || 'printer'}.`);
+      Alert.alert(
+        'Test Slip Sent to Printer! 🧾🖨️',
+        `Test receipt sent via Bluetooth (${result.paperWidth || paperWidth} roll). Check your printer output!`
+      );
+    } else if (result.error === 'DRIVER_REQUIRED') {
+      Alert.alert(
+        'Bluetooth Driver Needed 🖨️',
+        'To send print commands to your paired Bluetooth printer, your Android phone needs the free RawBT ESC/POS driver from Google Play.\n\nInstall now in 30 seconds?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'System Spooler',
+            onPress: async () => {
+              const dummyOrder = {
+                id: 'TEST-58',
+                createdAt: new Date().toISOString(),
+                paymentMethod: 'Test',
+                items: [{ name: 'Test Croissant', quantity: 1, price: 55 }],
+                subtotal: 55,
+                tax: 2.75,
+                total: 57.75,
+              };
+              await printViaSystemSpooler(dummyOrder, businessName, paperWidth);
+            },
+          },
+          {
+            text: 'Install Driver (Free)',
+            style: 'default',
+            onPress: openRawBtPlayStore,
+          },
+        ]
+      );
     } else {
       Alert.alert('Print Error', result.message || 'Could not print to device. Please ensure printer is turned on and paired.');
     }
@@ -212,15 +237,34 @@ export default function BluetoothPrinterModal({
     setPrinting(false);
     if (result.success) {
       Alert.alert(
-        'Receipt Printed! 🖨️',
-        `Receipt #${orderToPrint.id} printed successfully (${result.printerName}).`,
+        'Receipt Sent to Printer! 🧾🖨️',
+        `Receipt #${orderToPrint.id} was sent to your Bluetooth printer.`,
         [
           {
-            text: 'OK',
+            text: 'Done',
             onPress: () => {
               if (onPrintSuccess) onPrintSuccess(result);
               onClose();
             },
+          },
+        ]
+      );
+    } else if (result.error === 'DRIVER_REQUIRED') {
+      Alert.alert(
+        'Bluetooth Driver Needed 🖨️',
+        'To print directly to your paired Bluetooth printer, your Android phone needs the free RawBT driver from Google Play.\n\nInstall now in 30 seconds?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'System Spooler',
+            onPress: async () => {
+              await printViaSystemSpooler(orderToPrint, businessName, paperWidth);
+            },
+          },
+          {
+            text: 'Install Driver (Free)',
+            style: 'default',
+            onPress: openRawBtPlayStore,
           },
         ]
       );
@@ -307,7 +351,7 @@ export default function BluetoothPrinterModal({
             {/* 1-Tap Open Phone Bluetooth Settings */}
             <TouchableOpacity
               style={styles.openSettingsCard}
-              onPress={handleOpenPhoneBluetooth}
+              onPress={openPhoneBluetoothSettings}
               activeOpacity={0.8}
             >
               <View style={styles.openSettingsIconBg}>
@@ -321,6 +365,30 @@ export default function BluetoothPrinterModal({
               </View>
               <Ionicons name="open-outline" size={18} color="#2563EB" />
             </TouchableOpacity>
+
+            {/* Bluetooth Driver Bridge Card */}
+            <View style={styles.driverCard}>
+              <View style={styles.driverHeaderRow}>
+                <View style={styles.driverIconBg}>
+                  <Ionicons name="flash" size={16} color="#7C3AED" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Text style={styles.driverTitle}>Bluetooth Driver (RawBT)</Text>
+                  <Text style={styles.driverSub}>Required for direct ESC/POS Bluetooth printing</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.driverGetBtn}
+                  onPress={openRawBtPlayStore}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="logo-google-playstore" size={14} color="#FFF" style={{ marginRight: 4 }} />
+                  <Text style={styles.driverGetBtnText}>Install Driver</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.driverHelpText}>
+                Android requires this free driver to stream receipt commands to your Bluetooth thermal printer. Once installed, select your printer in RawBT for 1-tap instant printing!
+              </Text>
+            </View>
 
             {/* Active Connected Printer Card */}
             {connectedPrinter ? (
@@ -389,8 +457,14 @@ export default function BluetoothPrinterModal({
                   disabled={printing}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="receipt-outline" size={18} color={COLORS.primary} style={{ marginRight: 6 }} />
-                  <Text style={styles.testPrintBtnText}>Print Test Slip</Text>
+                  {printing ? (
+                    <ActivityIndicator size="small" color={COLORS.primary} />
+                  ) : (
+                    <>
+                      <Ionicons name="receipt-outline" size={18} color={COLORS.primary} style={{ marginRight: 6 }} />
+                      <Text style={styles.testPrintBtnText}>Print Test Slip</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
               </View>
             ) : null}
@@ -653,7 +727,7 @@ const styles = StyleSheet.create({
     borderColor: '#BFDBFE',
     borderRadius: RADIUS.md,
     padding: 12,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   openSettingsIconBg: {
     width: 34,
@@ -672,6 +746,55 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#3B82F6',
     marginTop: 1,
+  },
+  driverCard: {
+    backgroundColor: '#FAF5FF',
+    borderWidth: 1,
+    borderColor: '#E9D5FF',
+    borderRadius: RADIUS.md,
+    padding: 12,
+    marginBottom: 12,
+  },
+  driverHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  driverIconBg: {
+    width: 28,
+    height: 28,
+    borderRadius: RADIUS.xs,
+    backgroundColor: '#EDE9FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  driverTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#6B21A8',
+  },
+  driverSub: {
+    fontSize: 9,
+    color: '#7E22CE',
+    marginTop: 1,
+  },
+  driverGetBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: RADIUS.sm,
+  },
+  driverGetBtnText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  driverHelpText: {
+    fontSize: 9.5,
+    color: '#6B21A8',
+    marginTop: 8,
+    lineHeight: 13,
   },
   // Connected card
   connectedCard: {

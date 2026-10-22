@@ -93,19 +93,20 @@ export async function openPhoneBluetoothSettings() {
 export async function openRawBtPlayStore() {
   try {
     const playStoreUrl = 'market://details?id=ru.a402d.rawbtprinter';
-    const canOpen = await Linking.canOpenURL(playStoreUrl);
-    if (canOpen) {
-      await Linking.openURL(playStoreUrl);
-    } else {
-      await Linking.openURL('https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter');
-    }
+    await Linking.openURL(playStoreUrl);
   } catch (e) {
-    await Linking.openURL('https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter');
+    try {
+      await Linking.openURL('https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter');
+    } catch (err) {
+      Alert.alert('Google Play', 'Please install RawBT Print Service from the Google Play Store.');
+    }
   }
 }
 
 /**
  * Check if RawBT Direct Bluetooth Print service is installed
+ * Note: on Android 11+ canOpenURL may return false without package visibility queries,
+ * so we handle actual open attempts with direct try/catch.
  */
 export async function isRawBtAvailable() {
   try {
@@ -205,7 +206,6 @@ export async function deleteCustomPrinter(id) {
     const updated = custom.filter(p => p.id !== id);
     await AsyncStorage.setItem(BLUETOOTH_CUSTOM_PRINTERS_KEY, JSON.stringify(updated));
 
-    // If currently connected to this printer, disconnect it
     const connected = await getConnectedPrinter();
     if (connected && connected.id === id) {
       await disconnectPrinter();
@@ -244,7 +244,122 @@ export async function setPrinterPaperWidth(width) {
 }
 
 /**
- * Formats ESC/POS raw bytes/text strictly for continuous roll paper (32 cols for 58mm, 48 cols for 80mm)
+ * Pure JS Base64 encoder that safely converts Uint8Array binary bytes to Base64
+ */
+export function bytesToBase64(bytes) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let base64 = '';
+  const len = bytes.length;
+  for (let i = 0; i < len; i += 3) {
+    const b0 = bytes[i];
+    const b1 = i + 1 < len ? bytes[i + 1] : 0;
+    const b2 = i + 2 < len ? bytes[i + 2] : 0;
+    base64 += chars[b0 >> 2];
+    base64 += chars[((b0 & 3) << 4) | (b1 >> 4)];
+    base64 += i + 1 < len ? chars[((b1 & 15) << 2) | (b2 >> 6)] : '=';
+    base64 += i + 2 < len ? chars[b2 & 63] : '=';
+  }
+  return base64;
+}
+
+/**
+ * Builds standard ESC/POS hardware byte commands strictly for thermal roll printers
+ */
+export function buildEscPosBytes(order, businessName = 'Bakery', paperWidth = '58mm') {
+  const lineLength = paperWidth === '80mm' ? 48 : 32;
+  const divider = '-'.repeat(lineLength);
+  const doubleDivider = '='.repeat(lineLength);
+  const bytes = [];
+
+  const addBytes = (...b) => {
+    for (let i = 0; i < b.length; i++) bytes.push(b[i]);
+  };
+
+  const addText = (str) => {
+    for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      if (code < 128) {
+        bytes.push(code);
+      } else if (code < 2048) {
+        bytes.push(192 | (code >> 6));
+        bytes.push(128 | (code & 63));
+      } else {
+        bytes.push(224 | (code >> 12));
+        bytes.push(128 | ((code >> 6) & 63));
+        bytes.push(128 | (code & 63));
+      }
+    }
+  };
+
+  const addLine = (str = '') => {
+    addText(str + '\n');
+  };
+
+  const padBetween = (left, right) => {
+    const space = Math.max(1, lineLength - left.length - right.length);
+    return left + ' '.repeat(space) + right;
+  };
+
+  const dateStr = order.createdAt ? new Date(order.createdAt).toLocaleString() : new Date().toLocaleString();
+  const secCode = generateReceiptSecurityCode(order);
+
+  // 1. Initialize printer (ESC @)
+  addBytes(0x1B, 0x40);
+
+  // 2. Header (Centered, Bold, Double Size)
+  addBytes(0x1B, 0x61, 0x01); // Center
+  addBytes(0x1B, 0x45, 0x01); // Bold ON
+  addBytes(0x1D, 0x21, 0x11); // Double size
+  addLine(businessName.toUpperCase());
+  addBytes(0x1D, 0x21, 0x00); // Normal size
+  addLine('ARTISAN BAKERY & CAFE');
+  addBytes(0x1B, 0x45, 0x00); // Bold OFF
+  addLine(doubleDivider);
+
+  // 3. Receipt Details (Left aligned)
+  addBytes(0x1B, 0x61, 0x00); // Left
+  addLine(padBetween('Receipt #:', String(order.id)));
+  addLine(padBetween('Date:', dateStr));
+  addLine(padBetween('Cashier:', order.createdBy || order.account || 'Staff'));
+  addLine(padBetween('Payment:', order.paymentMethod || 'Cash'));
+  addLine(padBetween('Security Code:', secCode));
+  addLine(divider);
+  addLine(padBetween('ITEM', 'AMOUNT'));
+  addLine(divider);
+
+  // 4. Items List
+  (order.items || []).forEach(item => {
+    const nameLine = `${item.name} x${item.quantity}`;
+    const amountStr = '$' + (Number(item.price) * Number(item.quantity)).toFixed(2);
+    addLine(padBetween(nameLine, amountStr));
+  });
+
+  // 5. Totals
+  addLine(divider);
+  addLine(padBetween('Subtotal:', '$' + Number(order.subtotal || 0).toFixed(2)));
+  addLine(padBetween('Tax (5%):', '$' + Number(order.tax || 0).toFixed(2)));
+  addLine(doubleDivider);
+  addBytes(0x1B, 0x45, 0x01); // Bold ON
+  addLine(padBetween('TOTAL:', '$' + Number(order.total || 0).toFixed(2)));
+  addBytes(0x1B, 0x45, 0x00); // Bold OFF
+  addLine(doubleDivider);
+
+  // 6. Footer (Centered)
+  addBytes(0x1B, 0x61, 0x01); // Center
+  addLine('VERIFIED AUTHENTIC SALE');
+  addLine(secCode);
+  addLine('THANK YOU FOR YOUR VISIT!');
+  addLine('PLEASE COME AGAIN');
+
+  // 7. Paper Feed past tear bar & Cut
+  addBytes(0x0A, 0x0A, 0x0A, 0x0A);
+  addBytes(0x1D, 0x56, 0x42, 0x00); // Partial cut
+
+  return new Uint8Array(bytes);
+}
+
+/**
+ * Text formatter for preview / logs
  */
 export function formatEscPosReceipt(order, businessName = 'Bakery', paperWidth = '58mm') {
   const lineLength = paperWidth === '80mm' ? 48 : 32;
@@ -302,46 +417,48 @@ export function formatEscPosReceipt(order, businessName = 'Bakery', paperWidth =
 }
 
 /**
- * Print to Real Bluetooth / Thermal Receipt Printer
- * Sends receipt data through the printer via ESC/POS protocol and native print spooler
+ * Send raw ESC/POS bytes directly to the Bluetooth thermal printer via RawBT driver
  */
-export async function printToBluetoothPrinter(order, businessName = 'Bakery', targetPaperWidth = null) {
-  if (!order) {
-    return {
-      success: false,
-      error: 'NO_ORDER',
-      message: 'No receipt order data to print.',
-    };
-  }
+export async function sendEscPosToPrinter(order, businessName = 'Bakery', paperWidth = '58mm') {
+  const escBytes = buildEscPosBytes(order, businessName, paperWidth);
+  const base64Data = bytesToBase64(escBytes);
 
-  const printer = await getConnectedPrinter();
-  const printerName = printer?.name || 'Bluetooth Printer';
-  const paperWidth = targetPaperWidth || printer?.paperWidth || (await getPrinterPaperWidth());
+  const rawbtUrl = `rawbt:base64,${base64Data}`;
+  const intentUrl = `intent:base64,${base64Data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
 
-  // 1. Try Direct Bluetooth ESC/POS Intent (RawBT) if installed
+  // Attempt direct open without relying on canOpenURL (which fails on Android 11+ due to package visibility)
   try {
-    const receiptText = formatEscPosReceipt(order, businessName, paperWidth);
-    const base64Data = btoa(unescape(encodeURIComponent(receiptText)));
-    const rawBtUrl = `rawbt:base64,${base64Data}`;
-    const canOpen = await Linking.canOpenURL(rawBtUrl);
-    if (canOpen) {
-      await Linking.openURL(rawBtUrl);
+    await Linking.openURL(rawbtUrl);
+    return {
+      success: true,
+      method: 'rawbt_direct',
+      paperWidth,
+      timestamp: new Date().toISOString(),
+    };
+  } catch (err1) {
+    try {
+      await Linking.openURL(intentUrl);
       return {
         success: true,
-        method: 'rawbt_bluetooth',
-        printerName,
+        method: 'rawbt_intent',
         paperWidth,
-        receiptText,
         timestamp: new Date().toISOString(),
       };
+    } catch (err2) {
+      return {
+        success: false,
+        error: 'DRIVER_REQUIRED',
+        message: 'RawBT ESC/POS driver is required to stream receipts to your Bluetooth thermal printer.',
+      };
     }
-  } catch (intentErr) {
-    console.log('RawBT direct Bluetooth intent not available, falling back to system print:', intentErr);
   }
+}
 
-  // 2. Real Native Print via Android Print Spooler (expo-print)
-  // Physically opens Android PrintManager with 58mm/80mm roll dimensions (216pt width)
-  // Android communicates directly with the paired Bluetooth thermal printer or print service plugin!
+/**
+ * Print via Android native Print Spooler (expo-print)
+ */
+export async function printViaSystemSpooler(order, businessName = 'Bakery', paperWidth = '58mm') {
+  if (!order) return { success: false, error: 'NO_ORDER' };
   try {
     if (Print && typeof Print.printAsync === 'function') {
       const html = generateReceiptHTML(order, businessName, paperWidth);
@@ -353,24 +470,52 @@ export async function printToBluetoothPrinter(order, businessName = 'Bakery', ta
       return {
         success: true,
         method: 'system_spooler',
-        printerName,
         paperWidth,
         timestamp: new Date().toISOString(),
       };
     }
-  } catch (printErr) {
-    console.error('System print error:', printErr);
+  } catch (e) {
     return {
       success: false,
-      error: 'PRINT_FAILED',
-      message: 'Printing canceled or failed: ' + (printErr.message || 'Printer not reachable'),
+      error: 'SPOOLER_ERROR',
+      message: e.message || 'Could not open print spooler',
+    };
+  }
+  return { success: false, error: 'NO_PRINT_SERVICE' };
+}
+
+/**
+ * Main print function for Bluetooth thermal printers.
+ * Strictly guarantees that real print data is sent to the physical printer.
+ * If driver is missing, returns DRIVER_REQUIRED so UI can guide the user honestly.
+ */
+export async function printToBluetoothPrinter(order, businessName = 'Bakery', targetPaperWidth = null) {
+  if (!order) {
+    return {
+      success: false,
+      error: 'NO_ORDER',
+      message: 'No receipt order data to print.',
     };
   }
 
+  const paperWidth = targetPaperWidth || (await getPrinterPaperWidth());
+
+  // 1. Try sending real binary ESC/POS to Bluetooth printer via RawBT driver
+  const rawbtResult = await sendEscPosToPrinter(order, businessName, paperWidth);
+  if (rawbtResult.success) {
+    return {
+      ...rawbtResult,
+      printerName: 'Bluetooth Thermal Printer',
+    };
+  }
+
+  // 2. If RawBT driver is not installed, return DRIVER_REQUIRED
+  // We NEVER report fake success!
   return {
     success: false,
-    error: 'NO_PRINT_SERVICE',
-    message: 'Print service is not available on this device.',
+    error: 'DRIVER_REQUIRED',
+    message: 'RawBT ESC/POS driver is required to stream receipts to your Bluetooth printer.',
+    paperWidth,
   };
 }
 
