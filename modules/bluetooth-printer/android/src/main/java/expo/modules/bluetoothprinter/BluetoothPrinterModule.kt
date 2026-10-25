@@ -6,8 +6,6 @@ import android.bluetooth.BluetoothSocket
 import android.util.Base64
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.OutputStream
 import java.util.UUID
 
@@ -45,29 +43,23 @@ class BluetoothPrinterModule : Module() {
     }
 
     AsyncFunction("connect") { address: String ->
-      return@AsyncFunction withContext(Dispatchers.IO) {
-        return@withContext connectInternal(address)
-      }
+      return@AsyncFunction connectInternal(address)
     }
 
     AsyncFunction("printRawData") { base64Data: String ->
-      return@AsyncFunction withContext(Dispatchers.IO) {
-        return@withContext printRawInternal(base64Data)
-      }
+      return@AsyncFunction printRawInternal(base64Data)
     }
 
     AsyncFunction("printToDevice") { address: String, base64Data: String ->
-      return@AsyncFunction withContext(Dispatchers.IO) {
-        val ok = connectInternal(address)
-        if (!ok) {
-          throw Exception("Could not connect to printer at $address. Ensure printer is turned on and paired.")
-        }
-        val printed = printRawInternal(base64Data)
-        if (!printed) {
-          throw Exception("Failed to send print bytes to printer at $address.")
-        }
-        return@withContext true
+      val ok = connectInternal(address)
+      if (!ok) {
+        throw Exception("Could not connect to printer at $address. Ensure printer is turned on and paired.")
       }
+      val printed = printRawInternal(base64Data)
+      if (!printed) {
+        throw Exception("Failed to send print bytes to printer at $address.")
+      }
+      return@AsyncFunction true
     }
 
     AsyncFunction("disconnect") {
@@ -100,7 +92,7 @@ class BluetoothPrinterModule : Module() {
       socket.connect()
     } catch (e: Exception) {
       try {
-        val method = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+        val method = device.javaClass.getMethod("createRfcommSocket", java.lang.Integer.TYPE)
         socket = method.invoke(device, 1) as BluetoothSocket
         socket.connect()
       } catch (e2: Exception) {
