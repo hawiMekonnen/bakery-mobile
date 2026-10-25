@@ -14,7 +14,7 @@ import { useBakery } from '../store/BakeryStore';
 import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
 import BluetoothPrinterModal from '../components/BluetoothPrinterModal';
-import { isBluetoothConnected, printToBluetoothPrinter, getPrinterPaperWidth, printViaSystemSpooler, openRawBtPlayStore } from '../services/bluetoothPrinterService';
+import { isBluetoothConnected, printToBluetoothPrinter, getPrinterPaperWidth } from '../services/bluetoothPrinterService';
 import CalendarModal from '../components/CalendarModal';
 import { printReceipt, shareReceiptPDF } from '../utils/receiptPrinter';
 
@@ -77,27 +77,8 @@ export default function OrdersScreen({ navigation }) {
       const result = await printToBluetoothPrinter(selectedOrder, auth.businessName || 'Bakery', paperWidth);
       if (result.success) {
         Alert.alert(
-          'Receipt Sent to Printer! 🧾🖨️',
-          `Receipt #${selectedOrder.id} sent to Bluetooth thermal printer.`
-        );
-      } else if (result.error === 'DRIVER_REQUIRED') {
-        Alert.alert(
-          'Bluetooth Driver Required 🖨️',
-          'To print directly to your paired Bluetooth printer, your Android phone needs the free RawBT ESC/POS driver from Google Play.\n\nInstall now in 30 seconds?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'System Spooler',
-              onPress: async () => {
-                await printViaSystemSpooler(selectedOrder, auth.businessName || 'Bakery', paperWidth);
-              },
-            },
-            {
-              text: 'Install Driver (Free)',
-              style: 'default',
-              onPress: openRawBtPlayStore,
-            },
-          ]
+          'Receipt Printed! 🧾🖨️',
+          `Receipt #${selectedOrder.id} printed directly to ${result.printerName || 'Bluetooth thermal printer'}.`
         );
       } else {
         setBtModalVisible(true);

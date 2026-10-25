@@ -1,616 +1,342 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Modal,
   View,
   Text,
-  StyleSheet,
+  Modal,
   TouchableOpacity,
-  ScrollView,
+  FlatList,
   ActivityIndicator,
   Alert,
-  TextInput,
-  Platform,
+  StyleSheet,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
+import { COLORS, FONTS, RADIUS, SHADOWS } from '../constants/theme';
 import {
   getConnectedPrinter,
-  setConnectedPrinter,
+  getPairedBluetoothPrinters,
+  connectToPrinter,
   disconnectPrinter,
-  getDiscoveredPrinters,
-  addCustomPrinter,
-  deleteCustomPrinter,
-  printToBluetoothPrinter,
+  getPrinterPaperWidth,
+  setPrinterPaperWidth,
   testPrintReceipt,
+  printToBluetoothPrinter,
   printViaSystemSpooler,
-  requestBluetoothPermissions,
-  checkBluetoothPermissions,
-  openPhoneBluetoothSettings,
-  openRawBtPlayStore,
 } from '../services/bluetoothPrinterService';
+import { isNativeAvailable } from 'bluetooth-printer';
 
 export default function BluetoothPrinterModal({
   visible,
   onClose,
-  orderToPrint = null,
   businessName = 'Bakery',
-  onPrintSuccess = null,
-  onFallbackSystemPrint = null,
+  orderToPrint = null,
+  onPrinted = null,
 }) {
-  const [connectedPrinter, setConnected] = useState(null);
-  const [printersList, setPrintersList] = useState([]);
-  const [hasBtPermission, setHasBtPermission] = useState(true);
-  const [checkingPermission, setCheckingPermission] = useState(false);
-  const [connectingId, setConnectingId] = useState(null);
-  const [printing, setPrinting] = useState(false);
-  const [paperWidth, setPaperWidth] = useState('58mm');
-
-  // Custom device add form
-  const [showAddCustom, setShowAddCustom] = useState(false);
-  const [customName, setCustomName] = useState('');
+  const [printers, setPrinters] = useState([]);
+  const [connectedPrinter, setConnectedPrinterState] = useState(null);
+  const [paperWidth, setPaperWidthState] = useState('58mm');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [connectingAddress, setConnectingAddress] = useState(null);
 
   useEffect(() => {
     if (visible) {
-      loadPrinterState();
-      initBluetoothPermissions();
+      loadPrinterData();
     }
   }, [visible]);
 
-  const initBluetoothPermissions = async () => {
-    const has = await checkBluetoothPermissions();
-    if (has) {
-      setHasBtPermission(true);
-    } else {
-      const granted = await requestBluetoothPermissions();
-      setHasBtPermission(granted);
+  const loadPrinterData = async () => {
+    setIsLoading(true);
+    try {
+      const [connected, width, paired] = await Promise.all([
+        getConnectedPrinter(),
+        getPrinterPaperWidth(),
+        getPairedBluetoothPrinters(),
+      ]);
+
+      setConnectedPrinterState(connected);
+      setPaperWidthState(width);
+      setPrinters(paired);
+    } catch (err) {
+      console.warn('Error loading printer data:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleRequestPermission = async () => {
-    setCheckingPermission(true);
-    const granted = await requestBluetoothPermissions();
-    setHasBtPermission(granted);
-    setCheckingPermission(false);
-    if (granted) {
-      Alert.alert('Permission Granted! ✓', 'Bluetooth access is enabled. You can now communicate with your thermal printer.');
-    } else {
-      Alert.alert(
-        'Permission Denied',
-        'Bluetooth permission is required to communicate with thermal printers. Please grant permission in your phone settings.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Open Settings', onPress: openPhoneBluetoothSettings },
-        ]
-      );
+  const handleSelectPaperWidth = async (width) => {
+    await setPrinterPaperWidth(width);
+    setPaperWidthState(width);
+    if (connectedPrinter) {
+      setConnectedPrinterState({ ...connectedPrinter, paperWidth: width });
     }
-  };
-
-  const loadPrinterState = async () => {
-    const connected = await getConnectedPrinter();
-    setConnected(connected);
-    if (connected && connected.paperWidth) {
-      setPaperWidth(connected.paperWidth);
-    }
-    const list = await getDiscoveredPrinters();
-    setPrintersList(list);
   };
 
   const handleConnect = async (printer) => {
-    setConnectingId(printer.id);
-
-    // Save as connected printer
-    const saved = await setConnectedPrinter({
-      ...printer,
-      paperWidth,
-    });
-    setConnected(saved);
-    setConnectingId(null);
-
-    // If an order is waiting to print, attempt real print now
-    if (orderToPrint) {
-      setPrinting(true);
-      const result = await printToBluetoothPrinter(orderToPrint, businessName, paperWidth);
-      setPrinting(false);
+    setConnectingAddress(printer.address);
+    try {
+      const result = await connectToPrinter(printer);
       if (result.success) {
+        setConnectedPrinterState(result.printer);
         Alert.alert(
-          'Receipt Sent to Printer! 🧾🖨️',
-          `Receipt #${orderToPrint.id} sent to ${printer.name}. Check your printer output.`,
-          [
-            {
-              text: 'Done',
-              onPress: () => {
-                if (onPrintSuccess) onPrintSuccess(result);
-                onClose();
-              },
-            },
-          ]
+          'Connected! 🖨️',
+          `${printer.name} is now connected. You can print receipts directly from the app.`
         );
-        return;
-      } else if (result.error === 'DRIVER_REQUIRED') {
-        Alert.alert(
-          'Bluetooth Driver Needed 🖨️',
-          `Connected to "${printer.name}".\n\nTo send print commands to your printer, Android requires the free RawBT ESC/POS driver from Google Play.`,
-          [
-            { text: 'Later', style: 'cancel' },
-            {
-              text: 'Install Driver (Free)',
-              style: 'default',
-              onPress: openRawBtPlayStore,
-            },
-          ]
-        );
-        return;
+      } else {
+        Alert.alert('Connection Error', 'Could not connect to printer. Ensure it is powered on and in range.');
       }
+    } catch (err) {
+      Alert.alert('Connection Error', err.message || 'Failed to connect to printer.');
+    } finally {
+      setConnectingAddress(null);
     }
-
-    Alert.alert(
-      'Printer Selected! 🖨️',
-      `Selected "${printer.name}" (${paperWidth} Roll).\n\nMake sure your printer is turned on and paired in Bluetooth.`
-    );
   };
 
   const handleDisconnect = async () => {
-    Alert.alert(
-      'Disconnect Printer',
-      'Are you sure you want to disconnect from this thermal printer?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Disconnect',
-          style: 'destructive',
-          onPress: async () => {
-            await disconnectPrinter();
-            setConnected(null);
-          },
-        },
-      ]
-    );
-  };
-
-  const handleDeleteSavedPrinter = (printer) => {
-    Alert.alert(
-      'Remove Printer',
-      `Remove "${printer.name}" from your saved printer list?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            const updated = await deleteCustomPrinter(printer.id);
-            setPrintersList(updated);
-            if (connectedPrinter && connectedPrinter.id === printer.id) {
-              setConnected(null);
-            }
-          },
-        },
-      ]
-    );
+    try {
+      await disconnectPrinter();
+      setConnectedPrinterState(null);
+      Alert.alert('Disconnected', 'Printer disconnected.');
+    } catch (err) {
+      Alert.alert('Error', 'Failed to disconnect.');
+    }
   };
 
   const handleTestPrint = async () => {
-    setPrinting(true);
-    const result = await testPrintReceipt(connectedPrinter, businessName);
-    setPrinting(false);
-    if (result.success) {
-      Alert.alert(
-        'Test Slip Sent to Printer! 🧾🖨️',
-        `Test receipt sent via Bluetooth (${result.paperWidth || paperWidth} roll). Check your printer output!`
-      );
-    } else if (result.error === 'DRIVER_REQUIRED') {
-      Alert.alert(
-        'Bluetooth Driver Needed 🖨️',
-        'To send print commands to your paired Bluetooth printer, your Android phone needs the free RawBT ESC/POS driver from Google Play.\n\nInstall now in 30 seconds?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'System Spooler',
-            onPress: async () => {
-              const dummyOrder = {
-                id: 'TEST-58',
-                createdAt: new Date().toISOString(),
-                paymentMethod: 'Test',
-                items: [{ name: 'Test Croissant', quantity: 1, price: 55 }],
-                subtotal: 55,
-                tax: 2.75,
-                total: 57.75,
-              };
-              await printViaSystemSpooler(dummyOrder, businessName, paperWidth);
-            },
-          },
-          {
-            text: 'Install Driver (Free)',
-            style: 'default',
-            onPress: openRawBtPlayStore,
-          },
-        ]
-      );
-    } else {
-      Alert.alert('Print Error', result.message || 'Could not print to device. Please ensure printer is turned on and paired.');
+    setIsPrinting(true);
+    try {
+      const result = await testPrintReceipt(connectedPrinter, businessName);
+      if (result.success) {
+        Alert.alert(
+          'Test Printed! 🖨️',
+          `Slip printed successfully on ${result.printerName || 'Bluetooth thermal printer'}.`
+        );
+      } else {
+        Alert.alert('Print Error', result.message || 'Could not print test slip.');
+      }
+    } catch (err) {
+      Alert.alert('Print Error', err.message || 'Failed to print test slip.');
+    } finally {
+      setIsPrinting(false);
     }
   };
 
   const handlePrintOrder = async () => {
     if (!orderToPrint) return;
-    setPrinting(true);
-    const result = await printToBluetoothPrinter(orderToPrint, businessName, paperWidth);
-    setPrinting(false);
-    if (result.success) {
-      Alert.alert(
-        'Receipt Sent to Printer! 🧾🖨️',
-        `Receipt #${orderToPrint.id} was sent to your Bluetooth printer.`,
-        [
-          {
-            text: 'Done',
-            onPress: () => {
-              if (onPrintSuccess) onPrintSuccess(result);
-              onClose();
-            },
-          },
-        ]
-      );
-    } else if (result.error === 'DRIVER_REQUIRED') {
-      Alert.alert(
-        'Bluetooth Driver Needed 🖨️',
-        'To print directly to your paired Bluetooth printer, your Android phone needs the free RawBT driver from Google Play.\n\nInstall now in 30 seconds?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'System Spooler',
-            onPress: async () => {
-              await printViaSystemSpooler(orderToPrint, businessName, paperWidth);
-            },
-          },
-          {
-            text: 'Install Driver (Free)',
-            style: 'default',
-            onPress: openRawBtPlayStore,
-          },
-        ]
-      );
-    } else {
-      Alert.alert('Print Error', result.message || 'Could not print receipt.');
+    setIsPrinting(true);
+    try {
+      const result = await printToBluetoothPrinter(orderToPrint, businessName, paperWidth);
+      if (result.success) {
+        Alert.alert(
+          'Receipt Printed! 🖨️',
+          `Receipt #${orderToPrint.id} printed directly to ${result.printerName || 'printer'}.`
+        );
+        if (onPrinted) onPrinted(result);
+        onClose();
+      } else {
+        Alert.alert('Print Error', result.message || 'Could not complete print job.');
+      }
+    } catch (err) {
+      Alert.alert('Print Error', err.message || 'Failed to print receipt.');
+    } finally {
+      setIsPrinting(false);
     }
   };
 
-  const handleAddCustom = async () => {
-    if (!customName.trim()) {
-      Alert.alert('Device Name Required', 'Please enter your thermal printer name (e.g. POS-58 Mobile, MPT-II).');
+  const handleSystemPrint = async () => {
+    if (!orderToPrint) {
+      await handleTestPrint();
       return;
     }
-    const added = await addCustomPrinter(
-      customName.trim(),
-      'Paired Bluetooth',
-      paperWidth
-    );
-    if (added) {
-      setPrintersList(prev => [added, ...prev.filter(p => p.id !== added.id)]);
-      setCustomName('');
-      setShowAddCustom(false);
-      handleConnect(added);
+    setIsPrinting(true);
+    try {
+      await printViaSystemSpooler(orderToPrint, businessName, paperWidth);
+      if (onPrinted) onPrinted({ success: true, method: 'system_spooler' });
+    } catch (e) {
+      Alert.alert('Print Error', 'Could not open system print.');
+    } finally {
+      setIsPrinting(false);
     }
+  };
+
+  const renderPrinterItem = ({ item }) => {
+    const isConnected = connectedPrinter && connectedPrinter.address === item.address;
+    const isConnecting = connectingAddress === item.address;
+
+    return (
+      <View style={[styles.deviceCard, isConnected && styles.deviceCardActive]}>
+        <View style={styles.deviceIconBg}>
+          <Ionicons
+            name={isConnected ? 'print' : 'bluetooth'}
+            size={20}
+            color={isConnected ? '#16A34A' : COLORS.primary}
+          />
+        </View>
+
+        <View style={styles.deviceInfo}>
+          <Text style={styles.deviceName}>{item.name || 'Bluetooth Printer'}</Text>
+          <Text style={styles.deviceAddress}>{item.address}</Text>
+        </View>
+
+        <View style={styles.cardActionsRow}>
+          {isConnected ? (
+            <View style={styles.connectedBadge}>
+              <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
+              <Text style={styles.connectedBadgeText}>Active</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.connectActionBtn}
+              onPress={() => handleConnect(item)}
+              disabled={isConnecting}
+            >
+              {isConnecting ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Text style={styles.connectActionText}>Connect</Text>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={styles.modalBox}>
+    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
           {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <View style={styles.btIconBadge}>
+          <View style={styles.modalHeader}>
+            <View style={styles.modalHeaderTitleRow}>
+              <View style={styles.printerIconBadge}>
                 <Ionicons name="print" size={20} color={COLORS.primary} />
               </View>
               <View>
-                <Text style={styles.title}>Printer</Text>
-                <Text style={styles.subtitle}>
-                  {connectedPrinter ? 'Connected & Ready' : 'Connect & Print'}
-                </Text>
+                <Text style={styles.modalTitle}>Printer Setup</Text>
+                <Text style={styles.modalSubtitle}>Direct Bluetooth thermal printing</Text>
               </View>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color={COLORS.textSecondary} />
+            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+              <Ionicons name="close" size={22} color={COLORS.textMuted} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
-            {/* Bluetooth Permission Banner */}
-            <View style={[styles.permBanner, hasBtPermission ? styles.permBannerGranted : styles.permBannerNeeded]}>
-              <View style={styles.permBannerLeft}>
-                <Ionicons
-                  name={hasBtPermission ? 'checkmark-circle' : 'bluetooth'}
-                  size={20}
-                  color={hasBtPermission ? '#16A34A' : '#D97706'}
-                />
-                <View style={{ marginLeft: 8, flex: 1 }}>
-                  <Text style={[styles.permBannerTitle, { color: hasBtPermission ? '#15803D' : '#B45309' }]}>
-                    {hasBtPermission ? 'Bluetooth Permission Active' : 'Bluetooth Permission Required'}
-                  </Text>
-                  <Text style={styles.permBannerDesc}>
-                    {hasBtPermission
-                      ? 'App can communicate with nearby paired receipt printers.'
-                      : 'Tap button to allow Bluetooth access on your phone.'}
-                  </Text>
+          {/* Connected Printer Card */}
+          {connectedPrinter ? (
+            <View style={styles.connectedCard}>
+              <View style={styles.connectedTop}>
+                <View style={styles.statusDotRow}>
+                  <View style={styles.pulseDot} />
+                  <Text style={styles.connectedStatusText}>READY TO PRINT</Text>
+                </View>
+                <TouchableOpacity style={styles.disconnectBtn} onPress={handleDisconnect}>
+                  <Text style={styles.disconnectBtnText}>Disconnect</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.printerName}>{connectedPrinter.name || 'Bluetooth Printer'}</Text>
+              <Text style={styles.printerAddress}>{connectedPrinter.address}</Text>
+
+              {/* Paper Roll Width Selector */}
+              <View style={styles.paperSelectorRow}>
+                <Text style={styles.paperLabel}>Paper Size:</Text>
+                <View style={styles.paperToggle}>
+                  <TouchableOpacity
+                    style={[styles.paperBtn, paperWidth === '58mm' && styles.paperBtnActive]}
+                    onPress={() => handleSelectPaperWidth('58mm')}
+                  >
+                    <Text style={[styles.paperBtnText, paperWidth === '58mm' && styles.paperBtnTextActive]}>
+                      58mm Roll
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.paperBtn, paperWidth === '80mm' && styles.paperBtnActive]}
+                    onPress={() => handleSelectPaperWidth('80mm')}
+                  >
+                    <Text style={[styles.paperBtnText, paperWidth === '80mm' && styles.paperBtnTextActive]}>
+                      80mm Roll
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </View>
-              {!hasBtPermission && (
+
+              {/* Action Buttons */}
+              {orderToPrint && (
                 <TouchableOpacity
-                  style={styles.grantPermBtn}
-                  onPress={handleRequestPermission}
-                  disabled={checkingPermission}
+                  style={styles.printOrderPrimaryBtn}
+                  onPress={handlePrintOrder}
+                  disabled={isPrinting}
                 >
-                  {checkingPermission ? (
+                  {isPrinting ? (
                     <ActivityIndicator size="small" color="#FFF" />
                   ) : (
-                    <Text style={styles.grantPermBtnText}>Allow</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* 1-Tap Open Phone Bluetooth Settings */}
-            <TouchableOpacity
-              style={styles.openSettingsCard}
-              onPress={openPhoneBluetoothSettings}
-              activeOpacity={0.8}
-            >
-              <View style={styles.openSettingsIconBg}>
-                <Ionicons name="bluetooth-outline" size={20} color="#2563EB" />
-              </View>
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.openSettingsTitle}>Phone Bluetooth Settings</Text>
-                <Text style={styles.openSettingsSub}>
-                  Turn on printer & pair here first (PIN: 0000 or 1234)
-                </Text>
-              </View>
-              <Ionicons name="open-outline" size={18} color="#2563EB" />
-            </TouchableOpacity>
-
-            {/* Bluetooth Driver Bridge Card */}
-            <View style={styles.driverCard}>
-              <View style={styles.driverHeaderRow}>
-                <View style={styles.driverIconBg}>
-                  <Ionicons name="flash" size={16} color="#7C3AED" />
-                </View>
-                <View style={{ flex: 1, marginLeft: 8 }}>
-                  <Text style={styles.driverTitle}>Bluetooth Driver (RawBT)</Text>
-                  <Text style={styles.driverSub}>Required for direct ESC/POS Bluetooth printing</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.driverGetBtn}
-                  onPress={openRawBtPlayStore}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="logo-google-playstore" size={14} color="#FFF" style={{ marginRight: 4 }} />
-                  <Text style={styles.driverGetBtnText}>Install Driver</Text>
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.driverHelpText}>
-                Android requires this free driver to stream receipt commands to your Bluetooth thermal printer. Once installed, select your printer in RawBT for 1-tap instant printing!
-              </Text>
-            </View>
-
-            {/* Active Connected Printer Card */}
-            {connectedPrinter ? (
-              <View style={styles.connectedCard}>
-                <View style={styles.connectedTop}>
-                  <View style={styles.statusDotRow}>
-                    <View style={styles.pulseDot} />
-                    <Text style={styles.connectedStatusText}>CONNECTED PRINTER</Text>
-                  </View>
-                  <TouchableOpacity onPress={handleDisconnect} style={styles.disconnectBtn}>
-                    <Text style={styles.disconnectBtnText}>Disconnect</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <Text style={styles.printerName}>{connectedPrinter.name}</Text>
-                <Text style={styles.printerAddress}>Status: Paired & Ready</Text>
-
-                {/* Paper Width Selector */}
-                <View style={styles.paperSelectorRow}>
-                  <Text style={styles.paperLabel}>Paper Size:</Text>
-                  <View style={styles.paperToggle}>
-                    <TouchableOpacity
-                      style={[styles.paperBtn, paperWidth === '58mm' && styles.paperBtnActive]}
-                      onPress={() => setPaperWidth('58mm')}
-                    >
-                      <Text style={[styles.paperBtnText, paperWidth === '58mm' && styles.paperBtnTextActive]}>
-                        58mm Roll (Mini POS)
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.paperBtn, paperWidth === '80mm' && styles.paperBtnActive]}
-                      onPress={() => setPaperWidth('80mm')}
-                    >
-                      <Text style={[styles.paperBtnText, paperWidth === '80mm' && styles.paperBtnTextActive]}>
-                        80mm Roll
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {/* Action: Print target order if provided */}
-                {orderToPrint && (
-                  <TouchableOpacity
-                    style={styles.printOrderPrimaryBtn}
-                    onPress={handlePrintOrder}
-                    disabled={printing}
-                    activeOpacity={0.8}
-                  >
-                    {printing ? (
-                      <ActivityIndicator size="small" color="#FFF" />
-                    ) : (
-                      <>
-                        <Ionicons name="print" size={20} color="#FFF" style={{ marginRight: 8 }} />
-                        <Text style={styles.printOrderPrimaryText}>
-                          Print Receipt #{orderToPrint.id}
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                )}
-
-                {/* Action: Test Print */}
-                <TouchableOpacity
-                  style={styles.testPrintBtn}
-                  onPress={handleTestPrint}
-                  disabled={printing}
-                  activeOpacity={0.8}
-                >
-                  {printing ? (
-                    <ActivityIndicator size="small" color={COLORS.primary} />
-                  ) : (
                     <>
-                      <Ionicons name="receipt-outline" size={18} color={COLORS.primary} style={{ marginRight: 6 }} />
-                      <Text style={styles.testPrintBtnText}>Print Test Slip</Text>
+                      <Ionicons name="print-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
+                      <Text style={styles.printOrderPrimaryText}>Print Receipt #{orderToPrint.id}</Text>
                     </>
                   )}
                 </TouchableOpacity>
-              </View>
-            ) : null}
-
-            {/* Saved Printers List */}
-            <View style={styles.devicesSection}>
-              <View style={styles.devicesSectionHeader}>
-                <Text style={styles.devicesSectionTitle}>
-                  {connectedPrinter ? 'SAVED PRINTERS' : 'PAIRED PRINTERS'}
-                </Text>
-              </View>
-
-              {printersList.length === 0 ? (
-                <View style={styles.emptyPrintersBox}>
-                  <Ionicons name="print-outline" size={32} color={COLORS.textMuted} style={{ marginBottom: 6 }} />
-                  <Text style={styles.emptyPrintersTitle}>No Printers Added Yet</Text>
-                  <Text style={styles.emptyPrintersDesc}>
-                    Tap "+ Add Paired Printer" below and enter your printer's name.
-                  </Text>
-                </View>
-              ) : (
-                printersList.map(item => {
-                  const isThisConnected = connectedPrinter && connectedPrinter.id === item.id;
-                  const isConnectingThis = connectingId === item.id;
-
-                  return (
-                    <View
-                      key={item.id}
-                      style={[styles.deviceCard, isThisConnected && styles.deviceCardActive]}
-                    >
-                      <View style={styles.deviceInfo}>
-                        <View style={styles.deviceTitleRow}>
-                          <Ionicons
-                            name="print"
-                            size={18}
-                            color={isThisConnected ? COLORS.primary : COLORS.textSecondary}
-                            style={{ marginRight: 6 }}
-                          />
-                          <Text style={styles.deviceName} numberOfLines={1}>
-                            {item.name}
-                          </Text>
-                        </View>
-                        <View style={styles.deviceMetaRow}>
-                          <View style={styles.chip}>
-                            <Text style={styles.chipText}>{item.paperWidth || '58mm'}</Text>
-                          </View>
-                          <View style={[styles.chip, { backgroundColor: '#F0FDF4' }]}>
-                            <Text style={[styles.chipText, { color: '#16A34A' }]}>Thermal Roll</Text>
-                          </View>
-                        </View>
-                      </View>
-
-                      <View style={styles.cardActionsRow}>
-                        <TouchableOpacity
-                          style={[
-                            styles.connectActionBtn,
-                            isThisConnected && styles.connectActionBtnConnected,
-                          ]}
-                          onPress={() => !isThisConnected && handleConnect(item)}
-                          disabled={isThisConnected || isConnectingThis}
-                          activeOpacity={0.7}
-                        >
-                          {isConnectingThis ? (
-                            <ActivityIndicator size="small" color="#FFF" />
-                          ) : isThisConnected ? (
-                            <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
-                          ) : (
-                            <Text style={styles.connectActionText}>Connect</Text>
-                          )}
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={styles.deletePrinterBtn}
-                          onPress={() => handleDeleteSavedPrinter(item)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <Ionicons name="trash-outline" size={16} color={COLORS.textMuted} />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  );
-                })
               )}
 
-              {/* Add Custom Device Form */}
-              {!showAddCustom ? (
-                <TouchableOpacity
-                  style={styles.addCustomToggle}
-                  onPress={() => setShowAddCustom(true)}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="add-circle" size={18} color={COLORS.primary} style={{ marginRight: 6 }} />
-                  <Text style={styles.addCustomToggleText}>Add Paired Printer</Text>
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.customAddCard}>
-                  <Text style={styles.customAddTitle}>Add Paired Printer</Text>
-                  <Text style={styles.customAddSub}>
-                    Enter the name of the printer paired in your Bluetooth settings.
-                  </Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Printer Name (e.g. POS-58 Mobile)"
-                    placeholderTextColor={COLORS.textMuted}
-                    value={customName}
-                    onChangeText={setCustomName}
-                  />
+              <TouchableOpacity
+                style={styles.testPrintBtn}
+                onPress={handleTestPrint}
+                disabled={isPrinting}
+              >
+                {isPrinting ? (
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                ) : (
+                  <>
+                    <Ionicons name="document-text-outline" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
+                    <Text style={styles.testPrintBtnText}>Print Test Slip</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : null}
 
-                  <View style={styles.customAddBtnRow}>
-                    <TouchableOpacity
-                      style={styles.cancelCustomBtn}
-                      onPress={() => setShowAddCustom(false)}
-                    >
-                      <Text style={styles.cancelCustomText}>Cancel</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.saveCustomBtn}
-                      onPress={handleAddCustom}
-                    >
-                      <Text style={styles.saveCustomText}>Save & Connect</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
+          {/* Paired Printers List */}
+          <View style={styles.devicesSection}>
+            <View style={styles.devicesSectionHeader}>
+              <Text style={styles.devicesSectionTitle}>PAIRED BLUETOOTH DEVICES</Text>
+              <TouchableOpacity onPress={loadPrinterData} disabled={isLoading} style={styles.refreshBtn}>
+                <Ionicons name="refresh" size={14} color={COLORS.primary} />
+                <Text style={styles.refreshBtnText}>Scan</Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Direct Fallback to System Thermal Print */}
-            {onFallbackSystemPrint && (
-              <View style={styles.fallbackSection}>
-                <TouchableOpacity
-                  style={styles.systemPrintBtn}
-                  onPress={async () => {
-                    onClose();
-                    await onFallbackSystemPrint();
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="paper-plane-outline" size={18} color={COLORS.primary} style={{ marginRight: 8 }} />
-                  <Text style={styles.systemPrintText}>Direct Print (System Spooler)</Text>
-                </TouchableOpacity>
-                <Text style={styles.fallbackHint}>
-                  Print directly using your phone's print service
+            {isLoading ? (
+              <View style={styles.loadingBox}>
+                <ActivityIndicator size="small" color={COLORS.primary} />
+                <Text style={styles.loadingText}>Reading paired Bluetooth devices...</Text>
+              </View>
+            ) : printers.length === 0 ? (
+              <View style={styles.emptyPrintersBox}>
+                <Ionicons name="bluetooth-outline" size={32} color={COLORS.textMuted} />
+                <Text style={styles.emptyPrintersTitle}>No Paired Printer Found</Text>
+                <Text style={styles.emptyPrintersDesc}>
+                  Please pair your thermal printer in your phone's Android Bluetooth settings, then tap Scan.
                 </Text>
               </View>
+            ) : (
+              <FlatList
+                data={printers}
+                keyExtractor={(item) => item.address}
+                renderItem={renderPrinterItem}
+                style={{ maxHeight: 220 }}
+              />
             )}
-          </ScrollView>
+          </View>
+
+          {/* System Print Spooler Fallback */}
+          <View style={styles.fallbackSection}>
+            <TouchableOpacity style={styles.systemPrintBtn} onPress={handleSystemPrint}>
+              <Ionicons name="documents-outline" size={16} color={COLORS.textPrimary} style={{ marginRight: 6 }} />
+              <Text style={styles.systemPrintText}>Open System Print Dialog</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -618,185 +344,51 @@ export default function BluetoothPrinterModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
-  modalBox: {
+  modalContainer: {
     backgroundColor: COLORS.surface,
     borderTopLeftRadius: RADIUS.xl,
     borderTopRightRadius: RADIUS.xl,
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
-    maxHeight: '88%',
+    padding: 20,
+    maxHeight: '90%',
     ...SHADOWS.lg,
   },
-  header: {
+  modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    marginBottom: 14,
+    marginBottom: 16,
   },
-  headerLeft: {
+  modalHeaderTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
-  btIconBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: RADIUS.md,
-    backgroundColor: '#FEF3C7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  title: {
-    fontSize: FONTS.lg,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  subtitle: {
-    fontSize: FONTS.xs,
-    color: COLORS.textSecondary,
-    marginTop: 1,
-  },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  printerIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.sm,
     backgroundColor: COLORS.surfaceSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  body: {
-    marginBottom: 6,
+  modalTitle: {
+    fontSize: FONTS.lg,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
   },
-  permBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12,
-    borderRadius: RADIUS.md,
-    marginBottom: 10,
-    borderWidth: 1,
-  },
-  permBannerGranted: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
-  },
-  permBannerNeeded: {
-    backgroundColor: '#FFFBEB',
-    borderColor: '#FDE68A',
-  },
-  permBannerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  permBannerTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  permBannerDesc: {
-    fontSize: 10,
+  modalSubtitle: {
+    fontSize: FONTS.xs,
     color: COLORS.textMuted,
     marginTop: 1,
   },
-  grantPermBtn: {
-    backgroundColor: '#D97706',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: RADIUS.sm,
-    marginLeft: 8,
+  closeBtn: {
+    padding: 6,
   },
-  grantPermBtnText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  openSettingsCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    borderRadius: RADIUS.md,
-    padding: 12,
-    marginBottom: 10,
-  },
-  openSettingsIconBg: {
-    width: 34,
-    height: 34,
-    borderRadius: RADIUS.sm,
-    backgroundColor: '#DBEAFE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  openSettingsTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#1D4ED8',
-  },
-  openSettingsSub: {
-    fontSize: 10,
-    color: '#3B82F6',
-    marginTop: 1,
-  },
-  driverCard: {
-    backgroundColor: '#FAF5FF',
-    borderWidth: 1,
-    borderColor: '#E9D5FF',
-    borderRadius: RADIUS.md,
-    padding: 12,
-    marginBottom: 12,
-  },
-  driverHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  driverIconBg: {
-    width: 28,
-    height: 28,
-    borderRadius: RADIUS.xs,
-    backgroundColor: '#EDE9FE',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  driverTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#6B21A8',
-  },
-  driverSub: {
-    fontSize: 9,
-    color: '#7E22CE',
-    marginTop: 1,
-  },
-  driverGetBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#7C3AED',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: RADIUS.sm,
-  },
-  driverGetBtnText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  driverHelpText: {
-    fontSize: 9.5,
-    color: '#6B21A8',
-    marginTop: 8,
-    lineHeight: 13,
-  },
-  // Connected card
   connectedCard: {
     backgroundColor: '#F0FDF4',
     borderWidth: 1,
@@ -895,7 +487,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#16A34A',
-    paddingVertical: 13,
+    paddingVertical: 12,
     borderRadius: RADIUS.md,
     marginBottom: 8,
     ...SHADOWS.sm,
@@ -912,7 +504,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.primary,
-    paddingVertical: 10,
+    paddingVertical: 9,
     borderRadius: RADIUS.md,
   },
   testPrintBtnText: {
@@ -921,7 +513,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   devicesSection: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   devicesSectionHeader: {
     flexDirection: 'row',
@@ -935,6 +527,29 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     letterSpacing: 0.5,
   },
+  refreshBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  refreshBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  loadingBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+  },
+  loadingText: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+  },
   emptyPrintersBox: {
     backgroundColor: COLORS.surfaceSubtle,
     borderWidth: 1,
@@ -943,12 +558,13 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     padding: 16,
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   emptyPrintersTitle: {
     fontSize: 12,
     fontWeight: '700',
     color: COLORS.textPrimary,
+    marginTop: 6,
   },
   emptyPrintersDesc: {
     fontSize: 10,
@@ -960,12 +576,11 @@ const styles = StyleSheet.create({
   deviceCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: RADIUS.md,
-    padding: 12,
+    padding: 10,
     marginBottom: 8,
     ...SHADOWS.sm,
   },
@@ -973,141 +588,59 @@ const styles = StyleSheet.create({
     borderColor: '#16A34A',
     backgroundColor: '#F0FDF4',
   },
+  deviceIconBg: {
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.xs,
+    backgroundColor: COLORS.surfaceSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
   deviceInfo: {
     flex: 1,
-  },
-  deviceTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   deviceName: {
     fontSize: FONTS.sm,
     fontWeight: '700',
     color: COLORS.textPrimary,
   },
-  deviceMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  chip: {
-    backgroundColor: COLORS.surfaceSubtle,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: RADIUS.xs,
-  },
-  chipText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
+  deviceAddress: {
+    fontSize: 10,
+    color: COLORS.textMuted,
+    marginTop: 1,
   },
   cardActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   connectActionBtn: {
     backgroundColor: COLORS.primary,
     paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: RADIUS.md,
-    minWidth: 72,
-    alignItems: 'center',
-  },
-  connectActionBtnConnected: {
-    backgroundColor: 'transparent',
-    minWidth: 'auto',
-    paddingHorizontal: 6,
+    paddingVertical: 6,
+    borderRadius: RADIUS.sm,
   },
   connectActionText: {
     color: '#FFF',
     fontSize: 11,
     fontWeight: '700',
   },
-  deletePrinterBtn: {
-    padding: 6,
-  },
-  addCustomToggle: {
+  connectedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: COLORS.primary,
-    borderRadius: RADIUS.md,
-    paddingVertical: 12,
-    marginTop: 4,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
-  addCustomToggleText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  customAddCard: {
-    backgroundColor: COLORS.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    padding: 12,
-    marginTop: 6,
-  },
-  customAddTitle: {
-    fontSize: 12,
+  connectedBadgeText: {
+    color: '#16A34A',
+    fontSize: 11,
     fontWeight: '800',
-    color: COLORS.textPrimary,
-    marginBottom: 2,
-  },
-  customAddSub: {
-    fontSize: 10,
-    color: COLORS.textMuted,
-    marginBottom: 8,
-    lineHeight: 14,
-  },
-  input: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.sm,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: FONTS.xs,
-    color: COLORS.textPrimary,
-    marginBottom: 8,
-  },
-  customAddBtnRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 8,
-  },
-  cancelCustomBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: RADIUS.sm,
-  },
-  cancelCustomText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.textMuted,
-  },
-  saveCustomBtn: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: RADIUS.sm,
-  },
-  saveCustomText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FFF',
   },
   fallbackSection: {
-    marginTop: 4,
-    paddingTop: 12,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
-    alignItems: 'center',
   },
   systemPrintBtn: {
     flexDirection: 'row',
@@ -1116,19 +649,12 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surfaceSubtle,
     borderWidth: 1,
     borderColor: COLORS.border,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingVertical: 9,
     borderRadius: RADIUS.md,
-    width: '100%',
   },
   systemPrintText: {
     fontSize: 11,
     fontWeight: '700',
     color: COLORS.textPrimary,
-  },
-  fallbackHint: {
-    fontSize: 9,
-    color: COLORS.textMuted,
-    marginTop: 4,
   },
 });

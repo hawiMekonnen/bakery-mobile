@@ -1,6 +1,6 @@
 {
   "name": "bakery-mobile",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "main": "index.js",
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",
@@ -20,7 +20,8 @@
     "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
-    "react-native-web": "^0.21.2"
+    "react-native-web": "^0.21.2",
+    "bluetooth-printer": "file:./modules/bluetooth-printer"
   },
   "scripts": {
     "start": "expo start",
@@ -31,5 +32,10 @@
   "private": true,
   "devDependencies": {
     "eas-cli": "^24.8.0"
+  },
+  "expo": {
+    "autolinking": {
+      "nativeModulesDir": "./modules"
+    }
   }
 }

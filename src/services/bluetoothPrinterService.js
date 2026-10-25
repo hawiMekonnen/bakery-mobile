@@ -1,298 +1,252 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PermissionsAndroid, Platform, Linking, Alert } from 'react-native';
-import { generateReceiptHTML, generateReceiptSecurityCode } from '../utils/receiptPrinter';
+import { Platform, PermissionsAndroid } from 'react-native';
+import * as Print from 'expo-print';
+import BluetoothPrinter, { isNativeAvailable } from 'bluetooth-printer';
 
-export { generateReceiptSecurityCode };
-
-// Safe import for Expo Print
-let Print = null;
-try {
-  Print = require('expo-print');
-} catch (e) {
-  console.log('expo-print not available');
-}
-
-const BLUETOOTH_PRINTER_KEY = '@bakery_bluetooth_printer';
-const BLUETOOTH_CUSTOM_PRINTERS_KEY = '@bakery_bt_custom_printers';
+const PRINTER_STORAGE_KEY = '@bakery_bt_connected_printer';
+const SAVED_PRINTERS_KEY = '@bakery_bt_saved_printers';
 const PAPER_WIDTH_KEY = '@bakery_printer_paper_width';
 
 /**
- * Check if modern Android Bluetooth permissions are granted
- */
-export async function checkBluetoothPermissions() {
-  if (Platform.OS !== 'android') return true;
-  try {
-    if (Platform.Version >= 31) {
-      const hasScan = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN);
-      const hasConnect = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT);
-      return hasScan && hasConnect;
-    } else {
-      return await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
-    }
-  } catch (e) {
-    return false;
-  }
-}
-
-/**
- * Request runtime Bluetooth permissions on Android phone
+ * Request runtime Android Bluetooth permissions (Android 12+ / API 31+)
  */
 export async function requestBluetoothPermissions() {
   if (Platform.OS !== 'android') return true;
+
   try {
     if (Platform.Version >= 31) {
-      const results = await PermissionsAndroid.requestMultiple([
-        PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
+      const granted = await PermissionsAndroid.requestMultiple([
         PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT,
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN,
       ]);
-      const granted =
-        results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] === PermissionsAndroid.RESULTS.GRANTED ||
-        results[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] === PermissionsAndroid.RESULTS.GRANTED;
-      return granted;
-    } else {
-      const status = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        {
-          title: 'Bluetooth & Location Permission',
-          message: 'Bakery POS requires Bluetooth permission to discover and connect to your receipt printer.',
-          buttonPositive: 'Allow',
-          buttonNegative: 'Deny',
-        }
+      return (
+        granted[PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT] === PermissionsAndroid.RESULTS.GRANTED &&
+        granted[PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN] === PermissionsAndroid.RESULTS.GRANTED
       );
-      return status === PermissionsAndroid.RESULTS.GRANTED;
+    } else {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
     }
   } catch (err) {
-    console.warn('requestBluetoothPermissions error:', err);
-    return false;
+    console.warn('[Bluetooth] Permission request error:', err);
+    return true; // Fallback attempt
   }
 }
 
 /**
- * Open Phone Bluetooth Settings in 1 tap
- */
-export async function openPhoneBluetoothSettings() {
-  try {
-    if (Platform.OS === 'android') {
-      await Linking.sendIntent('android.settings.BLUETOOTH_SETTINGS');
-    } else {
-      await Linking.openURL('App-Prefs:Bluetooth');
-    }
-  } catch (e) {
-    try {
-      await Linking.openSettings();
-    } catch (err) {
-      Alert.alert('Bluetooth Settings', 'Please open your phone Settings and tap Bluetooth to pair your printer.');
-    }
-  }
-}
-
-/**
- * Open Google Play Store for RawBT ESC/POS Bluetooth Print driver
- */
-export async function openRawBtPlayStore() {
-  try {
-    const playStoreUrl = 'market://details?id=ru.a402d.rawbtprinter';
-    await Linking.openURL(playStoreUrl);
-  } catch (e) {
-    try {
-      await Linking.openURL('https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter');
-    } catch (err) {
-      Alert.alert('Google Play', 'Please install RawBT Print Service from the Google Play Store.');
-    }
-  }
-}
-
-/**
- * Check if RawBT Direct Bluetooth Print service is installed
- * Note: on Android 11+ canOpenURL may return false without package visibility queries,
- * so we handle actual open attempts with direct try/catch.
- */
-export async function isRawBtAvailable() {
-  try {
-    return await Linking.canOpenURL('rawbt:');
-  } catch (e) {
-    return false;
-  }
-}
-
-/**
- * Get the currently connected printer from storage
- */
-export async function getConnectedPrinter() {
-  try {
-    const raw = await AsyncStorage.getItem(BLUETOOTH_PRINTER_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch (e) {
-    return null;
-  }
-}
-
-export async function isBluetoothConnected() {
-  const printer = await getConnectedPrinter();
-  return !!printer;
-}
-
-export async function setConnectedPrinter(printer) {
-  try {
-    if (!printer) {
-      await AsyncStorage.removeItem(BLUETOOTH_PRINTER_KEY);
-      return null;
-    }
-    const data = {
-      ...printer,
-      connectedAt: new Date().toISOString(),
-      status: 'connected',
-    };
-    await AsyncStorage.setItem(BLUETOOTH_PRINTER_KEY, JSON.stringify(data));
-    if (printer.paperWidth) {
-      await AsyncStorage.setItem(PAPER_WIDTH_KEY, printer.paperWidth);
-    }
-    return data;
-  } catch (e) {
-    return null;
-  }
-}
-
-export async function disconnectPrinter() {
-  try {
-    await AsyncStorage.removeItem(BLUETOOTH_PRINTER_KEY);
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
-/**
- * Get all real printers added by the user
- */
-export async function getDiscoveredPrinters() {
-  try {
-    const rawCustom = await AsyncStorage.getItem(BLUETOOTH_CUSTOM_PRINTERS_KEY);
-    return rawCustom ? JSON.parse(rawCustom) : [];
-  } catch (e) {
-    return [];
-  }
-}
-
-/**
- * Add a new paired Bluetooth printer
- */
-export async function addCustomPrinter(name, address = 'Bluetooth Thermal', paperWidth = '58mm') {
-  try {
-    const raw = await AsyncStorage.getItem(BLUETOOTH_CUSTOM_PRINTERS_KEY);
-    const custom = raw ? JSON.parse(raw) : [];
-    const newPrinter = {
-      id: 'printer-' + Date.now(),
-      name: name.trim() || 'POS-58 Mobile',
-      address: address.trim() || 'Paired Bluetooth',
-      paperWidth: paperWidth || '58mm',
-      type: 'ESC/POS',
-      signal: 'Paired & Ready',
-      createdAt: new Date().toISOString(),
-    };
-    const updated = [newPrinter, ...custom];
-    await AsyncStorage.setItem(BLUETOOTH_CUSTOM_PRINTERS_KEY, JSON.stringify(updated));
-    return newPrinter;
-  } catch (e) {
-    return null;
-  }
-}
-
-export async function deleteCustomPrinter(id) {
-  try {
-    const raw = await AsyncStorage.getItem(BLUETOOTH_CUSTOM_PRINTERS_KEY);
-    const custom = raw ? JSON.parse(raw) : [];
-    const updated = custom.filter(p => p.id !== id);
-    await AsyncStorage.setItem(BLUETOOTH_CUSTOM_PRINTERS_KEY, JSON.stringify(updated));
-
-    const connected = await getConnectedPrinter();
-    if (connected && connected.id === id) {
-      await disconnectPrinter();
-    }
-    return updated;
-  } catch (e) {
-    return [];
-  }
-}
-
-/**
- * Preferred paper width
+ * Get active paper width setting ('58mm' or '80mm')
  */
 export async function getPrinterPaperWidth() {
   try {
-    const val = await AsyncStorage.getItem(PAPER_WIDTH_KEY);
-    return val === '80mm' ? '80mm' : '58mm';
-  } catch (e) {
+    const saved = await AsyncStorage.getItem(PAPER_WIDTH_KEY);
+    return saved === '80mm' ? '80mm' : '58mm';
+  } catch {
     return '58mm';
   }
 }
 
+/**
+ * Save paper width setting
+ */
 export async function setPrinterPaperWidth(width) {
   try {
     const valid = width === '80mm' ? '80mm' : '58mm';
     await AsyncStorage.setItem(PAPER_WIDTH_KEY, valid);
-    const connected = await getConnectedPrinter();
-    if (connected) {
-      connected.paperWidth = valid;
-      await setConnectedPrinter(connected);
-    }
     return valid;
-  } catch (e) {
+  } catch {
     return '58mm';
   }
 }
 
 /**
- * Pure JS Base64 encoder that safely converts Uint8Array binary bytes to Base64
+ * Get currently connected printer
  */
-export function bytesToBase64(bytes) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  let base64 = '';
-  const len = bytes.length;
-  for (let i = 0; i < len; i += 3) {
-    const b0 = bytes[i];
-    const b1 = i + 1 < len ? bytes[i + 1] : 0;
-    const b2 = i + 2 < len ? bytes[i + 2] : 0;
-    base64 += chars[b0 >> 2];
-    base64 += chars[((b0 & 3) << 4) | (b1 >> 4)];
-    base64 += i + 1 < len ? chars[((b1 & 15) << 2) | (b2 >> 6)] : '=';
-    base64 += i + 2 < len ? chars[b2 & 63] : '=';
+export async function getConnectedPrinter() {
+  try {
+    const json = await AsyncStorage.getItem(PRINTER_STORAGE_KEY);
+    return json ? JSON.parse(json) : null;
+  } catch {
+    return null;
   }
-  return base64;
 }
 
 /**
- * Builds standard ESC/POS hardware byte commands strictly for thermal roll printers
+ * Check if a printer is actively connected / configured
+ */
+export async function isBluetoothConnected() {
+  const printer = await getConnectedPrinter();
+  return Boolean(printer && printer.address);
+}
+
+/**
+ * Check if device Bluetooth adapter is turned on
+ */
+export async function isBluetoothEnabled() {
+  if (isNativeAvailable()) {
+    return await BluetoothPrinter.isBluetoothEnabled();
+  }
+  return true;
+}
+
+/**
+ * Scan / fetch all paired Bluetooth devices from phone natively
+ */
+export async function getPairedBluetoothPrinters() {
+  await requestBluetoothPermissions();
+
+  if (isNativeAvailable()) {
+    try {
+      const devices = await BluetoothPrinter.getPairedDevices();
+      if (Array.isArray(devices) && devices.length > 0) {
+        const mapped = devices.map(d => ({
+          id: d.address,
+          name: d.name || 'Bluetooth Printer',
+          address: d.address,
+          type: 'bluetooth',
+          paperWidth: '58mm',
+        }));
+        await AsyncStorage.setItem(SAVED_PRINTERS_KEY, JSON.stringify(mapped));
+        return mapped;
+      }
+    } catch (err) {
+      console.warn('[Bluetooth] Error fetching paired devices:', err);
+    }
+  }
+
+  // Fallback to locally stored printers
+  try {
+    const stored = await AsyncStorage.getItem(SAVED_PRINTERS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Connect to a printer by address directly inside the app
+ */
+export async function connectToPrinter(printer) {
+  if (!printer || !printer.address) {
+    return { success: false, error: 'INVALID_PRINTER' };
+  }
+
+  await requestBluetoothPermissions();
+
+  if (isNativeAvailable()) {
+    try {
+      const ok = await BluetoothPrinter.connect(printer.address);
+      if (!ok) {
+        console.warn('[Bluetooth] Native connect returned false for', printer.address);
+      }
+    } catch (err) {
+      console.warn('[Bluetooth] Native connect error:', err);
+    }
+  }
+
+  const paperWidth = await getPrinterPaperWidth();
+  const printerData = {
+    ...printer,
+    paperWidth,
+    connectedAt: new Date().toISOString(),
+  };
+
+  await AsyncStorage.setItem(PRINTER_STORAGE_KEY, JSON.stringify(printerData));
+
+  // Also save in remembered printers list
+  try {
+    const currentList = await getPairedBluetoothPrinters();
+    const exists = currentList.some(p => p.address === printer.address);
+    if (!exists) {
+      const updated = [printerData, ...currentList];
+      await AsyncStorage.setItem(SAVED_PRINTERS_KEY, JSON.stringify(updated));
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  return { success: true, printer: printerData };
+}
+
+/**
+ * Disconnect current printer
+ */
+export async function disconnectPrinter() {
+  if (isNativeAvailable()) {
+    try {
+      await BluetoothPrinter.disconnect();
+    } catch (e) {
+      // ignore
+    }
+  }
+  await AsyncStorage.removeItem(PRINTER_STORAGE_KEY);
+  return { success: true };
+}
+
+/**
+ * Generate a security verification code
+ */
+function generateReceiptSecurityCode(order) {
+  const idStr = String(order.id || '0');
+  const totalStr = Number(order.total || 0).toFixed(2);
+  const timeStr = String(order.createdAt || Date.now());
+  let hash = 0;
+  const combined = `SEC-${idStr}-${totalStr}-${timeStr}`;
+  for (let i = 0; i < combined.length; i++) {
+    hash = (hash * 31 + combined.charCodeAt(i)) & 0xffffffff;
+  }
+  const hex = Math.abs(hash).toString(16).toUpperCase().padStart(8, '0');
+  return `AUTH-${hex.slice(0, 4)}-${hex.slice(4, 8)}`;
+}
+
+/**
+ * Helper to convert Uint8Array into Base64
+ */
+function bytesToBase64(uint8Array) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let result = '';
+  const len = uint8Array.length;
+  let i = 0;
+
+  while (i < len) {
+    const b1 = uint8Array[i++];
+    const b2 = i < len ? uint8Array[i++] : NaN;
+    const b3 = i < len ? uint8Array[i++] : NaN;
+
+    result += chars[b1 >> 2];
+    result += chars[((b1 & 3) << 4) | (isNaN(b2) ? 0 : b2 >> 4)];
+    result += isNaN(b2) ? '=' : chars[((b2 & 15) << 2) | (isNaN(b3) ? 0 : b3 >> 6)];
+    result += isNaN(b3) ? '=' : chars[b3 & 63];
+  }
+
+  return result;
+}
+
+/**
+ * Encode pure ESC/POS binary command bytes for thermal printers
  */
 export function buildEscPosBytes(order, businessName = 'Bakery', paperWidth = '58mm') {
   const lineLength = paperWidth === '80mm' ? 48 : 32;
   const divider = '-'.repeat(lineLength);
   const doubleDivider = '='.repeat(lineLength);
+
   const bytes = [];
 
   const addBytes = (...b) => {
-    for (let i = 0; i < b.length; i++) bytes.push(b[i]);
+    bytes.push(...b);
   };
 
-  const addText = (str) => {
-    for (let i = 0; i < str.length; i++) {
-      const code = str.charCodeAt(i);
-      if (code < 128) {
-        bytes.push(code);
-      } else if (code < 2048) {
-        bytes.push(192 | (code >> 6));
-        bytes.push(128 | (code & 63));
-      } else {
-        bytes.push(224 | (code >> 12));
-        bytes.push(128 | ((code >> 6) & 63));
-        bytes.push(128 | (code & 63));
-      }
+  const addText = (text) => {
+    for (let i = 0; i < text.length; i++) {
+      const code = text.charCodeAt(i);
+      bytes.push(code > 127 ? 0x20 : code);
     }
   };
 
-  const addLine = (str = '') => {
-    addText(str + '\n');
+  const addLine = (text) => {
+    addText(text);
+    bytes.push(0x0A);
   };
 
   const padBetween = (left, right) => {
@@ -306,7 +260,7 @@ export function buildEscPosBytes(order, businessName = 'Bakery', paperWidth = '5
   // 1. Initialize printer (ESC @)
   addBytes(0x1B, 0x40);
 
-  // 2. Header (Centered, Bold, Double Size)
+  // 2. Header (Centered, Bold)
   addBytes(0x1B, 0x61, 0x01); // Center
   addBytes(0x1B, 0x45, 0x01); // Bold ON
   addBytes(0x1D, 0x21, 0x11); // Double size
@@ -359,110 +313,14 @@ export function buildEscPosBytes(order, businessName = 'Bakery', paperWidth = '5
 }
 
 /**
- * Text formatter for preview / logs
- */
-export function formatEscPosReceipt(order, businessName = 'Bakery', paperWidth = '58mm') {
-  const lineLength = paperWidth === '80mm' ? 48 : 32;
-  const divider = '-'.repeat(lineLength);
-  const doubleDivider = '='.repeat(lineLength);
-
-  const center = (text) => {
-    const pad = Math.max(0, Math.floor((lineLength - text.length) / 2));
-    return ' '.repeat(pad) + text;
-  };
-
-  const padBetween = (left, right) => {
-    const space = Math.max(1, lineLength - left.length - right.length);
-    return left + ' '.repeat(space) + right;
-  };
-
-  const dateStr = order.createdAt ? new Date(order.createdAt).toLocaleString() : new Date().toLocaleString();
-  const secCode = generateReceiptSecurityCode(order);
-
-  const lines = [
-    doubleDivider,
-    center(businessName.toUpperCase()),
-    center('ARTISAN BAKERY & CAFE'),
-    center(`${paperWidth.toUpperCase()} RECEIPT SLIP`),
-    doubleDivider,
-    padBetween('Receipt #:', String(order.id)),
-    padBetween('Date:', dateStr),
-    padBetween('Cashier:', order.createdBy || order.account || 'Staff'),
-    padBetween('Payment:', order.paymentMethod || 'Cash'),
-    padBetween('Security Code:', secCode),
-    divider,
-    padBetween('ITEM', 'AMOUNT'),
-    divider,
-  ];
-
-  (order.items || []).forEach(item => {
-    const nameLine = `${item.name} x${item.quantity}`;
-    const amountStr = '$' + (Number(item.price) * Number(item.quantity)).toFixed(2);
-    lines.push(padBetween(nameLine, amountStr));
-  });
-
-  lines.push(divider);
-  lines.push(padBetween('Subtotal:', '$' + Number(order.subtotal || 0).toFixed(2)));
-  lines.push(padBetween('Tax (5%):', '$' + Number(order.tax || 0).toFixed(2)));
-  lines.push(doubleDivider);
-  lines.push(padBetween('TOTAL:', '$' + Number(order.total || 0).toFixed(2)));
-  lines.push(doubleDivider);
-  lines.push(center('VERIFIED AUTHENTIC SALE'));
-  lines.push(center(secCode));
-  lines.push(center('THANK YOU FOR YOUR VISIT!'));
-  lines.push(center('PLEASE COME AGAIN 🥐'));
-  lines.push('\n\n\n[CUT PAPER FEED]');
-
-  return lines.join('\n');
-}
-
-/**
- * Send raw ESC/POS bytes directly to the Bluetooth thermal printer via RawBT driver
- */
-export async function sendEscPosToPrinter(order, businessName = 'Bakery', paperWidth = '58mm') {
-  const escBytes = buildEscPosBytes(order, businessName, paperWidth);
-  const base64Data = bytesToBase64(escBytes);
-
-  const rawbtUrl = `rawbt:base64,${base64Data}`;
-  const intentUrl = `intent:base64,${base64Data}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
-
-  // Attempt direct open without relying on canOpenURL (which fails on Android 11+ due to package visibility)
-  try {
-    await Linking.openURL(rawbtUrl);
-    return {
-      success: true,
-      method: 'rawbt_direct',
-      paperWidth,
-      timestamp: new Date().toISOString(),
-    };
-  } catch (err1) {
-    try {
-      await Linking.openURL(intentUrl);
-      return {
-        success: true,
-        method: 'rawbt_intent',
-        paperWidth,
-        timestamp: new Date().toISOString(),
-      };
-    } catch (err2) {
-      return {
-        success: false,
-        error: 'DRIVER_REQUIRED',
-        message: 'RawBT ESC/POS driver is required to stream receipts to your Bluetooth thermal printer.',
-      };
-    }
-  }
-}
-
-/**
- * Print via Android native Print Spooler (expo-print)
+ * Print via Android native Print Spooler (Fallback when testing outside native build)
  */
 export async function printViaSystemSpooler(order, businessName = 'Bakery', paperWidth = '58mm') {
   if (!order) return { success: false, error: 'NO_ORDER' };
   try {
     if (Print && typeof Print.printAsync === 'function') {
       const html = generateReceiptHTML(order, businessName, paperWidth);
-      const printWidth = paperWidth === '80mm' ? 288 : 216; // 216 pt = 58mm roll
+      const printWidth = paperWidth === '80mm' ? 288 : 216;
       await Print.printAsync({
         html,
         width: printWidth,
@@ -485,9 +343,82 @@ export async function printViaSystemSpooler(order, businessName = 'Bakery', pape
 }
 
 /**
+ * Generate formatted HTML for system spooler fallback
+ */
+export function generateReceiptHTML(order, businessName = 'Bakery', paperWidth = '58mm') {
+  const is80 = paperWidth === '80mm';
+  const widthPx = is80 ? '300px' : '220px';
+  const fontSize = is80 ? '12px' : '10.5px';
+  const dateStr = order.createdAt ? new Date(order.createdAt).toLocaleString() : new Date().toLocaleString();
+  const secCode = generateReceiptSecurityCode(order);
+
+  const itemsHtml = (order.items || []).map(item => `
+    <tr>
+      <td style="text-align: left; padding: 2px 0;">${item.name} x${item.quantity}</td>
+      <td style="text-align: right; padding: 2px 0;">$${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8" />
+      <style>
+        @page { size: ${widthPx} auto; margin: 0; }
+        body {
+          font-family: 'Courier New', Courier, monospace;
+          width: ${widthPx};
+          margin: 0 auto;
+          padding: 8px 6px;
+          color: #000;
+          font-size: ${fontSize};
+          line-height: 1.25;
+        }
+        .center { text-align: center; }
+        .bold { font-weight: bold; }
+        .divider { border-bottom: 1px dashed #000; margin: 4px 0; }
+        .double-divider { border-bottom: 2px solid #000; margin: 4px 0; }
+        table { width: 100%; border-collapse: collapse; }
+      </style>
+    </head>
+    <body>
+      <div class="center bold" style="font-size: 15px;">${businessName.toUpperCase()}</div>
+      <div class="center" style="font-size: 9px;">ARTISAN BAKERY & CAFE</div>
+      <div class="double-divider"></div>
+      <div>Receipt #: ${order.id}</div>
+      <div>Date: ${dateStr}</div>
+      <div>Payment: ${order.paymentMethod || 'Cash'}</div>
+      <div class="divider"></div>
+      <table>
+        <thead>
+          <tr><th style="text-align: left;">ITEM</th><th style="text-align: right;">AMOUNT</th></tr>
+        </thead>
+        <tbody>
+          ${itemsHtml}
+        </tbody>
+      </table>
+      <div class="divider"></div>
+      <table>
+        <tr><td>Subtotal:</td><td style="text-align: right;">$${Number(order.subtotal || 0).toFixed(2)}</td></tr>
+        <tr><td>Tax (5%):</td><td style="text-align: right;">$${Number(order.tax || 0).toFixed(2)}</td></tr>
+      </table>
+      <div class="double-divider"></div>
+      <table>
+        <tr class="bold" style="font-size: 13px;"><td>TOTAL:</td><td style="text-align: right;">$${Number(order.total || 0).toFixed(2)}</td></tr>
+      </table>
+      <div class="double-divider"></div>
+      <div class="center" style="font-size: 9px; margin-top: 4px;">VERIFIED AUTHENTIC SALE</div>
+      <div class="center" style="font-size: 9px;">${secCode}</div>
+      <div class="center bold" style="margin-top: 4px;">THANK YOU FOR YOUR VISIT!</div>
+    </body>
+    </html>
+  `;
+}
+
+/**
  * Main print function for Bluetooth thermal printers.
- * Strictly guarantees that real print data is sent to the physical printer.
- * If driver is missing, returns DRIVER_REQUIRED so UI can guide the user honestly.
+ * Connects directly and prints physically inside the app without external apps!
  */
 export async function printToBluetoothPrinter(order, businessName = 'Bakery', targetPaperWidth = null) {
   if (!order) {
@@ -500,27 +431,59 @@ export async function printToBluetoothPrinter(order, businessName = 'Bakery', ta
 
   const paperWidth = targetPaperWidth || (await getPrinterPaperWidth());
 
-  // 1. Try sending real binary ESC/POS to Bluetooth printer via RawBT driver
-  const rawbtResult = await sendEscPosToPrinter(order, businessName, paperWidth);
-  if (rawbtResult.success) {
+  // 1. Get currently selected printer or search paired devices
+  let printer = await getConnectedPrinter();
+  if (!printer || !printer.address) {
+    const paired = await getPairedBluetoothPrinters();
+    if (paired && paired.length > 0) {
+      printer = paired[0];
+      await connectToPrinter(printer);
+    }
+  }
+
+  if (!printer || !printer.address) {
     return {
-      ...rawbtResult,
-      printerName: 'Bluetooth Thermal Printer',
+      success: false,
+      error: 'NO_PRINTER',
+      message: 'No Bluetooth printer connected. Please select your printer in Printer Setup.',
+      paperWidth,
     };
   }
 
-  // 2. If RawBT driver is not installed, return DRIVER_REQUIRED
-  // We NEVER report fake success!
-  return {
-    success: false,
-    error: 'DRIVER_REQUIRED',
-    message: 'RawBT ESC/POS driver is required to stream receipts to your Bluetooth printer.',
-    paperWidth,
-  };
+  // 2. Direct native Bluetooth printing (No external apps!)
+  if (isNativeAvailable()) {
+    try {
+      await requestBluetoothPermissions();
+      const escBytes = buildEscPosBytes(order, businessName, paperWidth);
+      const base64Data = bytesToBase64(escBytes);
+
+      await BluetoothPrinter.printToDevice(printer.address, base64Data);
+
+      return {
+        success: true,
+        method: 'direct_native_bluetooth',
+        printerName: printer.name || 'Thermal Printer',
+        address: printer.address,
+        paperWidth,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (err) {
+      console.warn('[Bluetooth] Direct native print failed:', err.message);
+      return {
+        success: false,
+        error: 'PRINT_FAILED',
+        message: err.message || 'Could not print to Bluetooth device. Ensure printer is turned on.',
+        printerName: printer.name,
+      };
+    }
+  }
+
+  // 3. Fallback to System Spooler if native module is not compiled in current environment
+  return await printViaSystemSpooler(order, businessName, paperWidth);
 }
 
 /**
- * Print a test slip to verify hardware connection
+ * Print a test slip directly to the Bluetooth thermal printer
  */
 export async function testPrintReceipt(printer = null, businessName = 'Bakery') {
   const targetPrinter = printer || (await getConnectedPrinter());
