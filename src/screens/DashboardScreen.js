@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useBakery } from '../store/BakeryStore';
 import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
+import CloudSyncModal from '../components/CloudSyncModal';
 
 const { width } = Dimensions.get('window');
 const TILE_W = (width - 32 - 12) / 2;
@@ -85,7 +86,8 @@ const FEATURES = [
 
 export default function DashboardScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { state, dispatch } = useBakery();
+  const { state, dispatch, cloudSyncStatus } = useBakery();
+  const [cloudModalVisible, setCloudModalVisible] = useState(false);
   const { products, orders, inventory, auth, notifications = [] } = state;
 
   const [notifModalVisible, setNotifModalVisible] = useState(false);
@@ -160,6 +162,69 @@ export default function DashboardScreen({ navigation }) {
         </View>
 
         <View style={styles.headerRight}>
+          {/* Cloud Sync Status Pill */}
+          <TouchableOpacity
+            style={[
+              styles.cloudStatusPill,
+              cloudSyncStatus?.state === 'synced'
+                ? styles.cloudPillSynced
+                : cloudSyncStatus?.state === 'syncing'
+                ? styles.cloudPillSyncing
+                : styles.cloudPillOffline,
+            ]}
+            onPress={() => setCloudModalVisible(true)}
+            activeOpacity={0.75}
+          >
+            <View
+              style={[
+                styles.cloudStatusDot,
+                {
+                  backgroundColor:
+                    cloudSyncStatus?.state === 'synced'
+                      ? '#16A34A'
+                      : cloudSyncStatus?.state === 'syncing'
+                      ? COLORS.primary
+                      : '#94A3B8',
+                },
+              ]}
+            />
+            <Ionicons
+              name={
+                cloudSyncStatus?.state === 'synced'
+                  ? 'cloud-done'
+                  : cloudSyncStatus?.state === 'syncing'
+                  ? 'sync'
+                  : 'cloud-offline-outline'
+              }
+              size={13}
+              color={
+                cloudSyncStatus?.state === 'synced'
+                  ? '#16A34A'
+                  : cloudSyncStatus?.state === 'syncing'
+                  ? COLORS.primary
+                  : '#64748B'
+              }
+            />
+            <Text
+              style={[
+                styles.cloudStatusText,
+                {
+                  color:
+                    cloudSyncStatus?.state === 'synced'
+                      ? '#16A34A'
+                      : cloudSyncStatus?.state === 'syncing'
+                      ? COLORS.primary
+                      : '#64748B',
+                },
+              ]}
+            >
+              {cloudSyncStatus?.state === 'synced'
+                ? 'Cloud'
+                : cloudSyncStatus?.state === 'syncing'
+                ? 'Syncing'
+                : 'Offline'}
+            </Text>
+          </TouchableOpacity>
           {/* Notification Bell Button */}
           <TouchableOpacity
             style={styles.notificationBtn}
@@ -483,6 +548,10 @@ export default function DashboardScreen({ navigation }) {
         </View>
       </Modal>
 
+      <CloudSyncModal
+        visible={cloudModalVisible}
+        onClose={() => setCloudModalVisible(false)}
+      />
     </View>
   );
 }
@@ -1065,5 +1134,37 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: COLORS.textMuted,
     marginTop: 4,
+  },
+  cloudStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    marginRight: 6,
+  },
+  cloudPillSynced: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  cloudPillSyncing: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  cloudPillOffline: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+  },
+  cloudStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 4,
+  },
+  cloudStatusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginLeft: 3,
   },
 });

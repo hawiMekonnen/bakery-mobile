@@ -1,6 +1,14 @@
 import React, { createContext, useContext, useReducer, useEffect, useState, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { pushSyncData, isAutoSyncEnabled, getServerUrl } from '../services/syncService';
+import {
+  getCloudConfig,
+  getDeviceInfo,
+  registerWithCloud,
+  sendCloudHeartbeat,
+  pushCloudSync,
+} from '../services/cloudSyncService';
+import DeviceLockoutModal from '../components/DeviceLockoutModal';
 
 // Permanent master storage key
 const STORAGE_KEY = '@bakery_master_production_v1';
@@ -526,6 +534,25 @@ function reducer(state, action) {
       return updated;
     }
 
+    case 'RESTORE_CLOUD_BACKUP': {
+      const { orders, products, inventory, shopName } = action.payload;
+      const updated = {
+        ...state,
+        orders: Array.isArray(orders) ? orders : state.orders,
+        products: (Array.isArray(products) && products.length > 0) ? products : state.products,
+        inventory: (Array.isArray(inventory) && inventory.length > 0) ? inventory : state.inventory,
+        auth: {
+          ...state.auth,
+          businessName: shopName || state.auth.businessName,
+        },
+      };
+      persistStateImmediate(updated);
+      if (Array.isArray(orders)) {
+        safeSetItem(ORDERS_VAULT_KEY, JSON.stringify(orders));
+      }
+      return updated;
+    }
+
     case 'RESTORE_BACKUP': {
       persistStateImmediate(action.payload);
       if (Array.isArray(action.payload.orders)) {
@@ -544,10 +571,21 @@ const BakeryContext = createContext(null);
 export function BakeryProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, INITIAL_STATE);
   const [isReady, setIsReady] = useState(false);
-  const [wifiSyncStatus, setWifiSyncStatus] = useState({
-    state: 'offline', // 'synced' | 'syncing' | 'offline'
+  const [cloudSyncStatus, setCloudSyncStatus] = useState({
+    state: 'offline', // 'synced' | 'syncing' | 'offline' | 'unauthorized' | 'suspended' | 'revoked'
     lastSynced: null,
     serverUrl: '',
+    message: '',
+  });
+
+  const [lockoutState, setLockoutState] = useState({
+    isLocked: false,
+    status: 'active',
+    message: '',
+    licenseKey: '',
+    serverUrl: '',
+    deviceId: '',
+    deviceModel: '',
   });
 
   const stateRef = useRef(state);
@@ -555,48 +593,122 @@ export function BakeryProvider({ children }) {
     stateRef.current = state;
   }, [state]);
 
-  // Background Wi-Fi Auto-Sync Loop
+  // Cloud Anti-Transfer Handshake & Background Offline-First Sync
   useEffect(() => {
     if (!isReady) return;
     let isMounted = true;
 
-    async function runWifiSync() {
+    async function initAndSync() {
       try {
-        const enabled = await isAutoSyncEnabled();
-        if (!enabled) return;
-
-        const url = await getServerUrl();
-        if (isMounted) {
-          setWifiSyncStatus(prev => ({ ...prev, state: 'syncing', serverUrl: url }));
-        }
-
-        const res = await pushSyncData(stateRef.current);
+        const [cfg, info] = await Promise.all([getCloudConfig(), getDeviceInfo()]);
         if (!isMounted) return;
 
-        if (res.success) {
-          setWifiSyncStatus({
-            state: 'synced',
-            lastSynced: res.timestamp,
-            serverUrl: res.serverUrl,
+        // If previously saved as locked out, show lockout modal immediately
+        if (cfg.deviceStatus && cfg.deviceStatus !== 'active') {
+          setLockoutState({
+            isLocked: true,
+            status: cfg.deviceStatus,
+            message: cfg.lockoutMessage || 'Unauthorized device',
+            licenseKey: cfg.licenseKey,
+            serverUrl: cfg.serverUrl,
+            deviceId: info.deviceId,
+            deviceModel: info.model,
           });
-        } else {
-          setWifiSyncStatus(prev => ({
-            ...prev,
-            state: 'offline',
-          }));
+          return;
         }
-      } catch (err) {
+
+        // Try registration / handshake with cloud server
+        const regRes = await registerWithCloud(
+          cfg.serverUrl,
+          cfg.licenseKey,
+          stateRef.current.auth?.businessName
+        );
+        if (!isMounted) return;
+
+        if (regRes.success) {
+          setCloudSyncStatus(prev => ({
+            ...prev,
+            state: 'synced',
+            serverUrl: cfg.serverUrl,
+          }));
+          await pushCloudSync(stateRef.current, cfg.serverUrl);
+        } else if (regRes.status && regRes.status !== 'active') {
+          setLockoutState({
+            isLocked: true,
+            status: regRes.status,
+            message: regRes.message,
+            licenseKey: cfg.licenseKey,
+            serverUrl: cfg.serverUrl,
+            deviceId: info.deviceId,
+            deviceModel: info.model,
+          });
+        }
+      } catch (e) {
         if (isMounted) {
-          setWifiSyncStatus(prev => ({ ...prev, state: 'offline' }));
+          setCloudSyncStatus(prev => ({ ...prev, state: 'offline' }));
         }
       }
     }
 
-    // Trigger initial sync after state loaded
-    runWifiSync();
+    initAndSync();
 
-    // Auto-sync every 15 seconds over Wi-Fi
-    const interval = setInterval(runWifiSync, 15000);
+    // Background loop: Heartbeat & Data push every 25 seconds
+    const interval = setInterval(async () => {
+      try {
+        // 1. Heartbeat check for remote killswitch
+        const hb = await sendCloudHeartbeat();
+        if (!isMounted) return;
+
+        if (hb.killed) {
+          const [cfg, info] = await Promise.all([getCloudConfig(), getDeviceInfo()]);
+          setLockoutState({
+            isLocked: true,
+            status: hb.status,
+            message: hb.message,
+            licenseKey: cfg.licenseKey,
+            serverUrl: cfg.serverUrl,
+            deviceId: info.deviceId,
+            deviceModel: info.model,
+          });
+          return;
+        }
+
+        // 2. Offline-First Cloud Sync Push
+        const res = await pushCloudSync(stateRef.current);
+        if (!isMounted) return;
+
+        if (res.success) {
+          setCloudSyncStatus({
+            state: 'synced',
+            lastSynced: res.timestamp,
+            serverUrl: res.serverUrl,
+            message: res.message,
+          });
+        } else if (res.unauthorized) {
+          const [cfg, info] = await Promise.all([getCloudConfig(), getDeviceInfo()]);
+          setLockoutState({
+            isLocked: true,
+            status: 'unauthorized',
+            message: res.message,
+            licenseKey: cfg.licenseKey,
+            serverUrl: cfg.serverUrl,
+            deviceId: info.deviceId,
+            deviceModel: info.model,
+          });
+        } else {
+          setCloudSyncStatus(prev => ({
+            ...prev,
+            state: 'offline',
+            message: 'Local offline mode active',
+          }));
+        }
+      } catch (err) {
+        if (isMounted) {
+          setCloudSyncStatus(prev => ({ ...prev, state: 'offline' }));
+        }
+      }
+    }, 25000);
+
     return () => {
       isMounted = false;
       clearInterval(interval);
@@ -751,8 +863,29 @@ export function BakeryProvider({ children }) {
   }, [state, isReady]);
 
   return (
-    <BakeryContext.Provider value={{ state, dispatch, isReady, wifiSyncStatus }}>
+    <BakeryContext.Provider
+      value={{
+        state,
+        dispatch,
+        isReady,
+        wifiSyncStatus: cloudSyncStatus,
+        cloudSyncStatus,
+      }}
+    >
       {children}
+      <DeviceLockoutModal
+        visible={lockoutState.isLocked}
+        deviceStatus={lockoutState.status}
+        lockoutMessage={lockoutState.message}
+        licenseKey={lockoutState.licenseKey}
+        serverUrl={lockoutState.serverUrl}
+        deviceId={lockoutState.deviceId}
+        deviceModel={lockoutState.deviceModel}
+        onAuthorized={() => {
+          setLockoutState(prev => ({ ...prev, isLocked: false, status: 'active' }));
+          setCloudSyncStatus(prev => ({ ...prev, state: 'synced' }));
+        }}
+      />
     </BakeryContext.Provider>
   );
 }
