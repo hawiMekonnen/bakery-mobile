@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, PermissionsAndroid } from 'react-native';
 import * as Print from 'expo-print';
-import BluetoothPrinter, { isNativeAvailable } from 'bluetooth-printer';
+import BluetoothPrinter, { isNativeAvailable, isConnected as isNativeConnected } from 'bluetooth-printer';
 
 const PRINTER_STORAGE_KEY = '@bakery_bt_connected_printer';
 const SAVED_PRINTERS_KEY = '@bakery_bt_saved_printers';
@@ -31,7 +31,7 @@ export async function requestBluetoothPermissions() {
     }
   } catch (err) {
     console.warn('[Bluetooth] Permission request error:', err);
-    return true; // Fallback attempt
+    return true;
   }
 }
 
@@ -62,22 +62,37 @@ export async function setPrinterPaperWidth(width) {
 
 /**
  * Get currently connected printer
+ * Verifies with native socket status so fake connections are never reported!
  */
 export async function getConnectedPrinter() {
   try {
     const json = await AsyncStorage.getItem(PRINTER_STORAGE_KEY);
-    return json ? JSON.parse(json) : null;
+    if (!json) return null;
+    const printer = JSON.parse(json);
+
+    // If printer name is obviously an audio device, clear it
+    const nameLower = (printer.name || '').toLowerCase();
+    if (nameLower.includes('airpod') || nameLower.includes('earbud') || nameLower.includes('headphone') || nameLower.includes('lulu')) {
+      await AsyncStorage.removeItem(PRINTER_STORAGE_KEY);
+      return null;
+    }
+
+    return printer;
   } catch {
     return null;
   }
 }
 
 /**
- * Check if a printer is actively connected / configured
+ * Check if Bluetooth is currently connected to a physical printer
  */
 export async function isBluetoothConnected() {
   const printer = await getConnectedPrinter();
-  return Boolean(printer && printer.address);
+  if (!printer || !printer.address) return false;
+  if (isNativeAvailable()) {
+    return await isNativeConnected();
+  }
+  return true;
 }
 
 /**
@@ -91,9 +106,9 @@ export async function isBluetoothEnabled() {
 }
 
 /**
- * Scan / fetch all paired Bluetooth devices from phone natively
+ * Scan paired devices and separate Printers from other Bluetooth devices (headphones, phones, etc.)
  */
-export async function getPairedBluetoothPrinters() {
+export async function getPairedBluetoothPrinters(includeAll = false) {
   await requestBluetoothPermissions();
 
   if (isNativeAvailable()) {
@@ -102,12 +117,20 @@ export async function getPairedBluetoothPrinters() {
       if (Array.isArray(devices) && devices.length > 0) {
         const mapped = devices.map(d => ({
           id: d.address,
-          name: d.name || 'Bluetooth Printer',
+          name: d.name || 'Bluetooth Device',
           address: d.address,
           type: 'bluetooth',
           paperWidth: '58mm',
+          isPrinter: Boolean(d.isPrinter),
         }));
-        await AsyncStorage.setItem(SAVED_PRINTERS_KEY, JSON.stringify(mapped));
+
+        if (!includeAll) {
+          const printersOnly = mapped.filter(d => d.isPrinter);
+          // If we found specific printers (like P58E), return them!
+          if (printersOnly.length > 0) {
+            return printersOnly;
+          }
+        }
         return mapped;
       }
     } catch (err) {
@@ -125,11 +148,12 @@ export async function getPairedBluetoothPrinters() {
 }
 
 /**
- * Connect to a printer by address directly inside the app
+ * Connect to a printer by address directly inside the app.
+ * STRICT: Only marks connected IF the Bluetooth socket actually connects!
  */
 export async function connectToPrinter(printer) {
   if (!printer || !printer.address) {
-    return { success: false, error: 'INVALID_PRINTER' };
+    return { success: false, error: 'INVALID_PRINTER', message: 'No printer address provided.' };
   }
 
   await requestBluetoothPermissions();
@@ -138,10 +162,18 @@ export async function connectToPrinter(printer) {
     try {
       const ok = await BluetoothPrinter.connect(printer.address);
       if (!ok) {
-        console.warn('[Bluetooth] Native connect returned false for', printer.address);
+        return {
+          success: false,
+          error: 'CONNECTION_FAILED',
+          message: `Could not connect to "${printer.name}". Make sure the printer is turned ON, has paper, and is within Bluetooth range.`,
+        };
       }
     } catch (err) {
-      console.warn('[Bluetooth] Native connect error:', err);
+      return {
+        success: false,
+        error: 'CONNECTION_ERROR',
+        message: err.message || `Failed to establish connection with "${printer.name}".`,
+      };
     }
   }
 
@@ -154,9 +186,9 @@ export async function connectToPrinter(printer) {
 
   await AsyncStorage.setItem(PRINTER_STORAGE_KEY, JSON.stringify(printerData));
 
-  // Also save in remembered printers list
+  // Save in remembered list
   try {
-    const currentList = await getPairedBluetoothPrinters();
+    const currentList = await getPairedBluetoothPrinters(true);
     const exists = currentList.some(p => p.address === printer.address);
     if (!exists) {
       const updated = [printerData, ...currentList];
@@ -418,7 +450,7 @@ export function generateReceiptHTML(order, businessName = 'Bakery', paperWidth =
 
 /**
  * Main print function for Bluetooth thermal printers.
- * Connects directly and prints physically inside the app without external apps!
+ * Strictly prints to verified connected printer!
  */
 export async function printToBluetoothPrinter(order, businessName = 'Bakery', targetPaperWidth = null) {
   if (!order) {
@@ -431,21 +463,13 @@ export async function printToBluetoothPrinter(order, businessName = 'Bakery', ta
 
   const paperWidth = targetPaperWidth || (await getPrinterPaperWidth());
 
-  // 1. Get currently selected printer or search paired devices
-  let printer = await getConnectedPrinter();
-  if (!printer || !printer.address) {
-    const paired = await getPairedBluetoothPrinters();
-    if (paired && paired.length > 0) {
-      printer = paired[0];
-      await connectToPrinter(printer);
-    }
-  }
-
+  // 1. Get currently selected printer
+  const printer = await getConnectedPrinter();
   if (!printer || !printer.address) {
     return {
       success: false,
       error: 'NO_PRINTER',
-      message: 'No Bluetooth printer connected. Please select your printer in Printer Setup.',
+      message: 'No Bluetooth printer connected. Please connect your printer (e.g. P58E) in Printer Setup.',
       paperWidth,
     };
   }
@@ -472,7 +496,7 @@ export async function printToBluetoothPrinter(order, businessName = 'Bakery', ta
       return {
         success: false,
         error: 'PRINT_FAILED',
-        message: err.message || 'Could not print to Bluetooth device. Ensure printer is turned on.',
+        message: err.message || 'Could not print to printer. Ensure printer is turned ON, has paper, and is connected.',
         printerName: printer.name,
       };
     }
@@ -488,6 +512,14 @@ export async function printToBluetoothPrinter(order, businessName = 'Bakery', ta
 export async function testPrintReceipt(printer = null, businessName = 'Bakery') {
   const targetPrinter = printer || (await getConnectedPrinter());
   const paperWidth = targetPrinter?.paperWidth || (await getPrinterPaperWidth());
+
+  if (!targetPrinter || !targetPrinter.address) {
+    return {
+      success: false,
+      error: 'NO_PRINTER',
+      message: 'Please tap Connect on your thermal printer (e.g. P58E) first.',
+    };
+  }
 
   const dummyOrder = {
     id: 'TEST-' + Math.floor(1000 + Math.random() * 9000),

@@ -22,6 +22,7 @@ import {
   testPrintReceipt,
   printToBluetoothPrinter,
   printViaSystemSpooler,
+  isBluetoothConnected,
 } from '../services/bluetoothPrinterService';
 import { isNativeAvailable } from 'bluetooth-printer';
 
@@ -38,12 +39,13 @@ export default function BluetoothPrinterModal({
   const [isLoading, setIsLoading] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [connectingAddress, setConnectingAddress] = useState(null);
+  const [showAllDevices, setShowAllDevices] = useState(false);
 
   useEffect(() => {
     if (visible) {
       loadPrinterData();
     }
-  }, [visible]);
+  }, [visible, showAllDevices]);
 
   const loadPrinterData = async () => {
     setIsLoading(true);
@@ -51,10 +53,22 @@ export default function BluetoothPrinterModal({
       const [connected, width, paired] = await Promise.all([
         getConnectedPrinter(),
         getPrinterPaperWidth(),
-        getPairedBluetoothPrinters(),
+        getPairedBluetoothPrinters(showAllDevices),
       ]);
 
-      setConnectedPrinterState(connected);
+      // If connected printer is an audio device or not a true printer, disconnect it
+      if (connected) {
+        const nameLower = (connected.name || '').toLowerCase();
+        if (nameLower.includes('airpod') || nameLower.includes('earbud') || nameLower.includes('lulu')) {
+          await disconnectPrinter();
+          setConnectedPrinterState(null);
+        } else {
+          setConnectedPrinterState(connected);
+        }
+      } else {
+        setConnectedPrinterState(null);
+      }
+
       setPaperWidthState(width);
       setPrinters(paired);
     } catch (err) {
@@ -80,13 +94,19 @@ export default function BluetoothPrinterModal({
         setConnectedPrinterState(result.printer);
         Alert.alert(
           'Connected! 🖨️',
-          `${printer.name} is now connected. You can print receipts directly from the app.`
+          `"${printer.name}" is verified and ready to print.`
         );
       } else {
-        Alert.alert('Connection Error', 'Could not connect to printer. Ensure it is powered on and in range.');
+        Alert.alert(
+          'Connection Failed ⚠️',
+          result.message || 'Could not connect. Ensure printer is turned ON, has paper, and is within range.'
+        );
       }
     } catch (err) {
-      Alert.alert('Connection Error', err.message || 'Failed to connect to printer.');
+      Alert.alert(
+        'Connection Error',
+        err.message || 'Failed to connect to printer.'
+      );
     } finally {
       setConnectingAddress(null);
     }
@@ -103,6 +123,10 @@ export default function BluetoothPrinterModal({
   };
 
   const handleTestPrint = async () => {
+    if (!connectedPrinter) {
+      Alert.alert('No Printer Connected', 'Please tap Connect on your thermal printer (e.g. P58E) first.');
+      return;
+    }
     setIsPrinting(true);
     try {
       const result = await testPrintReceipt(connectedPrinter, businessName);
@@ -123,6 +147,10 @@ export default function BluetoothPrinterModal({
 
   const handlePrintOrder = async () => {
     if (!orderToPrint) return;
+    if (!connectedPrinter) {
+      Alert.alert('No Printer Connected', 'Please tap Connect on your thermal printer (e.g. P58E) first.');
+      return;
+    }
     setIsPrinting(true);
     try {
       const result = await printToBluetoothPrinter(orderToPrint, businessName, paperWidth);
@@ -165,16 +193,23 @@ export default function BluetoothPrinterModal({
 
     return (
       <View style={[styles.deviceCard, isConnected && styles.deviceCardActive]}>
-        <View style={styles.deviceIconBg}>
+        <View style={[styles.deviceIconBg, item.isPrinter && styles.deviceIconBgPrinter]}>
           <Ionicons
-            name={isConnected ? 'print' : 'bluetooth'}
+            name={item.isPrinter ? 'print' : 'bluetooth'}
             size={20}
-            color={isConnected ? '#16A34A' : COLORS.primary}
+            color={isConnected ? '#16A34A' : item.isPrinter ? COLORS.primary : COLORS.textMuted}
           />
         </View>
 
         <View style={styles.deviceInfo}>
-          <Text style={styles.deviceName}>{item.name || 'Bluetooth Printer'}</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.deviceName}>{item.name || 'Bluetooth Printer'}</Text>
+            {item.isPrinter && (
+              <View style={styles.printerTag}>
+                <Text style={styles.printerTagText}>PRINTER</Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.deviceAddress}>{item.address}</Text>
         </View>
 
@@ -186,7 +221,7 @@ export default function BluetoothPrinterModal({
             </View>
           ) : (
             <TouchableOpacity
-              style={styles.connectActionBtn}
+              style={[styles.connectActionBtn, !item.isPrinter && styles.connectActionBtnMuted]}
               onPress={() => handleConnect(item)}
               disabled={isConnecting}
             >
@@ -300,24 +335,34 @@ export default function BluetoothPrinterModal({
           {/* Paired Printers List */}
           <View style={styles.devicesSection}>
             <View style={styles.devicesSectionHeader}>
-              <Text style={styles.devicesSectionTitle}>PAIRED BLUETOOTH DEVICES</Text>
-              <TouchableOpacity onPress={loadPrinterData} disabled={isLoading} style={styles.refreshBtn}>
-                <Ionicons name="refresh" size={14} color={COLORS.primary} />
-                <Text style={styles.refreshBtnText}>Scan</Text>
-              </TouchableOpacity>
+              <Text style={styles.devicesSectionTitle}>AVAILABLE PRINTERS</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <TouchableOpacity
+                  onPress={() => setShowAllDevices(!showAllDevices)}
+                  style={styles.filterToggleBtn}
+                >
+                  <Text style={styles.filterToggleText}>
+                    {showAllDevices ? 'Printers only' : 'Show all'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={loadPrinterData} disabled={isLoading} style={styles.refreshBtn}>
+                  <Ionicons name="refresh" size={14} color={COLORS.primary} />
+                  <Text style={styles.refreshBtnText}>Scan</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {isLoading ? (
               <View style={styles.loadingBox}>
                 <ActivityIndicator size="small" color={COLORS.primary} />
-                <Text style={styles.loadingText}>Reading paired Bluetooth devices...</Text>
+                <Text style={styles.loadingText}>Reading Bluetooth printers...</Text>
               </View>
             ) : printers.length === 0 ? (
               <View style={styles.emptyPrintersBox}>
-                <Ionicons name="bluetooth-outline" size={32} color={COLORS.textMuted} />
-                <Text style={styles.emptyPrintersTitle}>No Paired Printer Found</Text>
+                <Ionicons name="print-outline" size={32} color={COLORS.textMuted} />
+                <Text style={styles.emptyPrintersTitle}>No Thermal Printer Found</Text>
                 <Text style={styles.emptyPrintersDesc}>
-                  Please pair your thermal printer in your phone's Android Bluetooth settings, then tap Scan.
+                  Make sure your thermal printer (e.g. P58E) is turned ON and paired in phone Bluetooth settings, then tap Scan.
                 </Text>
               </View>
             ) : (
@@ -527,6 +572,17 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     letterSpacing: 0.5,
   },
+  filterToggleBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: RADIUS.xs,
+    backgroundColor: COLORS.surfaceSubtle,
+  },
+  filterToggleText: {
+    fontSize: 10,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
   refreshBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -597,13 +653,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 10,
   },
+  deviceIconBgPrinter: {
+    backgroundColor: '#FEF3C7',
+  },
   deviceInfo: {
     flex: 1,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   deviceName: {
     fontSize: FONTS.sm,
     fontWeight: '700',
     color: COLORS.textPrimary,
+  },
+  printerTag: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  printerTagText: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    color: '#15803D',
   },
   deviceAddress: {
     fontSize: 10,
@@ -619,6 +694,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: RADIUS.sm,
+  },
+  connectActionBtnMuted: {
+    backgroundColor: COLORS.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   connectActionText: {
     color: '#FFF',

@@ -4,7 +4,6 @@ let NativePrinter = null;
 try {
   NativePrinter = requireNativeModule('BluetoothPrinter');
 } catch (e) {
-  // In development environments like Expo Go or Web, native module is unavailable
   console.log('[BluetoothPrinter] Native module not loaded:', e.message);
 }
 
@@ -16,6 +15,17 @@ export async function isBluetoothEnabled() {
       return await NativePrinter.isBluetoothEnabled();
     } catch (e) {
       console.warn('isBluetoothEnabled error:', e);
+    }
+  }
+  return false;
+}
+
+export async function isConnected() {
+  if (NativePrinter?.isConnected) {
+    try {
+      return await NativePrinter.isConnected();
+    } catch (e) {
+      return false;
     }
   }
   return false;
@@ -75,6 +85,7 @@ export async function disconnect() {
 export default {
   isNativeAvailable,
   isBluetoothEnabled,
+  isConnected,
   getPairedDevices,
   connect,
   printRawData,
