@@ -166,6 +166,90 @@ export async function testCloudConnection(targetUrl = null) {
   }
 }
 
+// ─── ZERO-KEY ADMIN APPROVAL WORKFLOW ────────────────────────────
+export async function requestApprovalFromCloud(customUrl = null, shopName = null) {
+  try {
+    const config = await getCloudConfig();
+    const info = await getDeviceInfo();
+    const url = (customUrl || config.serverUrl).trim().replace(/\/+$/, '');
+
+    const payload = {
+      deviceId: info.deviceId,
+      model: info.model,
+      osVersion: info.osVersion,
+      appVersion: info.appVersion,
+      shopName: shopName || 'Bakery Mobile Terminal',
+    };
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
+
+    const response = await fetch(`${url}/api/device/request-access`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    const data = await response.json().catch(() => ({}));
+
+    if (response.ok && data.status) {
+      await setDeviceStatus(data.status, data.message || '');
+      return {
+        success: true,
+        status: data.status,
+        message: data.message,
+      };
+    }
+
+    return {
+      success: false,
+      status: 'pending',
+      message: data.message || 'Unable to register terminal with server',
+    };
+  } catch (err) {
+    return {
+      success: false,
+      networkOffline: true,
+      message: 'Server unreachable. Please check your Wi-Fi connection.',
+    };
+  }
+}
+
+export async function checkApprovalStatus(customUrl = null) {
+  try {
+    const config = await getCloudConfig();
+    const info = await getDeviceInfo();
+    const url = (customUrl || config.serverUrl).trim().replace(/\/+$/, '');
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 4000);
+
+    const res = await fetch(`${url}/api/device/check-status?deviceId=${encodeURIComponent(info.deviceId)}`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.exists && data.status) {
+        if (data.status === 'active') {
+          await setDeviceStatus('active', '');
+        } else if (data.status !== config.deviceStatus) {
+          await setDeviceStatus(data.status);
+        }
+        return { success: true, status: data.status, shopName: data.shopName };
+      }
+    }
+    return { success: false, status: config.deviceStatus };
+  } catch {
+    return { success: false, networkOffline: true };
+  }
+}
+
 // ─── 4. DEVICE REGISTRATION & ANTI-TRANSFER HANDSHAKE ───────────
 export async function registerWithCloud(customUrl = null, customLicense = null, shopName = null) {
   try {
@@ -386,3 +470,4 @@ export async function restoreCloudData(customUrl = null, customLicense = null) {
     };
   }
 }
+

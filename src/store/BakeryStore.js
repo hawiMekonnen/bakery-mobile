@@ -5,6 +5,8 @@ import {
   getCloudConfig,
   getDeviceInfo,
   registerWithCloud,
+  requestApprovalFromCloud,
+  checkApprovalStatus,
   sendCloudHeartbeat,
   pushCloudSync,
 } from '../services/cloudSyncService';
@@ -617,26 +619,25 @@ export function BakeryProvider({ children }) {
           return;
         }
 
-        // Try registration / handshake with cloud server
-        const regRes = await registerWithCloud(
+        // Submit device request or verify approval with cloud server
+        const reqRes = await requestApprovalFromCloud(
           cfg.serverUrl,
-          cfg.licenseKey,
           stateRef.current.auth?.businessName
         );
         if (!isMounted) return;
 
-        if (regRes.success) {
+        if (reqRes.success && reqRes.status === 'active') {
           setCloudSyncStatus(prev => ({
             ...prev,
             state: 'synced',
             serverUrl: cfg.serverUrl,
           }));
           await pushCloudSync(stateRef.current, cfg.serverUrl);
-        } else if (regRes.status && regRes.status !== 'active') {
+        } else if (reqRes.status && reqRes.status !== 'active') {
           setLockoutState({
             isLocked: true,
-            status: regRes.status,
-            message: regRes.message,
+            status: reqRes.status,
+            message: reqRes.message,
             licenseKey: cfg.licenseKey,
             serverUrl: cfg.serverUrl,
             deviceId: info.deviceId,
