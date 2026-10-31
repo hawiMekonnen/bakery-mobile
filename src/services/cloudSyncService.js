@@ -85,7 +85,7 @@ export async function getCloudConfig() {
 
     const serverUrl = savedUrl && savedUrl.trim() ? savedUrl.trim() : DEFAULT_SERVER_URL;
     const licenseKey = savedLicense && savedLicense.trim() ? savedLicense.trim().toUpperCase() : DEFAULT_LICENSE_KEY;
-    const deviceStatus = status || 'active'; // Default active until server says otherwise
+    const deviceStatus = status || 'pending'; // Default active until server says otherwise
     const autoSync = autoSyncVal !== 'false';
     const lastSync = lastSyncRaw ? JSON.parse(lastSyncRaw) : null;
 
@@ -105,7 +105,7 @@ export async function getCloudConfig() {
       serverUrl: DEFAULT_SERVER_URL,
       licenseKey: DEFAULT_LICENSE_KEY,
       token: null,
-      deviceStatus: 'active',
+      deviceStatus: 'pending',
       lockoutMessage: '',
       lastSync: null,
       autoSync: true,

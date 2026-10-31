@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,41 +9,85 @@ import {
   Platform,
   ScrollView,
   Alert,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBakery } from '../store/BakeryStore';
+import { getCloudConfig, saveCloudSettings } from '../services/cloudSyncService';
 import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
 
 export default function LoginScreen() {
-  const { state, dispatch } = useBakery();
+  const { state, dispatch, requestLoginWithApproval } = useBakery();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  // Server URL settings
+  const [currentServerUrl, setCurrentServerUrl] = useState('');
+  const [showServerModal, setShowServerModal] = useState(false);
+  const [newServerInput, setNewServerInput] = useState('');
+
+  useEffect(() => {
+    getCloudConfig()
+      .then(cfg => {
+        setCurrentServerUrl(cfg.serverUrl);
+        setNewServerInput(cfg.serverUrl);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSaveServer = async () => {
+    const trimmed = newServerInput.trim().replace(/\/+$/, '');
+    if (!trimmed.startsWith('http')) {
+      Alert.alert('Invalid URL', 'Please enter a valid URL, e.g. http://192.168.0.116:5000');
+      return;
+    }
+    await saveCloudSettings({ serverUrl: trimmed });
+    setCurrentServerUrl(trimmed);
+    setShowServerModal(false);
+    Alert.alert('Server Updated', `Admin Server URL set to:\n${trimmed}`);
+  };
+
+  const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
       Alert.alert('Missing Fields', 'Please enter your username and password.');
       return;
     }
 
+    const validUsername = state.auth.username || 'admin';
+    const validPassword = state.auth.password || '1234';
+
+    if (
+      !(username.trim() === validUsername || (username.trim() === 'admin' && !state.auth.username)) ||
+      password !== validPassword
+    ) {
+      Alert.alert('Login Failed', 'Incorrect username or password. Please try again.');
+      return;
+    }
+
     setLoading(true);
 
-    // Small delay for UX
-    setTimeout(() => {
-      if (
-        username.trim() === state.auth.username &&
-        password === state.auth.password
-      ) {
-        dispatch({ type: 'LOGIN', payload: { username: username.trim(), password } });
-      } else {
+    if (requestLoginWithApproval) {
+      const res = await requestLoginWithApproval({ username: username.trim(), password });
+      setLoading(false);
+
+      if (res.offline) {
         Alert.alert(
-          'Login Failed',
-          'Incorrect username or password. Please try again.'
+          'Wi-Fi Connection Required',
+          `${res.message || 'Cannot reach admin server.'}\n\nPlease ensure this phone is connected to the same Wi-Fi network as the BakerAdmin computer, then try again.`,
+          [
+            { text: 'OK' },
+            { text: 'Change Server IP', onPress: () => setShowServerModal(true) },
+          ]
         );
       }
+      // If pending, BakeryStore has triggered the DeviceLockoutModal which auto-polls!
+      // When admin clicks Approve, it auto-unlocks and completes the login!
+    } else {
+      dispatch({ type: 'LOGIN', payload: { username: username.trim(), password } });
       setLoading(false);
-    }, 600);
+    }
   };
 
   return (
@@ -126,7 +170,7 @@ export default function LoginScreen() {
             disabled={loading}
           >
             {loading ? (
-              <Text style={styles.loginBtnText}>Signing In...</Text>
+              <Text style={styles.loginBtnText}>Connecting to Server...</Text>
             ) : (
               <>
                 <Ionicons name="log-in-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
@@ -136,11 +180,59 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Server IP Config Pill */}
+        <TouchableOpacity
+          onPress={() => setShowServerModal(true)}
+          style={styles.serverPill}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="wifi" size={13} color="#D97706" style={{ marginRight: 6 }} />
+          <Text style={styles.serverPillText} numberOfLines={1}>
+            Server: {currentServerUrl || 'http://192.168.0.116:5000'} (Tap to change)
+          </Text>
+        </TouchableOpacity>
+
         {/* Footer */}
         <Text style={styles.footerText}>
           Bakery Management System
         </Text>
       </ScrollView>
+
+      {/* Server IP Edit Modal */}
+      <Modal visible={showServerModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Admin Server Wi-Fi URL</Text>
+            <Text style={styles.modalSubtitle}>
+              Enter the IP address of your computer running BakerAdmin.
+            </Text>
+            <TextInput
+              style={styles.modalInput}
+              value={newServerInput}
+              onChangeText={setNewServerInput}
+              placeholder="http://192.168.0.116:5000"
+              placeholderTextColor={COLORS.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+            />
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnCancel]}
+                onPress={() => setShowServerModal(false)}
+              >
+                <Text style={styles.modalBtnCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalBtnSave]}
+                onPress={handleSaveServer}
+              >
+                <Text style={styles.modalBtnSaveText}>Save URL</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -158,109 +250,187 @@ const styles = StyleSheet.create({
   },
   logoArea: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 28,
   },
   logoBadge: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    backgroundColor: COLORS.primaryLight,
     justifyContent: 'center',
-    marginBottom: 14,
-    ...SHADOWS.lg,
+    alignItems: 'center',
+    marginBottom: 12,
+    ...SHADOWS.md,
   },
   logoEmoji: {
-    fontSize: 40,
+    fontSize: 38,
   },
   logoTitle: {
-    fontSize: FONTS.title,
+    fontSize: 28,
     fontWeight: '800',
     color: COLORS.textPrimary,
-    letterSpacing: -0.8,
+    letterSpacing: -0.5,
   },
   logoSubtitle: {
-    fontSize: FONTS.sm,
+    fontSize: 13,
     color: COLORS.textMuted,
-    marginTop: 4,
-    marginBottom: 10,
+    marginTop: 3,
+    fontWeight: '500',
   },
   loginCard: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.xl,
     padding: 24,
-    borderWidth: 1,
-    borderColor: COLORS.border,
     ...SHADOWS.md,
   },
   cardTitle: {
-    fontSize: FONTS.xxl,
+    fontSize: 20,
     fontWeight: '800',
     color: COLORS.textPrimary,
     marginBottom: 4,
-    letterSpacing: -0.5,
   },
   cardSubtitle: {
-    fontSize: FONTS.sm,
-    color: COLORS.textMuted,
-    marginBottom: 24,
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginBottom: 22,
   },
   fieldGroup: {
     marginBottom: 16,
   },
   fieldLabel: {
-    fontSize: FONTS.xs,
+    fontSize: 12,
     fontWeight: '700',
     color: COLORS.textSecondary,
+    marginBottom: 6,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surfaceSubtle,
+    backgroundColor: COLORS.background,
     borderRadius: RADIUS.md,
     borderWidth: 1.5,
     borderColor: COLORS.border,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-    minHeight: 48,
+    paddingHorizontal: 12,
   },
   inputIcon: {
-    marginRight: 10,
+    marginRight: 8,
   },
   textInput: {
     flex: 1,
-    fontSize: FONTS.md,
+    paddingVertical: 12,
+    fontSize: 15,
     color: COLORS.textPrimary,
-    paddingVertical: 10,
   },
   eyeBtn: {
-    padding: 6,
+    padding: 8,
   },
   loginBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.md,
-    paddingVertical: 15,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    paddingVertical: 14,
     marginTop: 8,
     ...SHADOWS.sm,
   },
   loginBtnLoading: {
-    opacity: 0.75,
+    opacity: 0.7,
   },
   loginBtnText: {
-    color: '#FFFFFF',
-    fontSize: FONTS.md,
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  serverPill: {
+    marginTop: 18,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 20,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    maxWidth: '90%',
+  },
+  serverPillText: {
+    fontSize: 11.5,
     fontWeight: '700',
+    color: '#92400E',
   },
   footerText: {
     textAlign: 'center',
-    fontSize: FONTS.xs,
+    fontSize: 12,
     color: COLORS.textMuted,
     marginTop: 24,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 380,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: 22,
+    ...SHADOWS.lg,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    marginBottom: 6,
+  },
+  modalSubtitle: {
+    fontSize: 12.5,
+    color: COLORS.textSecondary,
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  modalInput: {
+    backgroundColor: COLORS.background,
+    borderRadius: RADIUS.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: COLORS.textPrimary,
+    fontFamily: 'monospace',
+    marginBottom: 18,
+  },
+  modalBtnRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  modalBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: RADIUS.md,
+  },
+  modalBtnCancel: {
+    backgroundColor: COLORS.background,
+  },
+  modalBtnCancelText: {
+    color: COLORS.textSecondary,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  modalBtnSave: {
+    backgroundColor: COLORS.primary,
+  },
+  modalBtnSaveText: {
+    color: '#FFF',
+    fontWeight: '800',
+    fontSize: 13,
   },
 });

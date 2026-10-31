@@ -10,7 +10,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BakeryProvider, useBakery } from './src/store/BakeryStore';
 import EulaModal, { EULA_STORAGE_KEY } from './src/components/EulaModal';
-import { COLORS, FONTS } from './src/theme/colors';
+import { COLORS } from './src/theme/colors';
 
 // Auth
 import LoginScreen from './src/screens/LoginScreen';
@@ -103,7 +103,7 @@ function TabNavigator() {
   );
 }
 
-// Root app that gates between Loading, Login, and Main tabs
+// Root app: Loading → Login (with Admin Approval Check) → Main tabs
 function RootNavigator() {
   const { state, isReady } = useBakery();
   const [eulaAccepted, setEulaAccepted] = React.useState(true);
@@ -115,12 +115,10 @@ function RootNavigator() {
         setEulaAccepted(!!val);
         setCheckedEula(true);
       })
-      .catch(() => {
-        setCheckedEula(true);
-      });
+      .catch(() => setCheckedEula(true));
   }, []);
 
-  // Show premium loading splash while loading from phone storage
+  // Loading splash while AsyncStorage hydrates
   if (!isReady || !checkedEula) {
     return (
       <View style={{ flex: 1, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' }}>
@@ -136,12 +134,13 @@ function RootNavigator() {
     );
   }
 
+  // Not logged in -> Show LoginScreen
   const isLoggedIn = state.auth?.isLoggedIn === true;
-
   if (!isLoggedIn) {
     return <LoginScreen />;
   }
 
+  // Logged in -> Main app tabs
   return (
     <>
       <TabNavigator />

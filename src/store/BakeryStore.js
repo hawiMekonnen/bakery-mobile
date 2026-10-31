@@ -590,6 +590,55 @@ export function BakeryProvider({ children }) {
     deviceModel: '',
   });
 
+  const [pendingCredentials, setPendingCredentials] = useState(null);
+
+  // Sign-in gate with admin approval
+  const requestLoginWithApproval = async ({ username, password }) => {
+    try {
+      const [cfg, info] = await Promise.all([getCloudConfig(), getDeviceInfo()]);
+
+      // If device is already approved in local storage, login immediately
+      if (cfg.deviceStatus === 'active') {
+        dispatch({ type: 'LOGIN', payload: { username, password } });
+        return { success: true, status: 'active' };
+      }
+
+      // First time sign-in: Submit device access request to cloud server
+      const reqRes = await requestApprovalFromCloud(cfg.serverUrl, username);
+
+      if (reqRes.networkOffline) {
+        return {
+          success: false,
+          offline: true,
+          serverUrl: cfg.serverUrl,
+          message: `Cannot reach Admin Server at ${cfg.serverUrl}.\n\nFirst-time sign-in requires a Wi-Fi connection to the BakerAdmin server on your network.`
+        };
+      }
+
+      if (reqRes.status === 'active') {
+        setLockoutState(prev => ({ ...prev, isLocked: false, status: 'active' }));
+        dispatch({ type: 'LOGIN', payload: { username, password } });
+        return { success: true, status: 'active' };
+      }
+
+      // Waiting for admin approval
+      setPendingCredentials({ username, password });
+      setLockoutState({
+        isLocked: true,
+        status: reqRes.status || 'pending',
+        message: reqRes.message || 'Waiting for administrator approval in BakerAdmin.',
+        licenseKey: cfg.licenseKey,
+        serverUrl: cfg.serverUrl,
+        deviceId: info.deviceId,
+        deviceModel: info.model,
+      });
+
+      return { success: false, pending: true, status: reqRes.status || 'pending' };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  };
+
   const stateRef = useRef(state);
   useEffect(() => {
     stateRef.current = state;
@@ -605,8 +654,8 @@ export function BakeryProvider({ children }) {
         const [cfg, info] = await Promise.all([getCloudConfig(), getDeviceInfo()]);
         if (!isMounted) return;
 
-        // If previously saved as locked out, show lockout modal immediately
-        if (cfg.deviceStatus && cfg.deviceStatus !== 'active') {
+        // If device was revoked or suspended by admin, lock out immediately
+        if (cfg.deviceStatus === 'suspended' || cfg.deviceStatus === 'revoked' || cfg.deviceStatus === 'rejected') {
           setLockoutState({
             isLocked: true,
             status: cfg.deviceStatus,
@@ -619,30 +668,32 @@ export function BakeryProvider({ children }) {
           return;
         }
 
-        // Submit device request or verify approval with cloud server
-        const reqRes = await requestApprovalFromCloud(
-          cfg.serverUrl,
-          stateRef.current.auth?.businessName
-        );
-        if (!isMounted) return;
+        // If user is already logged in, verify status & sync in background
+        if (stateRef.current.auth?.isLoggedIn) {
+          const reqRes = await requestApprovalFromCloud(
+            cfg.serverUrl,
+            stateRef.current.auth?.businessName
+          );
+          if (!isMounted) return;
 
-        if (reqRes.success && reqRes.status === 'active') {
-          setCloudSyncStatus(prev => ({
-            ...prev,
-            state: 'synced',
-            serverUrl: cfg.serverUrl,
-          }));
-          await pushCloudSync(stateRef.current, cfg.serverUrl);
-        } else if (reqRes.status && reqRes.status !== 'active') {
-          setLockoutState({
-            isLocked: true,
-            status: reqRes.status,
-            message: reqRes.message,
-            licenseKey: cfg.licenseKey,
-            serverUrl: cfg.serverUrl,
-            deviceId: info.deviceId,
-            deviceModel: info.model,
-          });
+          if (reqRes.success && reqRes.status === 'active') {
+            setCloudSyncStatus(prev => ({
+              ...prev,
+              state: 'synced',
+              serverUrl: cfg.serverUrl,
+            }));
+            await pushCloudSync(stateRef.current, cfg.serverUrl);
+          } else if (reqRes.status && reqRes.status !== 'active') {
+            setLockoutState({
+              isLocked: true,
+              status: reqRes.status,
+              message: reqRes.message,
+              licenseKey: cfg.licenseKey,
+              serverUrl: cfg.serverUrl,
+              deviceId: info.deviceId,
+              deviceModel: info.model,
+            });
+          }
         }
       } catch (e) {
         if (isMounted) {
@@ -871,6 +922,7 @@ export function BakeryProvider({ children }) {
         isReady,
         wifiSyncStatus: cloudSyncStatus,
         cloudSyncStatus,
+        requestLoginWithApproval,
       }}
     >
       {children}
@@ -885,6 +937,10 @@ export function BakeryProvider({ children }) {
         onAuthorized={() => {
           setLockoutState(prev => ({ ...prev, isLocked: false, status: 'active' }));
           setCloudSyncStatus(prev => ({ ...prev, state: 'synced' }));
+          if (pendingCredentials) {
+            dispatch({ type: 'LOGIN', payload: pendingCredentials });
+            setPendingCredentials(null);
+          }
         }}
       />
     </BakeryContext.Provider>
