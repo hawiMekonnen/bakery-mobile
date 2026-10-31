@@ -97,3 +97,5 @@ export const SHADOWS = {
 };
 
 export const SHADOW = SHADOWS;
+
+export const CURRENCY = 'ETB ';

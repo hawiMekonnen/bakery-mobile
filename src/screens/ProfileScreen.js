@@ -234,7 +234,7 @@ export default function ProfileScreen({ navigation }) {
             </View>
             <View style={[styles.statPill, styles.statPillHighlight]}>
               <Text style={[styles.statPillValue, { color: COLORS.primary }]}>
-                ${todayRevenue.toFixed(2)}
+                ETB {todayRevenue.toFixed(2)}
               </Text>
               <Text style={styles.statPillLabel}>Today</Text>
             </View>

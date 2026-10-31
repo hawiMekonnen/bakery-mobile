@@ -86,7 +86,7 @@ export default function AnalyticsScreen({ navigation }) {
         onBack={() => navigation.goBack()}
         emoji="💳"
         title="Income Ledger"
-        subtitle={`Period: $${periodRevenue.toFixed(2)} • All time: $${allTimeRevenue.toFixed(2)}`}
+        subtitle={`Period: ETB ${periodRevenue.toFixed(2)} • All time: ETB ${allTimeRevenue.toFixed(2)}`}
         rightAction={
           <TouchableOpacity
             style={styles.calendarHeaderBtn}
@@ -172,7 +172,7 @@ export default function AnalyticsScreen({ navigation }) {
           <Text style={styles.heroLabel}>
             {selectedDate === 'All' ? 'ALL-TIME TOTAL GATHERED' : `COLLECTIONS FOR ${getDateLabel().toUpperCase()}`}
           </Text>
-          <Text style={styles.heroAmount}>${periodRevenue.toFixed(2)}</Text>
+          <Text style={styles.heroAmount}>ETB {periodRevenue.toFixed(2)}</Text>
           <Text style={styles.heroSub}>
             {filteredOrders.length} transactions completed on {getDateLabel()}
           </Text>
@@ -192,7 +192,7 @@ export default function AnalyticsScreen({ navigation }) {
                 </View>
               </View>
               <Text style={[styles.methodAmount, { color: COLORS.cashColor }]}>
-                ${cashTotal.toFixed(2)}
+                ETB {cashTotal.toFixed(2)}
               </Text>
             </View>
           </View>
@@ -207,7 +207,7 @@ export default function AnalyticsScreen({ navigation }) {
                 </View>
               </View>
               <Text style={[styles.methodAmount, { color: COLORS.cardColor }]}>
-                ${cardTotal.toFixed(2)}
+                ETB {cardTotal.toFixed(2)}
               </Text>
             </View>
           </View>
@@ -222,7 +222,7 @@ export default function AnalyticsScreen({ navigation }) {
                 </View>
               </View>
               <Text style={[styles.methodAmount, { color: COLORS.mobileColor }]}>
-                ${mobileTotal.toFixed(2)}
+                ETB {mobileTotal.toFixed(2)}
               </Text>
             </View>
           </View>
@@ -263,11 +263,11 @@ export default function AnalyticsScreen({ navigation }) {
                       {dateStr === yesterdayStr && <View style={styles.yesterdayBadge}><Text style={styles.yesterdayBadgeText}>Yesterday</Text></View>}
                     </View>
                     <Text style={styles.dailyHistorySub}>
-                      {dayOrders.length} sales • Cash: ${dayCash.toFixed(0)} | Card: ${dayCard.toFixed(0)} | Mobile: ${dayMobile.toFixed(0)}
+                      {dayOrders.length} sales • Cash: ETB {dayCash.toFixed(0)} | Card: ETB {dayCard.toFixed(0)} | Mobile: ETB {dayMobile.toFixed(0)}
                     </Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={styles.dailyHistoryTotal}>${dayTotal.toFixed(2)}</Text>
+                    <Text style={styles.dailyHistoryTotal}>ETB {dayTotal.toFixed(2)}</Text>
                     <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} style={{ marginTop: 2 }} />
                   </View>
                 </TouchableOpacity>

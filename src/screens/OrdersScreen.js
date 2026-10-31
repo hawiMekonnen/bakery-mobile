@@ -125,7 +125,7 @@ export default function OrdersScreen({ navigation }) {
         onBack={() => navigation.goBack()}
         emoji="🧾"
         title="Order History"
-        subtitle={`${filteredOrders.length} sales • $${totalRevenue.toFixed(2)} total`}
+        subtitle={`${filteredOrders.length} sales • ETB ${totalRevenue.toFixed(2)} total`}
         rightAction={
           <TouchableOpacity
             style={styles.calendarHeaderBtn}
@@ -300,7 +300,7 @@ export default function OrdersScreen({ navigation }) {
                   <Text style={styles.customerName}>{item.customerName || 'Walk-in Customer'}</Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.orderTotal}>${Number(item.total).toFixed(2)}</Text>
+                  <Text style={styles.orderTotal}>ETB {Number(item.total).toFixed(2)}</Text>
                   <View style={[styles.payMethodBadge, { backgroundColor: badgeBg }]}>
                     <Text style={[styles.payMethodText, { color: badgeColor }]}>{item.paymentMethod}</Text>
                   </View>
@@ -390,7 +390,7 @@ export default function OrdersScreen({ navigation }) {
                         <Text style={styles.receiptItemName}>{it.name} x{it.quantity}</Text>
                       </View>
                       <Text style={styles.receiptItemPrice}>
-                        ${(Number(it.price) * Number(it.quantity)).toFixed(2)}
+                        ETB {(Number(it.price) * Number(it.quantity)).toFixed(2)}
                       </Text>
                     </View>
                   ))}
@@ -399,15 +399,15 @@ export default function OrdersScreen({ navigation }) {
 
                   <View style={styles.receiptTotalRow}>
                     <Text style={styles.receiptTotalLabel}>Subtotal</Text>
-                    <Text style={styles.receiptTotalVal}>${Number(selectedOrder.subtotal).toFixed(2)}</Text>
+                    <Text style={styles.receiptTotalVal}>ETB {Number(selectedOrder.subtotal).toFixed(2)}</Text>
                   </View>
                   <View style={styles.receiptTotalRow}>
                     <Text style={styles.receiptTotalLabel}>Tax (5%)</Text>
-                    <Text style={styles.receiptTotalVal}>${Number(selectedOrder.tax).toFixed(2)}</Text>
+                    <Text style={styles.receiptTotalVal}>ETB {Number(selectedOrder.tax).toFixed(2)}</Text>
                   </View>
                   <View style={[styles.receiptTotalRow, { marginTop: 4 }]}>
                     <Text style={styles.receiptGrandTotalLabel}>TOTAL</Text>
-                    <Text style={styles.receiptGrandTotalVal}>${Number(selectedOrder.total).toFixed(2)}</Text>
+                    <Text style={styles.receiptGrandTotalVal}>ETB {Number(selectedOrder.total).toFixed(2)}</Text>
                   </View>
                 </View>
               </ScrollView>

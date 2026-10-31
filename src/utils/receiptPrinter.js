@@ -46,7 +46,7 @@ export function generateReceiptHTML(order, businessName = 'Bakery', paperWidth =
   const itemsRows = items.map(item => `
     <tr>
       <td style="padding: 3px 0; font-size: 11px; word-break: break-word;">${item.name} x${item.quantity}</td>
-      <td style="padding: 3px 0; font-size: 11px; text-align: right; white-space: nowrap;">$${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
+      <td style="padding: 3px 0; font-size: 11px; text-align: right; white-space: nowrap;">ETB ${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
     </tr>
   `).join('');
 
@@ -154,15 +154,15 @@ export function generateReceiptHTML(order, businessName = 'Bakery', paperWidth =
         <table class="total-table">
           <tr>
             <td>Subtotal:</td>
-            <td style="text-align: right;">$${Number(order.subtotal || 0).toFixed(2)}</td>
+            <td style="text-align: right;">ETB ${Number(order.subtotal || 0).toFixed(2)}</td>
           </tr>
           <tr>
             <td>Tax (5%):</td>
-            <td style="text-align: right;">$${Number(order.tax || 0).toFixed(2)}</td>
+            <td style="text-align: right;">ETB ${Number(order.tax || 0).toFixed(2)}</td>
           </tr>
           <tr class="grand-total">
             <td style="padding-top: 4px;">TOTAL:</td>
-            <td style="text-align: right; padding-top: 4px;">$${Number(order.total || 0).toFixed(2)}</td>
+            <td style="text-align: right; padding-top: 4px;">ETB ${Number(order.total || 0).toFixed(2)}</td>
           </tr>
         </table>
 
@@ -185,7 +185,7 @@ export function generateReceiptText(order, businessName = 'Bakery') {
   const dateStr = order.createdAt ? new Date(order.createdAt).toLocaleString() : new Date().toLocaleString();
   const secCode = generateReceiptSecurityCode(order);
   const itemsText = (order.items || [])
-    .map(i => `${i.name} x${i.quantity}  $${(Number(i.price) * Number(i.quantity)).toFixed(2)}`)
+    .map(i => `${i.name} x${i.quantity}  ETB ${(Number(i.price) * Number(i.quantity)).toFixed(2)}`)
     .join('\n');
 
   return `
@@ -201,9 +201,9 @@ Security: ${secCode} (Anti-Tamper Verified)
 --------------------------------
 ${itemsText}
 --------------------------------
-Subtotal: $${Number(order.subtotal || 0).toFixed(2)}
-Tax (5%): $${Number(order.tax || 0).toFixed(2)}
-TOTAL:    $${Number(order.total || 0).toFixed(2)}
+Subtotal: ETB ${Number(order.subtotal || 0).toFixed(2)}
+Tax (5%): ETB ${Number(order.tax || 0).toFixed(2)}
+TOTAL:    ETB ${Number(order.total || 0).toFixed(2)}
 ================================
 Thank you for your visit! 🥐
 `.trim();

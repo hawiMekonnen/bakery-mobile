@@ -187,7 +187,7 @@ export default function POSScreen({ navigation }) {
           >
             <Ionicons name="cart" size={17} color={cart.length > 0 ? '#FFF' : COLORS.textPrimary} />
             <Text style={[styles.headerCartText, cart.length > 0 && { color: '#FFF' }]}>
-              {totalItemsCount} | ${total.toFixed(0)}
+              {totalItemsCount} | ETB {total.toFixed(0)}
             </Text>
           </TouchableOpacity>
         }
@@ -294,7 +294,7 @@ export default function POSScreen({ navigation }) {
               </View>
 
               <View style={styles.productBottomRow}>
-                <Text style={styles.productPrice}>${Number(item.price).toFixed(2)}</Text>
+                <Text style={styles.productPrice}>ETB {Number(item.price).toFixed(2)}</Text>
                 <View style={styles.addIconCircle}>
                   <Ionicons name="add" size={16} color="#FFF" />
                 </View>
@@ -309,7 +309,7 @@ export default function POSScreen({ navigation }) {
         <View style={styles.floatingCartBar}>
           <View>
             <Text style={styles.floatingCartCount}>{totalItemsCount} items selected</Text>
-            <Text style={styles.floatingCartTotal}>${total.toFixed(2)} total</Text>
+            <Text style={styles.floatingCartTotal}>ETB {total.toFixed(2)} total</Text>
           </View>
           <TouchableOpacity
             style={styles.floatingCheckoutBtn}
@@ -353,7 +353,7 @@ export default function POSScreen({ navigation }) {
                     <Text style={{ fontSize: 24, marginRight: 10 }}>{item.emoji || '🥐'}</Text>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.cartItemName}>{item.name}</Text>
-                      <Text style={styles.cartItemPrice}>${Number(item.price).toFixed(2)} each</Text>
+                      <Text style={styles.cartItemPrice}>ETB {Number(item.price).toFixed(2)} each</Text>
                     </View>
                     <View style={styles.qtyControl}>
                       <TouchableOpacity onPress={() => changeQuantityBy(item.id, -1)} style={styles.qtyBtn}>
@@ -395,15 +395,15 @@ export default function POSScreen({ navigation }) {
 
                 <View style={styles.cartSummaryRow}>
                   <Text style={styles.cartSummaryLabel}>Subtotal</Text>
-                  <Text style={styles.cartSummaryVal}>${subtotal.toFixed(2)}</Text>
+                  <Text style={styles.cartSummaryVal}>ETB {subtotal.toFixed(2)}</Text>
                 </View>
                 <View style={styles.cartSummaryRow}>
                   <Text style={styles.cartSummaryLabel}>Tax (5%)</Text>
-                  <Text style={styles.cartSummaryVal}>${tax.toFixed(2)}</Text>
+                  <Text style={styles.cartSummaryVal}>ETB {tax.toFixed(2)}</Text>
                 </View>
                 <View style={[styles.cartSummaryRow, { marginTop: 4 }]}>
                   <Text style={styles.cartGrandTotalLabel}>TOTAL DUE</Text>
-                  <Text style={styles.cartGrandTotalVal}>${total.toFixed(2)}</Text>
+                  <Text style={styles.cartGrandTotalVal}>ETB {total.toFixed(2)}</Text>
                 </View>
 
                 <TouchableOpacity
@@ -412,7 +412,7 @@ export default function POSScreen({ navigation }) {
                   activeOpacity={0.85}
                 >
                   <Ionicons name="checkmark-circle" size={18} color="#FFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.completeOrderText}>Complete Sale (${total.toFixed(2)})</Text>
+                  <Text style={styles.completeOrderText}>Complete Sale (ETB {total.toFixed(2)})</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -435,7 +435,7 @@ export default function POSScreen({ navigation }) {
               </View>
               <Text style={styles.successTitle}>Payment Completed!</Text>
               <Text style={styles.successSub}>Order {lastCompletedOrder.id} successfully recorded</Text>
-              <Text style={styles.successAmount}>${Number(lastCompletedOrder.total).toFixed(2)}</Text>
+              <Text style={styles.successAmount}>ETB {Number(lastCompletedOrder.total).toFixed(2)}</Text>
               <Text style={styles.successMethod}>Paid via {lastCompletedOrder.paymentMethod}</Text>
 
               {/* Receipt Print & Share Actions */}

@@ -171,7 +171,7 @@ export default function ItemsSoldScreen({ navigation }) {
             <View style={styles.prodInfo}>
               <Text style={styles.prodName}>{item.name}</Text>
               <Text style={styles.prodMeta}>
-                {item.category} • ${Number(item.price).toFixed(2)}
+                {item.category} • ETB {Number(item.price).toFixed(2)}
               </Text>
             </View>
           </View>

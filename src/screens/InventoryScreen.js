@@ -164,7 +164,7 @@ export default function InventoryScreen({ navigation }) {
                 <View>
                   <Text style={styles.itemName}>{item.name}</Text>
                   <Text style={styles.itemMeta}>
-                    Min: {item.minStock} {item.unit} • ${Number(item.costPerUnit || 0).toFixed(2)}/{item.unit}
+                    Min: {item.minStock} {item.unit} • ETB {Number(item.costPerUnit || 0).toFixed(2)}/{item.unit}
                   </Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>

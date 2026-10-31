@@ -270,7 +270,7 @@ export default function DashboardScreen({ navigation }) {
               <Text style={styles.primaryCardLabel}>TODAY'S SALES</Text>
               <Ionicons name="trending-up" size={16} color="rgba(255,255,255,0.85)" />
             </View>
-            <Text style={styles.primaryCardValue}>${todayRevenue.toFixed(2)}</Text>
+            <Text style={styles.primaryCardValue}>ETB {todayRevenue.toFixed(2)}</Text>
             <Text style={styles.primaryCardSub}>{todayOrders.length} orders today</Text>
           </TouchableOpacity>
 
@@ -287,7 +287,7 @@ export default function DashboardScreen({ navigation }) {
               {orders.length}
             </Text>
             <Text style={styles.secondaryCardSub}>
-              ${totalAllTimeRevenue.toFixed(2)} in database
+              ETB {totalAllTimeRevenue.toFixed(2)} in database
             </Text>
           </TouchableOpacity>
         </View>
@@ -310,7 +310,7 @@ export default function DashboardScreen({ navigation }) {
                 <Text style={styles.incomeMethodEmoji}>💵</Text>
                 <Text style={styles.incomeMethodLabel}>CASH</Text>
                 <Text style={[styles.incomeMethodVal, { color: COLORS.cashColor }]}>
-                  ${todayCash.toFixed(2)}
+                  ETB {todayCash.toFixed(2)}
                 </Text>
               </View>
 
@@ -318,7 +318,7 @@ export default function DashboardScreen({ navigation }) {
                 <Text style={styles.incomeMethodEmoji}>💳</Text>
                 <Text style={styles.incomeMethodLabel}>CARD</Text>
                 <Text style={[styles.incomeMethodVal, { color: COLORS.cardColor }]}>
-                  ${todayCard.toFixed(2)}
+                  ETB {todayCard.toFixed(2)}
                 </Text>
               </View>
 
@@ -326,14 +326,14 @@ export default function DashboardScreen({ navigation }) {
                 <Text style={styles.incomeMethodEmoji}>📱</Text>
                 <Text style={styles.incomeMethodLabel}>MOBILE</Text>
                 <Text style={[styles.incomeMethodVal, { color: COLORS.mobileColor }]}>
-                  ${todayMobile.toFixed(2)}
+                  ETB {todayMobile.toFixed(2)}
                 </Text>
               </View>
             </View>
 
             <View style={styles.incomeTotalRow}>
               <Text style={styles.incomeTotalLabel}>Total Collected Today</Text>
-              <Text style={styles.incomeTotalVal}>${todayRevenue.toFixed(2)}</Text>
+              <Text style={styles.incomeTotalVal}>ETB {todayRevenue.toFixed(2)}</Text>
             </View>
           </View>
         </View>
@@ -404,7 +404,7 @@ export default function DashboardScreen({ navigation }) {
                       </Text>
                     </View>
                     <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={styles.recentOrderTotal}>${Number(item.total).toFixed(2)}</Text>
+                      <Text style={styles.recentOrderTotal}>ETB {Number(item.total).toFixed(2)}</Text>
                       <Ionicons name="chevron-forward" size={14} color={COLORS.textMuted} style={{ marginTop: 2 }} />
                     </View>
                   </TouchableOpacity>
@@ -459,7 +459,7 @@ export default function DashboardScreen({ navigation }) {
                   <Text style={{ fontSize: 32 }}>{p.emoji || '🥐'}</Text>
                 </View>
                 <Text style={styles.topProductName} numberOfLines={1}>{p.name}</Text>
-                <Text style={styles.topProductPrice}>${Number(p.price).toFixed(2)}</Text>
+                <Text style={styles.topProductPrice}>ETB {Number(p.price).toFixed(2)}</Text>
                 <View style={styles.topProductSoldBadge}>
                   <Text style={styles.topProductSoldText}>
                     {(todaySoldMap[p.id] || 0) > 0 ? `${todaySoldMap[p.id]} sold today` : p.category}

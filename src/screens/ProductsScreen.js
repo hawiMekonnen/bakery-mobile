@@ -217,8 +217,8 @@ export default function ProductsScreen({ navigation }) {
                   </View>
                 )}
               </View>
-              <Text style={styles.itemCategory}>{item.category} • Cost: ${Number(item.cost || 0).toFixed(2)}</Text>
-              <Text style={styles.itemPrice}>${Number(item.price).toFixed(2)}</Text>
+              <Text style={styles.itemCategory}>{item.category} • Cost: ETB {Number(item.cost || 0).toFixed(2)}</Text>
+              <Text style={styles.itemPrice}>ETB {Number(item.price).toFixed(2)}</Text>
             </View>
 
             <View style={styles.itemActions}>

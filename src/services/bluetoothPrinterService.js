@@ -316,17 +316,17 @@ export function buildEscPosBytes(order, businessName = 'Bakery', paperWidth = '5
   // 4. Items List
   (order.items || []).forEach(item => {
     const nameLine = `${item.name} x${item.quantity}`;
-    const amountStr = '$' + (Number(item.price) * Number(item.quantity)).toFixed(2);
+    const amountStr = 'ETB ' + (Number(item.price) * Number(item.quantity)).toFixed(2);
     addLine(padBetween(nameLine, amountStr));
   });
 
   // 5. Totals
   addLine(divider);
-  addLine(padBetween('Subtotal:', '$' + Number(order.subtotal || 0).toFixed(2)));
-  addLine(padBetween('Tax (5%):', '$' + Number(order.tax || 0).toFixed(2)));
+  addLine(padBetween('Subtotal:', 'ETB ' + Number(order.subtotal || 0).toFixed(2)));
+  addLine(padBetween('Tax (5%):', 'ETB ' + Number(order.tax || 0).toFixed(2)));
   addLine(doubleDivider);
   addBytes(0x1B, 0x45, 0x01); // Bold ON
-  addLine(padBetween('TOTAL:', '$' + Number(order.total || 0).toFixed(2)));
+  addLine(padBetween('TOTAL:', 'ETB ' + Number(order.total || 0).toFixed(2)));
   addBytes(0x1B, 0x45, 0x00); // Bold OFF
   addLine(doubleDivider);
 
@@ -387,7 +387,7 @@ export function generateReceiptHTML(order, businessName = 'Bakery', paperWidth =
   const itemsHtml = (order.items || []).map(item => `
     <tr>
       <td style="text-align: left; padding: 2px 0;">${item.name} x${item.quantity}</td>
-      <td style="text-align: right; padding: 2px 0;">$${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
+      <td style="text-align: right; padding: 2px 0;">ETB ${(Number(item.price) * Number(item.quantity)).toFixed(2)}</td>
     </tr>
   `).join('');
 
@@ -432,12 +432,12 @@ export function generateReceiptHTML(order, businessName = 'Bakery', paperWidth =
       </table>
       <div class="divider"></div>
       <table>
-        <tr><td>Subtotal:</td><td style="text-align: right;">$${Number(order.subtotal || 0).toFixed(2)}</td></tr>
-        <tr><td>Tax (5%):</td><td style="text-align: right;">$${Number(order.tax || 0).toFixed(2)}</td></tr>
+        <tr><td>Subtotal:</td><td style="text-align: right;">ETB ${Number(order.subtotal || 0).toFixed(2)}</td></tr>
+        <tr><td>Tax (5%):</td><td style="text-align: right;">ETB ${Number(order.tax || 0).toFixed(2)}</td></tr>
       </table>
       <div class="double-divider"></div>
       <table>
-        <tr class="bold" style="font-size: 13px;"><td>TOTAL:</td><td style="text-align: right;">$${Number(order.total || 0).toFixed(2)}</td></tr>
+        <tr class="bold" style="font-size: 13px;"><td>TOTAL:</td><td style="text-align: right;">ETB ${Number(order.total || 0).toFixed(2)}</td></tr>
       </table>
       <div class="double-divider"></div>
       <div class="center" style="font-size: 9px; margin-top: 4px;">VERIFIED AUTHENTIC SALE</div>
