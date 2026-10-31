@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BakeryProvider, useBakery } from './src/store/BakeryStore';
-// EulaModal accessible from Profile screen on demand
+import EulaModal, { EULA_STORAGE_KEY } from './src/components/EulaModal';
 import { COLORS } from './src/theme/colors';
 
 // Auth
@@ -103,12 +103,23 @@ function TabNavigator() {
   );
 }
 
-// Root app: Loading → Login (with Admin Approval Check) → Main tabs
+// Root app: Loading → Login (with Admin Approval Check) → Agreement Popup → Main tabs
 function RootNavigator() {
   const { state, isReady } = useBakery();
+  const [eulaAccepted, setEulaAccepted] = React.useState(true);
+  const [checkedEula, setCheckedEula] = React.useState(false);
+
+  React.useEffect(() => {
+    AsyncStorage.getItem(EULA_STORAGE_KEY)
+      .then(val => {
+        setEulaAccepted(!!val);
+        setCheckedEula(true);
+      })
+      .catch(() => setCheckedEula(true));
+  }, []);
 
   // Loading splash while AsyncStorage hydrates
-  if (!isReady) {
+  if (!isReady || !checkedEula) {
     return (
       <View style={{ flex: 1, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' }}>
         <Text style={{ fontSize: 50, marginBottom: 12 }}>🥐</Text>
@@ -129,8 +140,20 @@ function RootNavigator() {
     return <LoginScreen />;
   }
 
-  // Logged in -> Main app tabs (No popup interruptions!)
-  return <TabNavigator />;
+  // Logged in -> Main app tabs + Clean Plain-Text Agreement Popup
+  return (
+    <>
+      <TabNavigator />
+      {!eulaAccepted && (
+        <EulaModal
+          visible={!eulaAccepted}
+          isFirstTimeSetup={true}
+          onAccept={() => setEulaAccepted(true)}
+          onClose={() => setEulaAccepted(true)}
+        />
+      )}
+    </>
+  );
 }
 
 export default function App() {
