@@ -298,57 +298,7 @@ export default function ProfileScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Cloud Admin Sync & Anti-Transfer Licensing */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>CLOUD BACKEND & DEVICE LICENSING</Text>
 
-          <TouchableOpacity
-            style={styles.settingRow}
-            onPress={() => setCloudModalVisible(true)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.settingIcon, { backgroundColor: '#EFF6FF' }]}>
-              <Ionicons name="cloud-done" size={18} color="#2563EB" />
-            </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Cloud Server & Anti-Transfer</Text>
-              <Text style={[styles.settingValue, cloudConfig?.deviceStatus === 'active' ? { color: '#16A34A', fontWeight: '700' } : null]}>
-                {cloudConfig?.deviceStatus === 'active'
-                  ? `License: ${cloudConfig?.licenseKey || 'SKY-BAKERY-001'} • Cloud Synced`
-                  : 'License Setup & Server URL'}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.settingRow, styles.lastRow]}
-            onPress={() => {
-              if (hardwareId) {
-                Clipboard.setString(hardwareId);
-                setCopyIdSuccess(true);
-                setTimeout(() => setCopyIdSuccess(false), 2000);
-                Alert.alert('Copied Hardware ID', hardwareId);
-              }
-            }}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.settingIcon, { backgroundColor: '#F1F5F9' }]}>
-              <Ionicons name="hardware-chip-outline" size={18} color="#475569" />
-            </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Phone Hardware ID</Text>
-              <Text style={[styles.settingValue, { fontFamily: 'monospace', fontSize: 11 }]} numberOfLines={1}>
-                {hardwareId || 'Generating...'}
-              </Text>
-            </View>
-            <Ionicons
-              name={copyIdSuccess ? 'checkmark-circle' : 'copy-outline'}
-              size={18}
-              color={copyIdSuccess ? '#16A34A' : COLORS.textMuted}
-            />
-          </TouchableOpacity>
-        </View>
 
         {/* Bluetooth Thermal Receipt Printer Section */}
         <View style={styles.section}>

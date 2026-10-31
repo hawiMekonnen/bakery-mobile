@@ -180,59 +180,16 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Server IP Config Pill */}
-        <TouchableOpacity
-          onPress={() => setShowServerModal(true)}
-          style={styles.serverPill}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="wifi" size={13} color="#D97706" style={{ marginRight: 6 }} />
-          <Text style={styles.serverPillText} numberOfLines={1}>
-            Server: {currentServerUrl || 'http://192.168.0.116:5000'} (Tap to change)
-          </Text>
-        </TouchableOpacity>
+        {/* License Agreement Notice */}
+        <Text style={{ textAlign: 'center', fontSize: 11.5, color: COLORS.textMuted, marginTop: 18, lineHeight: 16 }}>
+          By signing in, you agree to the software license agreement and terms of service.
+        </Text>
 
         {/* Footer */}
         <Text style={styles.footerText}>
           Bakery Management System
         </Text>
       </ScrollView>
-
-      {/* Server IP Edit Modal */}
-      <Modal visible={showServerModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Admin Server Wi-Fi URL</Text>
-            <Text style={styles.modalSubtitle}>
-              Enter the IP address of your computer running BakerAdmin.
-            </Text>
-            <TextInput
-              style={styles.modalInput}
-              value={newServerInput}
-              onChangeText={setNewServerInput}
-              placeholder="http://192.168.0.116:5000"
-              placeholderTextColor={COLORS.textMuted}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-            />
-            <View style={styles.modalBtnRow}>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.modalBtnCancel]}
-                onPress={() => setShowServerModal(false)}
-              >
-                <Text style={styles.modalBtnCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.modalBtnSave]}
-                onPress={handleSaveServer}
-              >
-                <Text style={styles.modalBtnSaveText}>Save URL</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </KeyboardAvoidingView>
   );
 }
