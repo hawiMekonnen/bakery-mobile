@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,43 +7,46 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  Share,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBakery } from '../store/BakeryStore';
-import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
+import { COLORS, SHADOWS } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
 import EulaModal from '../components/EulaModal';
 import BluetoothPrinterModal from '../components/BluetoothPrinterModal';
-import CloudSyncModal from '../components/CloudSyncModal';
-import { getCloudConfig, getHardwareDeviceId } from '../services/cloudSyncService';
+import { getCloudConfig, getHardwareDeviceId, pushBatchOrders } from '../services/cloudSyncService';
 import { Clipboard } from 'react-native';
-import { getConnectedPrinter } from '../services/bluetoothPrinterService';
-
+import { getConnectedPrinter, printReceiptDirect } from '../services/bluetoothPrinterService';
 
 export default function ProfileScreen({ navigation }) {
   const { state, dispatch } = useBakery();
   const { auth, orders, products, inventory } = state;
 
-  const [editMode, setEditMode] = useState(null); // 'username' | 'password' | 'business' | null
+  // Dialogs and Modals
+  const [editMode, setEditMode] = useState(null); // 'username' | 'password' | 'clear' | null
   const [newUsername, setNewUsername] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [businessName, setBusinessName] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [showNewPass, setShowNewPass] = useState(false);
+  const [clearInputConfirm, setClearInputConfirm] = useState('');
+  const [clearPin, setClearPin] = useState('');
+
   const [btModalVisible, setBtModalVisible] = useState(false);
   const [connectedBtPrinter, setConnectedBtPrinter] = useState(null);
   const [eulaModalVisible, setEulaModalVisible] = useState(false);
-  const [cloudModalVisible, setCloudModalVisible] = useState(false);
+  const [legalDocType, setLegalDocType] = useState('eula'); // 'eula' | 'tax' | 'ownership'
+
   const [cloudConfig, setCloudConfig] = useState(null);
   const [hardwareId, setHardwareId] = useState('');
   const [copyIdSuccess, setCopyIdSuccess] = useState(false);
+  const [isSyncingNow, setIsSyncingNow] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     getCloudConfig().then(cfg => setCloudConfig(cfg));
     getHardwareDeviceId().then(id => setHardwareId(id));
+    getConnectedPrinter().then(p => setConnectedBtPrinter(p));
   }, []);
 
   const refreshCloud = async () => {
@@ -51,35 +54,56 @@ export default function ProfileScreen({ navigation }) {
     setCloudConfig(cfg);
   };
 
-  React.useEffect(() => {
-    getConnectedPrinter().then(p => setConnectedBtPrinter(p));
-  }, []);
-
-
   const canGoBack = navigation && typeof navigation.canGoBack === 'function' && navigation.canGoBack();
 
-  const openEdit = (mode) => {
-    if (mode === 'server') { setNewServerUrl(serverUrl); setEditMode('server'); return; }
-    setEditMode(mode);
-    setNewUsername(auth.username);
-    setNewPassword('');
-    setConfirmPassword('');
-    setCurrentPassword('');
-    setBusinessName(auth.businessName || '');
-    setShowPass(false);
-    setShowNewPass(false);
+  // Metrics calculation in Addis Ababa local date
+  const ADDIS_OFFSET_MS = 3 * 3600 * 1000;
+  const todayStr = new Date(Date.now() + ADDIS_OFFSET_MS).toISOString().split('T')[0];
+  const todayOrders = (orders || []).filter(o => {
+    if (!o.createdAt) return false;
+    const d = new Date(new Date(o.createdAt).getTime() + ADDIS_OFFSET_MS).toISOString().split('T')[0];
+    return d === todayStr;
+  });
+  const todayRevenue = todayOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+  const unsyncedOrders = (orders || []).filter(o => o.syncStatus !== 'synced');
+
+  // Manual Sync Now Action
+  const handleSyncNow = async () => {
+    setIsSyncingNow(true);
+    try {
+      const res = await pushBatchOrders(unsyncedOrders.length > 0 ? unsyncedOrders : orders, {
+        pendingCount: unsyncedOrders.length,
+        inventory: inventory || [],
+        products: products || []
+      });
+
+      if (res.success) {
+        if (unsyncedOrders.length > 0) {
+          const syncedIds = unsyncedOrders.map(o => o.id);
+          dispatch({ type: 'MARK_ORDERS_SYNCED', payload: { syncedOrderIds: syncedIds } });
+        }
+        await refreshCloud();
+        Alert.alert('Synchronization Complete', `${res.syncedCount || 0} orders uploaded. All records in sync with server.`);
+      } else if (res.blocked) {
+        Alert.alert('Terminal Suspended', res.reason || 'Terminal access has been suspended in BakerAdmin.');
+      } else {
+        Alert.alert('Sync Notice', res.message || 'Server unreachable. Orders remain safely stored on this phone.');
+      }
+    } catch (err) {
+      Alert.alert('Sync Error', 'Failed to reach cloud server.');
+    } finally {
+      setIsSyncingNow(false);
+    }
   };
 
+  // Credentials actions
   const handleSaveUsername = () => {
     if (!newUsername.trim()) {
-      Alert.alert('Error', 'Username cannot be empty.');
+      Alert.alert('Validation Error', 'Username cannot be blank.');
       return;
     }
-    dispatch({
-      type: 'UPDATE_CREDENTIALS',
-      payload: { newUsername: newUsername.trim() },
-    });
-    Alert.alert('Success', 'Username updated successfully!');
+    dispatch({ type: 'UPDATE_CREDENTIALS', payload: { newUsername: newUsername.trim() } });
+    Alert.alert('Success', 'Username updated successfully.');
     setEditMode(null);
   };
 
@@ -96,31 +120,45 @@ export default function ProfileScreen({ navigation }) {
       Alert.alert('Error', 'New passwords do not match.');
       return;
     }
-    dispatch({
-      type: 'UPDATE_CREDENTIALS',
-      payload: { newPassword },
-    });
-    Alert.alert('Success', 'Password changed successfully!');
+    dispatch({ type: 'UPDATE_CREDENTIALS', payload: { newPassword } });
+    Alert.alert('Success', 'Password changed successfully.');
     setEditMode(null);
   };
 
-  const handleSaveBusinessName = () => {
-    if (!businessName.trim()) {
-      Alert.alert('Error', 'Business name cannot be empty.');
+  // Danger Zone: Clear Sales Records
+  const handleClearRecords = () => {
+    if (unsyncedOrders.length > 0) {
+      Alert.alert(
+        'Action Blocked',
+        `You have ${unsyncedOrders.length} unsynced orders waiting for upload. You cannot clear sales records until all orders have uploaded to BakerAdmin.`
+      );
       return;
     }
-    dispatch({
-      type: 'UPDATE_CREDENTIALS',
-      payload: { businessName: businessName.trim() },
-    });
-    Alert.alert('Success', 'Business name updated!');
-    setEditMode(null);
+    setClearInputConfirm('');
+    setClearPin('');
+    setEditMode('clear');
   };
 
-  const handleLogout = () => {
+  const handleConfirmClearRecords = () => {
+    if (clearPin !== '1234' && clearPin !== auth.password) {
+      Alert.alert('Access Denied', 'Manager PIN or current password is incorrect.');
+      return;
+    }
+    if (clearInputConfirm.trim().toUpperCase() !== 'CLEAR') {
+      Alert.alert('Verification Failed', 'Please type CLEAR to confirm.');
+      return;
+    }
+
+    dispatch({ type: 'RESET_ORDERS' });
+    setEditMode(null);
+    Alert.alert('Records Cleared', 'Local sales orders have been wiped. Inventory remains intact.');
+  };
+
+  // Sign out confirmation
+  const handleSignOut = () => {
     Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
+      'Confirm Sign Out',
+      'Are you sure you want to sign out of this terminal session?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -132,83 +170,41 @@ export default function ProfileScreen({ navigation }) {
     );
   };
 
-  const handleResetSales = () => {
-    setPinModalVisible(true);
+  const handleCopyId = () => {
+    Clipboard.setString(hardwareId);
+    setCopyIdSuccess(true);
+    setTimeout(() => setCopyIdSuccess(false), 2000);
   };
 
-  const handleAuthorizedSalesWipe = () => {
-    dispatch({ type: 'RESET_ORDERS' });
-    dispatch({
-      type: 'ADD_SECURITY_LOG',
-      payload: {
-        event: 'SALES_WIPED',
-        description: 'Sales and order records cleared with Manager PIN authorization.',
-        timestamp: new Date().toISOString(),
-        user: state.auth?.username || 'admin',
-      },
-    });
-    Alert.alert('Sales Cleared ✓', 'All order records have been reset to zero.');
-  };
-
-  const handleSaveNewPin = () => {
-    if (!newPinInput || newPinInput.length !== 4 || isNaN(Number(newPinInput))) {
-      Alert.alert('Invalid PIN', 'Please enter a 4-digit numeric PIN.');
-      return;
-    }
-    dispatch({ type: 'UPDATE_MANAGER_PIN', payload: newPinInput });
-    Alert.alert('PIN Updated ✓', `Manager security PIN set to: ${newPinInput}`);
-    setNewPinInput('');
-    setChangePinModalVisible(false);
-  };
-
-  const handleExportBackup = async () => {
+  const testPrintReceipt = async () => {
+    const dummyOrder = {
+      id: 'TEST-PRINT',
+      createdAt: new Date().toISOString(),
+      customerName: 'Terminal Self-Test',
+      paymentMethod: 'Cash',
+      items: [{ name: 'Artisan Sourdough Loaf', quantity: 1, price: 85 }],
+      subtotal: 85,
+      tax: 0,
+      total: 85
+    };
     try {
-      const backupData = JSON.stringify(
-        {
-          app: 'Bakery Mobile System',
-          version: '2.0',
-          exportedAt: new Date().toISOString(),
-          products,
-          inventory,
-          orders,
-          auth: { ...auth, isLoggedIn: false },
-        },
-        null,
-        2
-      );
-
-      await Share.share({
-        title: `Bakery Backup - ${new Date().toISOString().split('T')[0]}`,
-        message: backupData,
-      });
+      const res = await printReceiptDirect(dummyOrder, { businessName: auth.businessName || 'Bakery POS' });
+      if (!res.success) {
+        Alert.alert('Printer Notice', res.message || 'Configure a Bluetooth printer first.');
+      }
     } catch (e) {
-      Alert.alert('Export', 'Backup data prepared.');
+      Alert.alert('Printer Error', e.message);
     }
   };
-
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayOrders = orders.filter(o => o.createdAt && o.createdAt.startsWith(todayStr));
-  const todayRevenue = todayOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
 
   return (
     <View style={styles.container}>
-      {/* ─── Interactive Screen Header ─── */}
+      {/* ─── Enterprise Clean Screen Header (No Emojis, No Header Logout) ─── */}
       <ScreenHeader
         canGoBack={canGoBack}
         onBack={() => navigation.goBack()}
-        emoji="👤"
-        title="My Profile"
-        subtitle={`${auth.role || 'Manager'} • Active Session`}
-        rightAction={
-          <TouchableOpacity
-            style={styles.headerLogoutBtn}
-            onPress={handleLogout}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="log-out-outline" size={16} color={COLORS.danger} style={{ marginRight: 4 }} />
-            <Text style={styles.headerLogoutText}>Logout</Text>
-          </TouchableOpacity>
-        }
+        title="Profile"
+        subtitle="Terminal Account and Device Controls"
       />
 
       <ScrollView
@@ -216,331 +212,407 @@ export default function ProfileScreen({ navigation }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile Hero Card */}
-        <View style={styles.profileHero}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarLetter}>
-              {(auth.username || 'A').charAt(0).toUpperCase()}
+        {/* ─── 1. Account Summary Card ─── */}
+        <View style={styles.accountCard}>
+          <View style={styles.accountHeaderRow}>
+            <View style={styles.avatarBox}>
+              <Text style={styles.avatarLetter}>
+                {(auth.username || 'A').charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <View style={styles.accountTextCol}>
+              <Text style={styles.accountName}>{auth.username || 'Administrator'}</Text>
+              <Text style={styles.accountRole}>{auth.role || 'POS Operator'}</Text>
+              <Text style={styles.accountShop}>{auth.businessName || 'SkyKin Artisan Bakery'}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ─── 2. Metric Summary Row (Bordered Card, Neutral Figures) ─── */}
+        <View style={styles.metricsCard}>
+          <View style={styles.metricCell}>
+            <Text style={styles.metricValue}>{todayOrders.length}</Text>
+            <Text style={styles.metricLabel}>Orders Today</Text>
+          </View>
+          <View style={[styles.metricCell, styles.metricCellBorder]}>
+            <Text style={[styles.metricValue, { color: COLORS.primary }]}>
+              ETB {todayRevenue.toFixed(2)}
             </Text>
+            <Text style={styles.metricLabel}>Sales Today</Text>
           </View>
-          <Text style={styles.displayName}>{auth.username}</Text>
-          <Text style={styles.displayRole}>{auth.role || 'Bakery Manager'}</Text>
-          <Text style={styles.displayBusiness}>{auth.businessName || 'Bakery'}</Text>
-
-          <View style={styles.statRow}>
-            <View style={styles.statPill}>
-              <Text style={styles.statPillValue}>{orders.length}</Text>
-              <Text style={styles.statPillLabel}>All Orders</Text>
-            </View>
-            <View style={[styles.statPill, styles.statPillHighlight]}>
-              <Text style={[styles.statPillValue, { color: COLORS.primary }]}>
-                ETB {todayRevenue.toFixed(2)}
-              </Text>
-              <Text style={styles.statPillLabel}>Today</Text>
-            </View>
-            <View style={styles.statPill}>
-              <Text style={styles.statPillValue}>{products.length}</Text>
-              <Text style={styles.statPillLabel}>Products</Text>
-            </View>
+          <View style={styles.metricCell}>
+            <Text style={styles.metricValue}>{products.length}</Text>
+            <Text style={styles.metricLabel}>Products</Text>
           </View>
         </View>
 
-                {/* Account Settings */}
+        {/* ─── 3. Section: Account ─── */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>ACCOUNT CREDENTIALS</Text>
+          <Text style={styles.sectionHeader}>ACCOUNT</Text>
+          <View style={styles.listCard}>
+            <TouchableOpacity
+              style={styles.listRow}
+              onPress={() => { setNewUsername(auth.username); setEditMode('username'); }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowIcon}>
+                <Ionicons name="person-outline" size={17} color="#475569" />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowTitle}>Username</Text>
+                <Text style={styles.rowSubtitle}>{auth.username}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+            </TouchableOpacity>
 
-          {/* Change Username */}
-          <TouchableOpacity
-            style={styles.settingRow}
-            onPress={() => openEdit('username')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.settingIcon, { backgroundColor: COLORS.primaryLight }]}>
-              <Ionicons name="person-outline" size={18} color={COLORS.primary} />
-            </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Username</Text>
-              <Text style={styles.settingValue}>{auth.username}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.listRow, styles.listRowBorder]}
+              onPress={() => { setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setEditMode('password'); }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowIcon}>
+                <Ionicons name="key-outline" size={17} color="#475569" />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowTitle}>Change Password</Text>
+                <Text style={styles.rowSubtitle}>Account security credentials</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+            </TouchableOpacity>
 
-          {/* Change Password */}
-          <TouchableOpacity
-            style={styles.settingRow}
-            onPress={() => openEdit('password')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.settingIcon, { backgroundColor: COLORS.infoLight }]}>
-              <Ionicons name="lock-closed-outline" size={18} color={COLORS.info} />
-            </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Password</Text>
-              <Text style={styles.settingValue}>{'•'.repeat(auth.password?.length || 4)}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-          </TouchableOpacity>
-
-          {/* Business Name */}
-          <TouchableOpacity
-            style={[styles.settingRow, styles.lastRow]}
-            onPress={() => openEdit('business')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.settingIcon, { backgroundColor: COLORS.successLight }]}>
-              <Ionicons name="storefront-outline" size={18} color={COLORS.success} />
-            </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Bakery Name</Text>
-              <Text style={styles.settingValue} numberOfLines={1}>{auth.businessName || 'Bakery'}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-          </TouchableOpacity>
-        </View>
-
-
-
-        {/* Bluetooth Thermal Receipt Printer Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>RECEIPT PRINTING (BLUETOOTH)</Text>
-
-          <TouchableOpacity
-            style={[styles.settingRow, styles.lastRow]}
-            onPress={() => setBtModalVisible(true)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.settingIcon, { backgroundColor: COLORS.primaryLight }]}>
-              <Ionicons name="print" size={18} color={COLORS.primary} />
-            </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Printer</Text>
-              <Text style={[styles.settingValue, connectedBtPrinter && { color: '#16A34A', fontWeight: '700' }]}>
-                {`Thermal Roll (${connectedBtPrinter?.paperWidth || '58mm'}) • Tap to Test / Setup`}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Legal & Regulatory Disclaimers Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>LEGAL & REGULATORY DISCLAIMERS</Text>
-
-          <TouchableOpacity
-            style={styles.settingRow}
-            onPress={() => setEulaModalVisible(true)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.settingIcon, { backgroundColor: '#EFF6FF' }]}>
-              <Ionicons name="document-text" size={18} color="#2563EB" />
-            </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>License Agreement (EULA)</Text>
-              <Text style={styles.settingValue}>
-                SkyKin Technologies PLC • Single-Shop License
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.settingRow}
-            onPress={() => setEulaModalVisible(true)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.settingIcon, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="alert-circle" size={18} color="#D97706" />
-            </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Tax & Regulatory Compliance</Text>
-              <Text style={styles.settingValue}>
-                Internal Tool Notice • Non-Fiscal POS
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.settingRow, styles.lastRow]}
-            onPress={() => setEulaModalVisible(true)}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.settingIcon, { backgroundColor: '#DCFCE7' }]}>
-              <Ionicons name="server" size={18} color="#16A34A" />
-            </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Data Ownership & Liability</Text>
-              <Text style={styles.settingValue}>
-                Client-owned data • Local offline storage
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-          </TouchableOpacity>
-        </View>
-
-        {/* App Info */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>SYSTEM STATUS</Text>
-
-          <View style={styles.settingRow}>
-            <View style={[styles.settingIcon, { backgroundColor: '#EDE9FE' }]}>
-              <Ionicons name="information-circle-outline" size={18} color={COLORS.purple} />
-            </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Application Version</Text>
-              <Text style={styles.settingValue}>Bakery System v2.0</Text>
-            </View>
-          </View>
-
-          <View style={[styles.settingRow, styles.lastRow]}>
-            <View style={[styles.settingIcon, { backgroundColor: COLORS.successLight }]}>
-              <Ionicons name="shield-checkmark-outline" size={18} color={COLORS.success} />
-            </View>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Local Database Mode</Text>
-              <Text style={[styles.settingValue, { color: COLORS.success, fontWeight: '700' }]}>
-                Ready & Offline Capable
-              </Text>
+            <View style={[styles.listRow, styles.listRowBorder]}>
+              <View style={styles.rowIcon}>
+                <Ionicons name="business-outline" size={17} color="#475569" />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowTitle}>Shop Client</Text>
+                <Text style={styles.rowSubtitle}>{auth.businessName || 'SkyKin Artisan Bakery'}</Text>
+              </View>
             </View>
           </View>
         </View>
 
-        {/* Clear Sales Data / Reset Button */}
-        <TouchableOpacity
-          style={styles.clearDataBtn}
-          onPress={handleResetSales}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="refresh-circle-outline" size={18} color={COLORS.textSecondary} style={{ marginRight: 6 }} />
-          <Text style={styles.clearDataText}>Reset / Clear Sales Records</Text>
-        </TouchableOpacity>
+        {/* ─── 4. Section: Device & Licensing ─── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>DEVICE AND LICENSING</Text>
+          <View style={styles.listCard}>
+            <View style={styles.listRow}>
+              <View style={styles.rowIcon}>
+                <Ionicons name="hardware-chip-outline" size={17} color="#475569" />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowTitle}>Terminal Hardware ID</Text>
+                <Text style={styles.rowSubtitleMono}>{hardwareId || 'IDENTIFYING...'}</Text>
+              </View>
+              <TouchableOpacity onPress={handleCopyId} style={styles.actionPillBtn} activeOpacity={0.7}>
+                <Ionicons name={copyIdSuccess ? 'checkmark' : 'copy-outline'} size={13} color="#475569" />
+                <Text style={styles.actionPillText}>{copyIdSuccess ? 'Copied' : 'Copy'}</Text>
+              </TouchableOpacity>
+            </View>
 
-        {/* Sign Out Action Button */}
-        <TouchableOpacity
-          style={styles.signOutBtn}
-          onPress={handleLogout}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="log-out-outline" size={20} color={COLORS.danger} style={{ marginRight: 8 }} />
-          <Text style={styles.signOutText}>Sign Out from Terminal</Text>
-        </TouchableOpacity>
+            <View style={[styles.listRow, styles.listRowBorder]}>
+              <View style={styles.rowIcon}>
+                <Ionicons name="shield-checkmark-outline" size={17} color="#475569" />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowTitle}>License Status</Text>
+                <Text style={styles.rowSubtitle}>
+                  Key: {cloudConfig?.licenseKey || 'SKY-BAKERY-001'}
+                </Text>
+              </View>
+              <View style={styles.statusBadgeActive}>
+                <Text style={styles.statusBadgeTextActive}>ACTIVE</Text>
+              </View>
+            </View>
+
+            <View style={[styles.listRow, styles.listRowBorder]}>
+              <View style={styles.rowIcon}>
+                <Ionicons name="cloud-upload-outline" size={17} color="#475569" />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowTitle}>Cloud Data Sync</Text>
+                <Text style={styles.rowSubtitle}>
+                  {unsyncedOrders.length > 0
+                    ? `${unsyncedOrders.length} pending orders to upload`
+                    : 'All records synced to BakerAdmin'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleSyncNow}
+                disabled={isSyncingNow}
+                style={[styles.btnActionPrimary, isSyncingNow && { opacity: 0.6 }]}
+                activeOpacity={0.8}
+              >
+                {isSyncingNow ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="sync" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
+                    <Text style={styles.btnActionPrimaryText}>Sync Now</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.listRow, styles.listRowBorder]}>
+              <View style={styles.rowIcon}>
+                <Ionicons name="information-circle-outline" size={17} color="#475569" />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowTitle}>Application Version</Text>
+                <Text style={styles.rowSubtitle}>v1.0.8 (BakerAdmin Enterprise POS)</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* ─── 5. Section: Receipt Printer ─── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>RECEIPT PRINTER</Text>
+          <View style={styles.listCard}>
+            <TouchableOpacity
+              style={styles.listRow}
+              onPress={() => setBtModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowIcon}>
+                <Ionicons name="print-outline" size={17} color="#475569" />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowTitle}>Thermal Printer</Text>
+                <Text style={styles.rowSubtitle}>
+                  {connectedBtPrinter ? connectedBtPrinter.name : 'No Bluetooth printer connected'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.listRow, styles.listRowBorder]}
+              onPress={testPrintReceipt}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowIcon}>
+                <Ionicons name="document-text-outline" size={17} color="#475569" />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowTitle}>Print Diagnostic Receipt</Text>
+                <Text style={styles.rowSubtitle}>Send test print to check 58mm alignment</Text>
+              </View>
+              <Ionicons name="play-outline" size={16} color="#475569" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ─── 6. Section: Legal & Compliance ─── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeader}>LEGAL AND REGULATORY NOTICES</Text>
+          <View style={styles.listCard}>
+            <TouchableOpacity
+              style={styles.listRow}
+              onPress={() => { setLegalDocType('eula'); setEulaModalVisible(true); }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowIcon}>
+                <Ionicons name="document-outline" size={17} color="#475569" />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowTitle}>License Agreement (EULA)</Text>
+                <Text style={styles.rowSubtitle}>Internal software terms and operational rules</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.listRow, styles.listRowBorder]}
+              onPress={() => {
+                Alert.alert(
+                  'Tax & Regulatory Notice',
+                  'This software is an internal Point-of-Sale sales tracking tool. It is NOT a registered fiscal cash register machine (ERCA / Ministry of Revenue). Generated slips do not constitute official tax invoices.'
+                );
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.rowIcon}>
+                <Ionicons name="alert-circle-outline" size={17} color="#475569" />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowTitle}>Non-Fiscal Disclaimer</Text>
+                <Text style={styles.rowSubtitle}>Statutory and tax compliance notice</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ─── 7. Danger Zone ─── */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: '#DC2626' }]}>DANGER ZONE</Text>
+          <View style={[styles.listCard, styles.dangerCard]}>
+            <View style={styles.listRow}>
+              <View style={styles.rowIcon}>
+                <Ionicons name="trash-outline" size={17} color="#DC2626" />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={[styles.rowTitle, { color: '#DC2626' }]}>Clear Local Sales Records</Text>
+                <Text style={styles.rowSubtitle}>
+                  {unsyncedOrders.length > 0
+                    ? 'Blocked: upload unsynced orders first'
+                    : 'Requires manager PIN and typed confirmation'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleClearRecords}
+                style={[styles.btnOutlineDanger, unsyncedOrders.length > 0 && { opacity: 0.5 }]}
+                disabled={unsyncedOrders.length > 0}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.btnOutlineDangerText}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.listRow, styles.listRowBorder]}>
+              <View style={styles.rowIcon}>
+                <Ionicons name="log-out-outline" size={17} color="#475569" />
+              </View>
+              <View style={styles.rowBody}>
+                <Text style={styles.rowTitle}>Sign Out</Text>
+                <Text style={styles.rowSubtitle}>End session on this terminal</Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleSignOut}
+                style={styles.btnOutlineSecondary}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.btnOutlineSecondaryText}>Sign Out</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* Edit Modal: Username */}
-      {editMode === 'username' && (
-        <View style={styles.editOverlay}>
-          <View style={styles.editBox}>
-            <Text style={styles.editTitle}>Change Username</Text>
+      {/* ─── Edit Username Modal ─── */}
+      <Modal visible={editMode === 'username'} transparent animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalDialog}>
+            <Text style={styles.modalTitle}>Update Username</Text>
+            <Text style={styles.modalDesc}>Change the operator username for this device.</Text>
             <TextInput
-              style={styles.editInput}
+              style={styles.formInput}
               value={newUsername}
               onChangeText={setNewUsername}
-              placeholder="New username"
-              placeholderTextColor={COLORS.textMuted}
+              placeholder="Enter new username"
+              placeholderTextColor="#94A3B8"
               autoCapitalize="none"
-              autoFocus
             />
-            <View style={styles.editActions}>
-              <TouchableOpacity style={styles.editCancelBtn} onPress={() => setEditMode(null)}>
-                <Text style={styles.editCancelText}>Cancel</Text>
+            <View style={styles.modalActionRow}>
+              <TouchableOpacity style={styles.btnModalSecondary} onPress={() => setEditMode(null)}>
+                <Text style={styles.btnModalSecondaryText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.editSaveBtn} onPress={handleSaveUsername}>
-                <Text style={styles.editSaveText}>Save</Text>
+              <TouchableOpacity style={styles.btnModalPrimary} onPress={handleSaveUsername}>
+                <Text style={styles.btnModalPrimaryText}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
-      )}
+      </Modal>
 
-      {/* Edit Modal: Password */}
-      {editMode === 'password' && (
-        <View style={styles.editOverlay}>
-          <View style={styles.editBox}>
-            <Text style={styles.editTitle}>Change Password</Text>
+      {/* ─── Edit Password Modal ─── */}
+      <Modal visible={editMode === 'password'} transparent animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalDialog}>
+            <Text style={styles.modalTitle}>Change Password</Text>
+            <Text style={styles.modalDesc}>Verify current password and set a new password.</Text>
             <TextInput
-              style={styles.editInput}
+              style={styles.formInput}
               value={currentPassword}
               onChangeText={setCurrentPassword}
               placeholder="Current password"
-              placeholderTextColor={COLORS.textMuted}
-              secureTextEntry={!showPass}
-              autoCapitalize="none"
+              placeholderTextColor="#94A3B8"
+              secureTextEntry
             />
             <TextInput
-              style={styles.editInput}
+              style={[styles.formInput, { marginTop: 10 }]}
               value={newPassword}
               onChangeText={setNewPassword}
-              placeholder="New password (min 4 characters)"
-              placeholderTextColor={COLORS.textMuted}
-              secureTextEntry={!showNewPass}
-              autoCapitalize="none"
+              placeholder="New password (minimum 4 characters)"
+              placeholderTextColor="#94A3B8"
+              secureTextEntry
             />
             <TextInput
-              style={styles.editInput}
+              style={[styles.formInput, { marginTop: 10 }]}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               placeholder="Confirm new password"
-              placeholderTextColor={COLORS.textMuted}
-              secureTextEntry={!showNewPass}
-              autoCapitalize="none"
+              placeholderTextColor="#94A3B8"
+              secureTextEntry
             />
-            <View style={styles.editActions}>
-              <TouchableOpacity style={styles.editCancelBtn} onPress={() => setEditMode(null)}>
-                <Text style={styles.editCancelText}>Cancel</Text>
+            <View style={styles.modalActionRow}>
+              <TouchableOpacity style={styles.btnModalSecondary} onPress={() => setEditMode(null)}>
+                <Text style={styles.btnModalSecondaryText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.editSaveBtn} onPress={handleSavePassword}>
-                <Text style={styles.editSaveText}>Change</Text>
+              <TouchableOpacity style={styles.btnModalPrimary} onPress={handleSavePassword}>
+                <Text style={styles.btnModalPrimaryText}>Update</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
-      )}
+      </Modal>
 
-      {/* Edit Modal: Business Name */}
-      {editMode === 'business' && (
-        <View style={styles.editOverlay}>
-          <View style={styles.editBox}>
-            <Text style={styles.editTitle}>Update Bakery Name</Text>
+      {/* ─── Danger Confirmation Modal ─── */}
+      <Modal visible={editMode === 'clear'} transparent animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalDialog}>
+            <Text style={[styles.modalTitle, { color: '#DC2626' }]}>Clear Local Sales Records</Text>
+            <Text style={styles.modalDesc}>
+              This will wipe past order history from this terminal. To authorize, enter the manager PIN or current password and type CLEAR below.
+            </Text>
             <TextInput
-              style={styles.editInput}
-              value={businessName}
-              onChangeText={setBusinessName}
-              placeholder="Bakery Name"
-              placeholderTextColor={COLORS.textMuted}
-              autoFocus
+              style={styles.formInput}
+              value={clearPin}
+              onChangeText={setClearPin}
+              placeholder="Manager PIN or password"
+              placeholderTextColor="#94A3B8"
+              secureTextEntry
             />
-            <View style={styles.editActions}>
-              <TouchableOpacity style={styles.editCancelBtn} onPress={() => setEditMode(null)}>
-                <Text style={styles.editCancelText}>Cancel</Text>
+            <TextInput
+              style={[styles.formInput, { marginTop: 10 }]}
+              value={clearInputConfirm}
+              onChangeText={setClearInputConfirm}
+              placeholder="Type CLEAR to verify"
+              placeholderTextColor="#94A3B8"
+              autoCapitalize="characters"
+            />
+            <View style={styles.modalActionRow}>
+              <TouchableOpacity style={styles.btnModalSecondary} onPress={() => setEditMode(null)}>
+                <Text style={styles.btnModalSecondaryText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.editSaveBtn} onPress={handleSaveBusinessName}>
-                <Text style={styles.editSaveText}>Save</Text>
+              <TouchableOpacity
+                style={[styles.btnModalPrimary, { backgroundColor: '#DC2626' }]}
+                onPress={handleConfirmClearRecords}
+              >
+                <Text style={styles.btnModalPrimaryText}>Authorize Wipe</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
-      )}
-          <BluetoothPrinterModal
+      </Modal>
+
+      {/* Bluetooth Printer Modal */}
+      <BluetoothPrinterModal
         visible={btModalVisible}
         onClose={() => {
           setBtModalVisible(false);
           getConnectedPrinter().then(p => setConnectedBtPrinter(p));
         }}
-        businessName={auth.businessName || 'Bakery'}
       />
 
-          {/* SkyKin Technologies EULA & Terms Modal */}
+      {/* Plain text EULA agreement modal */}
       <EulaModal
         visible={eulaModalVisible}
         onClose={() => setEulaModalVisible(false)}
-        isFirstTimeSetup={false}
-      />
-          <CloudSyncModal
-        visible={cloudModalVisible}
-        onClose={() => {
-          setCloudModalVisible(false);
-          refreshCloud();
-        }}
       />
     </View>
   );
@@ -549,308 +621,281 @@ export default function ProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  headerLogoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.dangerLight,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: RADIUS.full,
-  },
-  headerLogoutText: {
-    color: COLORS.danger,
-    fontSize: FONTS.xs,
-    fontWeight: '700',
+    backgroundColor: '#F8FAFC',
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 110,
+    paddingTop: 12,
   },
-  profileHero: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.xl,
-    padding: 20,
-    alignItems: 'center',
+  accountCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    marginBottom: 16,
-    ...SHADOWS.sm,
-  },
-  avatarCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderColor: '#E2E8F0',
+    padding: 16,
     marginBottom: 12,
-    ...SHADOWS.sm,
+  },
+  accountHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
   },
   avatarLetter: {
-    color: '#FFF',
-    fontSize: 28,
-    fontWeight: '800',
-  },
-  displayName: {
-    fontSize: FONTS.xl,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    letterSpacing: -0.4,
-  },
-  displayRole: {
-    fontSize: FONTS.xs,
+    fontSize: 20,
     fontWeight: '700',
-    color: COLORS.primary,
-    marginTop: 2,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: '#0F172A',
   },
-  displayBusiness: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
-    marginTop: 2,
-  },
-  statRow: {
-    flexDirection: 'row',
-    marginTop: 16,
-    gap: 8,
-    width: '100%',
-  },
-  statPill: {
+  accountTextCol: {
     flex: 1,
-    backgroundColor: COLORS.surfaceSubtle,
-    borderRadius: RADIUS.md,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
   },
-  statPillHighlight: {
-    backgroundColor: COLORS.primaryLight,
-    borderColor: COLORS.primary + '33',
+  accountName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
   },
-  statPillValue: {
-    fontSize: FONTS.md,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
+  accountRole: {
+    fontSize: 13,
+    color: '#64748B',
+    marginTop: 1,
   },
-  statPillLabel: {
-    fontSize: 10,
-    color: COLORS.textMuted,
+  accountShop: {
+    fontSize: 12,
+    color: '#D97706',
     fontWeight: '600',
     marginTop: 2,
   },
-  // Storage Status Card
-  storageStatusCard: {
-    backgroundColor: '#F0FDF4',
-    borderRadius: RADIUS.lg,
-    padding: 16,
+  metricsCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: '#E2E8F0',
+    paddingVertical: 14,
     marginBottom: 16,
   },
-  storageStatusTitle: {
-    fontSize: FONTS.sm,
-    fontWeight: '800',
-    color: '#15803D',
-  },
-  storageStatusSub: {
-    fontSize: FONTS.xs,
-    color: '#166534',
-    lineHeight: 18,
-    marginBottom: 10,
-  },
-  storageStatsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
-  },
-  storageStatText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#15803D',
-  },
-  backupBtn: {
-    flexDirection: 'row',
+  metricCell: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: RADIUS.md,
-    paddingVertical: 9,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
-  backupBtnText: {
-    fontSize: FONTS.xs,
-    fontWeight: '800',
-    color: COLORS.primary,
+  metricCellBorder: {
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  metricValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  metricLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 3,
+    fontWeight: '500',
   },
   section: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 6,
-    borderWidth: 1,
-    borderColor: COLORS.border,
     marginBottom: 16,
-    ...SHADOWS.sm,
   },
-  sectionLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: COLORS.textMuted,
-    letterSpacing: 0.8,
-    marginBottom: 10,
+  sectionHeader: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    color: '#64748B',
+    marginBottom: 6,
+    paddingHorizontal: 2,
   },
-  settingRow: {
+  listCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+  },
+  dangerCard: {
+    borderColor: '#FCA5A5',
+  },
+  listRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 14,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
+    minHeight: 52,
   },
-  lastRow: {
-    borderBottomWidth: 0,
+  listRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
   },
-  settingIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: RADIUS.sm,
-    alignItems: 'center',
+  rowIcon: {
+    width: 28,
+    height: 28,
     justifyContent: 'center',
-    marginRight: 12,
+    alignItems: 'center',
+    marginRight: 10,
   },
-  settingInfo: {
+  rowBody: {
     flex: 1,
   },
-  settingTitle: {
-    fontSize: FONTS.sm,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
+  rowTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F172A',
   },
-  settingValue: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
+  rowSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
     marginTop: 1,
   },
-  clearDataBtn: {
+  rowSubtitleMono: {
+    fontSize: 11,
+    color: '#0F172A',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  actionPillBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    paddingVertical: 12,
-    marginBottom: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: '#E2E8F0',
+    gap: 4,
   },
-  clearDataText: {
-    color: COLORS.textSecondary,
-    fontSize: FONTS.xs,
+  actionPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  statusBadgeActive: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  statusBadgeTextActive: {
+    fontSize: 10,
     fontWeight: '700',
+    color: '#16A34A',
+    letterSpacing: 0.5,
   },
-    syncNowBtn: {
+  btnActionPrimary: {
+    backgroundColor: '#D97706',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.md,
-    paddingVertical: 12,
-    marginTop: 10,
-    marginBottom: 8,
-    ...SHADOWS.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
   },
-  syncNowBtnText: {
-    color: '#FFF',
-    fontSize: FONTS.sm,
-    fontWeight: '800',
+  btnActionPrimaryText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
-signOutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.dangerLight,
-    borderRadius: RADIUS.lg,
-    paddingVertical: 14,
-    marginTop: 4,
+  btnOutlineDanger: {
     borderWidth: 1,
-    borderColor: COLORS.danger + '33',
+    borderColor: '#DC2626',
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  signOutText: {
-    color: COLORS.danger,
-    fontSize: FONTS.sm,
-    fontWeight: '800',
+  btnOutlineDangerText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#DC2626',
   },
-  // Edit Overlay Modals
-  editOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    alignItems: 'center',
+  btnOutlineSecondary: {
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  btnOutlineSecondaryText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
-    zIndex: 99,
   },
-  editBox: {
+  modalDialog: {
     width: '100%',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.xl,
+    maxWidth: 400,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
     padding: 20,
-    ...SHADOWS.lg,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  editTitle: {
-    fontSize: FONTS.lg,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  modalDesc: {
+    fontSize: 13,
+    color: '#64748B',
+    lineHeight: 18,
     marginBottom: 14,
   },
-  editInput: {
-    backgroundColor: COLORS.surfaceSubtle,
+  formInput: {
     borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 14,
+    borderColor: '#CBD5E1',
+    borderRadius: 6,
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: FONTS.sm,
-    color: COLORS.textPrimary,
-    marginBottom: 12,
+    fontSize: 14,
+    color: '#0F172A',
+    backgroundColor: '#FFFFFF',
   },
-  editActions: {
+  modalActionRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: 10,
-    marginTop: 8,
+    marginTop: 18,
   },
-  editCancelBtn: {
-    paddingVertical: 10,
+  btnModalSecondary: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  btnModalSecondaryText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  btnModalPrimary: {
     paddingHorizontal: 16,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.surfaceSubtle,
+    paddingVertical: 8,
+    borderRadius: 6,
+    backgroundColor: '#D97706',
   },
-  editCancelText: {
-    fontSize: FONTS.sm,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-  },
-  editSaveBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primary,
-  },
-  editSaveText: {
-    fontSize: FONTS.sm,
-    fontWeight: '800',
-    color: '#FFF',
+  btnModalPrimaryText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

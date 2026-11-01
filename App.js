@@ -1,5 +1,5 @@
-import React from 'react';
-import { Platform, View, Text, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Platform, View, Text, ActivityIndicator, AppState } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
@@ -10,6 +10,15 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BakeryProvider, useBakery } from './src/store/BakeryStore';
 import EulaModal, { EULA_STORAGE_KEY } from './src/components/EulaModal';
+import DeviceLockoutModal from './src/components/DeviceLockoutModal';
+import {
+  getCloudConfig,
+  getDeviceInfo,
+  checkApprovalStatus,
+  connectToTerminalEventStream,
+  setDeviceStatus,
+  pushBatchOrders
+} from './src/services/cloudSyncService';
 import { COLORS } from './src/theme/colors';
 
 // Auth
@@ -48,8 +57,9 @@ function HomeStackNavigator() {
 
 function TabNavigator() {
   const insets = useSafeAreaInsets();
-  const barHeight = Platform.OS === 'ios' ? 60 + insets.bottom : 64 + insets.bottom;
-  const bottomPadding = insets.bottom > 0 ? insets.bottom : 8;
+  // Ensure enough height so labels are never clipped across platforms
+  const barHeight = Platform.OS === 'ios' ? 64 + insets.bottom : 68 + insets.bottom;
+  const bottomPadding = insets.bottom > 0 ? insets.bottom + 2 : 8;
 
   return (
     <Tab.Navigator
@@ -61,29 +71,32 @@ function TabNavigator() {
           } else if (route.name === 'History') {
             iconName = focused ? 'receipt' : 'receipt-outline';
           } else if (route.name === 'Profile') {
-            iconName = focused ? 'person-circle' : 'person-circle-outline';
+            iconName = focused ? 'person' : 'person-outline';
           }
-          return <Ionicons name={iconName} size={23} color={color} />;
+          return <Ionicons name={iconName} size={21} color={color} />;
         },
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle: {
-          backgroundColor: COLORS.surface,
-          borderTopColor: COLORS.border,
+          backgroundColor: '#FFFFFF',
+          borderTopColor: '#E2E8F0',
           borderTopWidth: 1,
           height: barHeight,
           paddingBottom: bottomPadding,
-          paddingTop: 8,
-          elevation: 10,
+          paddingTop: 6,
+          elevation: 8,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 6,
+          shadowOpacity: 0.05,
+          shadowRadius: 4,
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '700',
-          marginTop: 2,
+          fontWeight: '600',
+          paddingBottom: 2,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 2,
         },
         headerShown: false,
       })}
@@ -103,13 +116,21 @@ function TabNavigator() {
   );
 }
 
-// Root app: Loading → Login (with Admin Approval Check) → Agreement Popup → Main tabs
+// Root app: Loading → Login → Agreement Popup → Main tabs + Realtime Enforcement Lockout
 function RootNavigator() {
-  const { state, isReady } = useBakery();
-  const [eulaAccepted, setEulaAccepted] = React.useState(true);
-  const [checkedEula, setCheckedEula] = React.useState(false);
+  const { state, isReady, dispatch } = useBakery();
+  const [eulaAccepted, setEulaAccepted] = useState(true);
+  const [checkedEula, setCheckedEula] = useState(false);
 
-  React.useEffect(() => {
+  // Terminal Lockout State
+  const [lockoutActive, setLockoutActive] = useState(false);
+  const [lockoutStatus, setLockoutStatus] = useState('active');
+  const [lockoutReason, setLockoutReason] = useState('');
+  const [cloudCfg, setCloudCfg] = useState(null);
+  const [deviceInfo, setDeviceInfo] = useState(null);
+
+  // Check initial EULA
+  useEffect(() => {
     AsyncStorage.getItem(EULA_STORAGE_KEY)
       .then(val => {
         setEulaAccepted(!!val);
@@ -118,17 +139,101 @@ function RootNavigator() {
       .catch(() => setCheckedEula(true));
   }, []);
 
+  // Hydrate Cloud Config & Device Info
+  useEffect(() => {
+    getCloudConfig().then(cfg => {
+      setCloudCfg(cfg);
+      if (['suspended', 'blocked', 'unlinked', 'offline_expired'].includes(cfg.deviceStatus)) {
+        setLockoutStatus(cfg.deviceStatus);
+        setLockoutReason(cfg.lockoutMessage || '');
+        setLockoutActive(true);
+      }
+    });
+    getDeviceInfo().then(info => setDeviceInfo(info));
+  }, []);
+
+  // Periodic Terminal Status Check & Realtime SSE Stream
+  useEffect(() => {
+    let isMounted = true;
+
+    const verifyStatus = async () => {
+      try {
+        const res = await checkApprovalStatus();
+        if (!isMounted) return;
+        if (res.status && ['suspended', 'blocked', 'unlinked', 'offline_expired'].includes(res.status)) {
+          setLockoutStatus(res.status);
+          setLockoutReason(res.reason || res.message || '');
+          setLockoutActive(true);
+        } else if (res.success && res.status === 'active') {
+          setLockoutActive(false);
+          setLockoutStatus('active');
+        }
+      } catch {}
+    };
+
+    // 1. Initial check
+    verifyStatus();
+
+    // 2. Fallback Polling every 35s
+    const poller = setInterval(verifyStatus, 35000);
+
+    // 3. Status check on AppState return to foreground
+    const appStateSub = AppState.addEventListener('change', nextState => {
+      if (nextState === 'active') {
+        verifyStatus();
+      }
+    });
+
+    // 4. Real-time Server-Sent Events push listener (receives admin actions in seconds)
+    const unsubscribeSSE = connectToTerminalEventStream(commandPayload => {
+      if (!isMounted) return;
+      const cmd = commandPayload.command;
+      const reason = commandPayload.reason || '';
+
+      if (cmd === 'suspend') {
+        setDeviceStatus('suspended', reason);
+        setLockoutStatus('suspended');
+        setLockoutReason(reason || 'Terminal suspended by administrator.');
+        setLockoutActive(true);
+      } else if (cmd === 'block') {
+        setDeviceStatus('blocked', reason);
+        setLockoutStatus('blocked');
+        setLockoutReason(reason || 'Access blocked by administrator.');
+        setLockoutActive(true);
+      } else if (cmd === 'unlink') {
+        setDeviceStatus('unlinked', reason);
+        setLockoutStatus('unlinked');
+        setLockoutReason(reason || 'Device unlinked from license.');
+        setLockoutActive(true);
+      } else if (cmd === 'activate') {
+        setDeviceStatus('active', '');
+        setLockoutActive(false);
+        setLockoutStatus('active');
+        setLockoutReason('');
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      clearInterval(poller);
+      appStateSub?.remove?.();
+      unsubscribeSSE();
+    };
+  }, []);
+
   // Loading splash while AsyncStorage hydrates
   if (!isReady || !checkedEula) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.background, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ fontSize: 50, marginBottom: 12 }}>🥐</Text>
+      <View style={{ flex: 1, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center' }}>
+        <View style={{ width: 54, height: 54, borderRadius: 8, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
+          <Text style={{ color: '#FFFFFF', fontSize: 26, fontWeight: '800' }}>B</Text>
+        </View>
         <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={{ marginTop: 14, fontSize: 16, fontWeight: '800', color: COLORS.textPrimary }}>
-          Loading Bakery...
+        <Text style={{ marginTop: 14, fontSize: 15, fontWeight: '700', color: '#0F172A' }}>
+          Loading BakerAdmin POS...
         </Text>
-        <Text style={{ marginTop: 6, fontSize: 12, color: COLORS.textMuted }}>
-          Restoring saved orders and products
+        <Text style={{ marginTop: 4, fontSize: 12, color: '#64748B' }}>
+          Initializing terminal database
         </Text>
       </View>
     );
@@ -140,10 +245,11 @@ function RootNavigator() {
     return <LoginScreen />;
   }
 
-  // Logged in -> Main app tabs + Clean Plain-Text Agreement Popup
   return (
     <>
       <TabNavigator />
+
+      {/* Global First-Time Agreement Popup */}
       {!eulaAccepted && (
         <EulaModal
           visible={!eulaAccepted}
@@ -152,6 +258,25 @@ function RootNavigator() {
           onClose={() => setEulaAccepted(true)}
         />
       )}
+
+      {/* Global Enterprise Device Lockout Modal (Blocks POS immediately upon admin suspend/block) */}
+      <DeviceLockoutModal
+        visible={lockoutActive}
+        deviceStatus={lockoutStatus}
+        lockoutMessage={lockoutReason}
+        serverUrl={cloudCfg?.serverUrl}
+        deviceId={deviceInfo?.deviceId}
+        deviceModel={deviceInfo?.model}
+        offlineToken={cloudCfg?.offlineToken}
+        onAuthorized={() => {
+          setLockoutActive(false);
+          setLockoutStatus('active');
+        }}
+        onUnlinked={() => {
+          setLockoutActive(false);
+          dispatch({ type: 'LOGOUT' });
+        }}
+      />
     </>
   );
 }
@@ -162,7 +287,7 @@ export default function App() {
       <SafeAreaProvider>
         <BakeryProvider>
           <NavigationContainer>
-            <StatusBar style="dark" backgroundColor={COLORS.surface} />
+            <StatusBar style="dark" backgroundColor="#FFFFFF" />
             <RootNavigator />
           </NavigationContainer>
         </BakeryProvider>

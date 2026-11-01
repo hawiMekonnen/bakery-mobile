@@ -8,39 +8,46 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  Clipboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, RADIUS, SHADOWS } from '../theme/colors';
 import {
   checkApprovalStatus,
   requestApprovalFromCloud,
-  saveCloudSettings
+  saveCloudSettings,
+  getCloudConfig,
+  getRemainingOfflineHours
 } from '../services/cloudSyncService';
+import { Clipboard } from 'react-native';
 
 export default function DeviceLockoutModal({
   visible,
-  deviceStatus,
-  lockoutMessage,
-  licenseKey,
-  serverUrl,
-  deviceId,
-  deviceModel,
+  deviceStatus = 'pending',
+  lockoutMessage = '',
+  serverUrl = '',
+  deviceId = '',
+  deviceModel = '',
+  offlineToken = null,
   onAuthorized,
+  onUnlinked
 }) {
   const [editingSettings, setEditingSettings] = useState(false);
   const [inputUrl, setInputUrl] = useState(serverUrl || '');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [approvedSuccess, setApprovedSuccess] = useState(false);
+  const [unlockedSuccess, setUnlockedSuccess] = useState(false);
 
   const isPending = deviceStatus === 'pending';
   const isSuspended = deviceStatus === 'suspended';
-  const isRevoked = deviceStatus === 'revoked' || deviceStatus === 'rejected';
+  const isBlocked = deviceStatus === 'blocked' || deviceStatus === 'rejected';
+  const isUnlinked = deviceStatus === 'unlinked';
+  const isOfflineExpired = deviceStatus === 'offline_expired';
 
-  // Auto-polling when pending approval
+  const remainingHours = getRemainingOfflineHours(offlineToken);
+
+  // Auto-polling check every 5 seconds when modal is visible
   useEffect(() => {
-    if (!visible || !isPending) return;
+    if (!visible) return;
     let isMounted = true;
 
     const interval = setInterval(async () => {
@@ -48,19 +55,21 @@ export default function DeviceLockoutModal({
         const res = await checkApprovalStatus();
         if (!isMounted) return;
         if (res.success && res.status === 'active') {
-          setApprovedSuccess(true);
+          setUnlockedSuccess(true);
           setTimeout(() => {
             if (onAuthorized) onAuthorized();
-          }, 1200);
+          }, 1000);
+        } else if (res.status === 'unlinked') {
+          if (onUnlinked) onUnlinked();
         }
       } catch {}
-    }, 3000);
+    }, 5000);
 
     return () => {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [visible, isPending]);
+  }, [visible]);
 
   if (!visible) return null;
 
@@ -68,186 +77,178 @@ export default function DeviceLockoutModal({
     try {
       Clipboard.setString(deviceId);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      setTimeout(() => setCopied(false), 2000);
     } catch {}
   };
 
   const handleCheckNow = async () => {
     setLoading(true);
-    if (editingSettings) {
-      await saveCloudSettings({ serverUrl: inputUrl });
+    if (editingSettings && inputUrl.trim()) {
+      await saveCloudSettings({ serverUrl: inputUrl.trim() });
     }
 
-    // Try check status first
-    const res = await checkApprovalStatus(inputUrl);
+    const res = await checkApprovalStatus(inputUrl.trim() || undefined);
+    setLoading(false);
+
     if (res.success && res.status === 'active') {
-      setApprovedSuccess(true);
-      setLoading(false);
+      setUnlockedSuccess(true);
       setTimeout(() => {
         if (onAuthorized) onAuthorized();
       }, 1000);
       return;
     }
 
-    // Re-submit request if needed
-    const req = await requestApprovalFromCloud(inputUrl);
-    setLoading(false);
+    if (res.status === 'unlinked') {
+      if (onUnlinked) onUnlinked();
+      return;
+    }
 
-    if (req.success && req.status === 'active') {
-      setApprovedSuccess(true);
-      setTimeout(() => {
-        if (onAuthorized) onAuthorized();
-      }, 1000);
-    } else if (req.status === 'pending') {
+    if (res.networkOffline) {
       Alert.alert(
-        'Waiting for Approval',
-        'Request submitted to server. Please ask the administrator to click "Approve Terminal" in the BakerAdmin portal.'
-      );
-    } else if (req.networkOffline) {
-      Alert.alert(
-        'Wi-Fi Server Unreachable',
-        `Cannot connect to Admin Server at ${inputUrl || serverUrl}.\n\nPlease ensure this phone and your computer are on the same Wi-Fi network.`
+        'Server Unreachable',
+        `Cannot connect to BakerAdmin server at ${inputUrl || serverUrl}. Please ensure this terminal is on the same Wi-Fi network.`
       );
     } else {
-      Alert.alert('Status Alert', req.message || 'Waiting for approval.');
+      Alert.alert('Status Check', res.reason || res.message || `Terminal status: ${res.status}`);
     }
   };
+
+  const getStatusBadge = () => {
+    if (isPending) return { label: 'PENDING APPROVAL', color: '#D97706', bg: '#FEF3C7', icon: 'time-outline' };
+    if (isSuspended) return { label: 'TERMINAL SUSPENDED', color: '#EA580C', bg: '#FFEDD5', icon: 'pause-circle-outline' };
+    if (isBlocked) return { label: 'ACCESS BLOCKED', color: '#DC2626', bg: '#FEE2E2', icon: 'close-circle-outline' };
+    if (isUnlinked) return { label: 'DEVICE UNLINKED', color: '#475569', bg: '#F1F5F9', icon: 'unlink-outline' };
+    if (isOfflineExpired) return { label: 'OFFLINE LIMIT EXPIRED', color: '#DC2626', bg: '#FEE2E2', icon: 'cloud-offline-outline' };
+    return { label: 'RESTRICTED', color: '#DC2626', bg: '#FEE2E2', icon: 'shield-outline' };
+  };
+
+  const badge = getStatusBadge();
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <View style={styles.overlay}>
         <View style={styles.card}>
-          {approvedSuccess ? (
-            <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-              <View style={[styles.iconCircle, { backgroundColor: '#DCFCE7', marginBottom: 16 }]}>
-                <Ionicons name="checkmark-circle" size={54} color="#16A34A" />
+          {unlockedSuccess ? (
+            <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+              <View style={[styles.statusIconBox, { backgroundColor: '#DCFCE7' }]}>
+                <Ionicons name="checkmark-sharp" size={32} color="#16A34A" />
               </View>
-              <Text style={[styles.title, { color: '#16A34A' }]}>Terminal Approved! 🎉</Text>
-              <Text style={styles.subtitle}>Welcome to Bakery POS. Unlocking system...</Text>
+              <Text style={[styles.title, { color: '#16A34A', marginTop: 12 }]}>Terminal Authorized</Text>
+              <Text style={styles.subtitle}>Unlocking Point-of-Sale...</Text>
             </View>
           ) : (
             <>
-              {/* Header Badge */}
-              <View
-                style={[
-                  styles.iconCircle,
-                  isPending
-                    ? styles.iconCirclePending
-                    : isSuspended
-                    ? styles.iconCircleWarn
-                    : styles.iconCircleDanger,
-                ]}
-              >
-                <Ionicons
-                  name={
-                    isPending
-                      ? 'time'
-                      : isSuspended
-                      ? 'pause-circle'
-                      : 'shield-half'
-                  }
-                  size={46}
-                  color={
-                    isPending
-                      ? '#D97706'
-                      : isSuspended
-                      ? '#D97706'
-                      : '#DC2626'
-                  }
-                />
+              {/* Status Header Badge */}
+              <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
+                <Ionicons name={badge.icon} size={15} color={badge.color} style={{ marginRight: 6 }} />
+                <Text style={[styles.statusBadgeText, { color: badge.color }]}>{badge.label}</Text>
               </View>
 
               <Text style={styles.title}>
-                {isPending
-                  ? 'Awaiting Admin Approval'
-                  : isSuspended
-                  ? 'Terminal Suspended'
-                  : 'Access Restricted'}
+                {isPending && 'Approval Required'}
+                {isSuspended && 'Terminal Suspended'}
+                {isBlocked && 'Access Blocked'}
+                {isUnlinked && 'Terminal Unlinked'}
+                {isOfflineExpired && 'Offline Time Expired'}
               </Text>
 
               <Text style={styles.subtitle}>
-                {isPending
-                  ? 'This phone is connected as a new terminal. Please ask your administrator to click "Approve Terminal" in the BakerAdmin dashboard.'
-                  : lockoutMessage || 'This device is not authorized to access the system.'}
+                {isPending && 'This phone requested terminal access. An administrator must approve it in the BakerAdmin dashboard.'}
+                {isSuspended && (lockoutMessage || 'This terminal has been temporarily suspended. Contact your administrator or account manager.')}
+                {isBlocked && (lockoutMessage || 'This device has been permanently blocked from operating on this shop.')}
+                {isUnlinked && 'This terminal was unlinked from its license in BakerAdmin. Local orders remain intact.'}
+                {isOfflineExpired && 'The 72-hour offline tolerance limit has elapsed. Reconnect to Wi-Fi to validate the terminal license.'}
               </Text>
 
-              {/* Hardware Spec Box */}
+              {/* Offline Grace Timer if applicable */}
+              {remainingHours > 0 && !isOfflineExpired && (
+                <View style={styles.offlineBox}>
+                  <Ionicons name="timer-outline" size={16} color="#D97706" />
+                  <Text style={styles.offlineText}>
+                    Offline tolerance active: {remainingHours} hours remaining
+                  </Text>
+                </View>
+              )}
+
+              {/* Hardware Spec Card */}
               <View style={styles.infoBox}>
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Device Model:</Text>
-                  <Text style={styles.infoValue}>{deviceModel || 'Android Phone'}</Text>
+                  <Text style={styles.infoLabel}>Device Model</Text>
+                  <Text style={styles.infoValue}>{deviceModel || 'Terminal Device'}</Text>
                 </View>
                 <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Server URL:</Text>
-                  <Text style={[styles.infoValue, { fontSize: 11 }]}>{inputUrl || serverUrl}</Text>
+                  <Text style={styles.infoLabel}>Support Contact</Text>
+                  <Text style={[styles.infoValue, { fontWeight: '700' }]}>+251 911 234 567</Text>
                 </View>
                 <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
-                  <Text style={styles.infoLabel}>Hardware ID:</Text>
+                  <Text style={styles.infoLabel}>Hardware ID</Text>
                   <TouchableOpacity onPress={handleCopyId} style={styles.copyBtn} activeOpacity={0.7}>
                     <Text style={styles.infoIdText} numberOfLines={1}>
                       {deviceId || 'UNKNOWN'}
                     </Text>
                     <Ionicons
-                      name={copied ? 'checkmark-circle' : 'copy-outline'}
+                      name={copied ? 'checkmark' : 'copy-outline'}
                       size={14}
                       color={copied ? '#16A34A' : COLORS.textMuted}
-                      style={{ marginLeft: 4 }}
+                      style={{ marginLeft: 6 }}
                     />
                   </TouchableOpacity>
                 </View>
               </View>
 
-              {/* Server URL Change Input */}
+              {/* Server URL Config Toggle */}
               {editingSettings ? (
-                <View style={styles.editSection}>
-                  <Text style={styles.inputLabel}>Admin Server Wi-Fi URL:</Text>
+                <View style={styles.editUrlBox}>
+                  <Text style={styles.editUrlLabel}>BakerAdmin Server URL</Text>
                   <TextInput
-                    style={styles.input}
+                    style={styles.urlInput}
                     value={inputUrl}
                     onChangeText={setInputUrl}
-                    placeholder="http://10.35.195.1:5000"
+                    placeholder="http://192.168.0.116:5000"
                     placeholderTextColor={COLORS.textMuted}
                     autoCapitalize="none"
+                    autoCorrect={false}
                   />
                 </View>
               ) : (
                 <TouchableOpacity
                   onPress={() => setEditingSettings(true)}
-                  style={styles.changeKeyBtn}
+                  style={styles.toggleUrlBtn}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="settings-outline" size={14} color={COLORS.primary} style={{ marginRight: 4 }} />
-                  <Text style={styles.changeKeyText}>Change Server IP / Wi-Fi URL</Text>
+                  <Text style={styles.toggleUrlText}>Change Server Connection IP</Text>
                 </TouchableOpacity>
               )}
 
-              {/* Action Button */}
-              <TouchableOpacity
-                style={styles.retryBtn}
-                onPress={handleCheckNow}
-                disabled={loading}
-                activeOpacity={0.85}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#FFF" size="small" />
+              {/* Action Buttons */}
+              <View style={styles.btnRow}>
+                {isUnlinked ? (
+                  <TouchableOpacity
+                    style={[styles.btn, styles.btnPrimary]}
+                    onPress={onUnlinked}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="refresh" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                    <Text style={styles.btnPrimaryText}>Re-register Terminal</Text>
+                  </TouchableOpacity>
                 ) : (
-                  <>
-                    <Ionicons name="refresh" size={18} color="#FFF" style={{ marginRight: 6 }} />
-                    <Text style={styles.retryBtnText}>
-                      {isPending ? 'Check Approval Status' : 'Verify & Unlock App'}
-                    </Text>
-                  </>
+                  <TouchableOpacity
+                    style={[styles.btn, styles.btnPrimary]}
+                    onPress={handleCheckNow}
+                    disabled={loading}
+                    activeOpacity={0.8}
+                  >
+                    {loading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="sync-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                        <Text style={styles.btnPrimaryText}>Check Status</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
                 )}
-              </TouchableOpacity>
-
-              {isPending && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14 }}>
-                  <ActivityIndicator size="small" color="#D97706" style={{ marginRight: 8 }} />
-                  <Text style={{ fontSize: 11, color: '#92400E', fontWeight: '600' }}>
-                    Auto-checking server every 3 seconds...
-                  </Text>
-                </View>
-              )}
+              </View>
             </>
           )}
         </View>
@@ -259,132 +260,158 @@ export default function DeviceLockoutModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    backgroundColor: 'rgba(15, 23, 42, 0.82)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.xl,
-    padding: 24,
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 420,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     alignItems: 'center',
-    ...SHADOWS.lg,
+    ...SHADOWS.md,
   },
-  iconCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    justifyContent: 'center',
+  statusBadge: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
     marginBottom: 14,
   },
-  iconCirclePending: {
-    backgroundColor: '#FEF3C7',
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
-  iconCircleDanger: {
-    backgroundColor: '#FEE2E2',
-  },
-  iconCircleWarn: {
-    backgroundColor: '#FEF3C7',
+  statusIconBox: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   title: {
-    fontSize: 19,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    marginBottom: 6,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
     textAlign: 'center',
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 12.5,
-    color: COLORS.textSecondary,
+    fontSize: 13,
+    color: '#475569',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 19,
     marginBottom: 16,
+  },
+  offlineBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginBottom: 16,
+    width: '100%',
+  },
+  offlineText: {
+    fontSize: 12,
+    color: '#92400E',
+    fontWeight: '600',
+    flex: 1,
   },
   infoBox: {
     width: '100%',
-    backgroundColor: COLORS.background,
-    borderRadius: RADIUS.md,
-    padding: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: '#E2E8F0',
     marginBottom: 14,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
+    borderBottomColor: '#F1F5F9',
   },
   infoLabel: {
     fontSize: 12,
-    color: COLORS.textMuted,
-    fontWeight: '600',
+    color: '#64748B',
+    fontWeight: '500',
   },
   infoValue: {
     fontSize: 12,
-    color: COLORS.textPrimary,
-    fontWeight: '700',
+    color: '#0F172A',
+    fontWeight: '600',
   },
   copyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    maxWidth: '65%',
+    maxWidth: 200,
   },
   infoIdText: {
     fontSize: 11,
-    color: COLORS.textSecondary,
-    fontFamily: 'monospace',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    color: '#0F172A',
+    fontWeight: '700',
   },
-  editSection: {
+  toggleUrlBtn: {
+    paddingVertical: 6,
+    marginBottom: 12,
+  },
+  toggleUrlText: {
+    fontSize: 12,
+    color: '#D97706',
+    fontWeight: '600',
+  },
+  editUrlBox: {
     width: '100%',
     marginBottom: 14,
   },
-  inputLabel: {
+  editUrlLabel: {
     fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
+    fontWeight: '600',
+    color: '#64748B',
     marginBottom: 4,
   },
-  input: {
-    backgroundColor: COLORS.background,
-    borderRadius: RADIUS.sm,
+  urlInput: {
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: '#CBD5E1',
+    borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 8,
     fontSize: 13,
-    color: COLORS.textPrimary,
+    color: '#0F172A',
+    backgroundColor: '#FFFFFF',
   },
-  changeKeyBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    marginBottom: 10,
-  },
-  changeKeyText: {
-    fontSize: 12,
-    color: COLORS.primary,
-    fontWeight: '700',
-  },
-  retryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 13,
-    borderRadius: RADIUS.md,
+  btnRow: {
     width: '100%',
-    ...SHADOWS.sm,
+    marginTop: 4,
   },
-  retryBtnText: {
-    color: '#FFF',
+  btn: {
+    height: 44,
+    borderRadius: 6,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  btnPrimary: {
+    backgroundColor: '#D97706',
+  },
+  btnPrimaryText: {
+    color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '600',
   },
 });

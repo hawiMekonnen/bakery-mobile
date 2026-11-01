@@ -249,6 +249,20 @@ function reducer(state, action) {
       return updated;
     }
 
+        case 'MARK_ORDERS_SYNCED': {
+      const { syncedOrderIds = [] } = action.payload || {};
+      const idSet = new Set(syncedOrderIds.map(String));
+      const updatedOrders = (state.orders || []).map(o => {
+        if (idSet.has(String(o.id))) {
+          return { ...o, syncStatus: 'synced', syncedAt: new Date().toISOString() };
+        }
+        return o;
+      });
+      const updated = { ...state, orders: updatedOrders };
+      persistStateImmediate(updated);
+      return updated;
+    }
+
     case 'UPDATE_CREDENTIALS': {
       const { newUsername, newPassword, businessName } = action.payload;
       const updated = {
@@ -267,6 +281,7 @@ function reducer(state, action) {
     case 'ADD_ORDER': {
       const order = {
         ...action.payload,
+        syncStatus: 'pending',
         account: state.auth?.username || 'admin',
         createdBy: state.auth?.username || 'admin',
       };
@@ -730,6 +745,12 @@ export function BakeryProvider({ children }) {
         if (!isMounted) return;
 
         if (res.success) {
+          if (res.results && res.results.length > 0) {
+            const confirmedIds = res.results.filter(r => r.status === 'synced' || r.status === 'duplicate').map(r => r.orderId);
+            if (confirmedIds.length > 0) {
+              dispatch({ type: 'MARK_ORDERS_SYNCED', payload: { syncedOrderIds: confirmedIds } });
+            }
+          }
           setCloudSyncStatus({
             state: 'synced',
             lastSynced: res.timestamp,
