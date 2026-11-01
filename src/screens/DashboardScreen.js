@@ -40,7 +40,7 @@ const FEATURES = [
   {
     id: 'Products',
     label: 'Bakery Menu',
-    sublabel: 'Fetira, Baklava, Sambusa...',
+    sublabel: 'Catalog & pricing',
     icon: 'fast-food',
     color: COLORS.secondary,
     bg: '#FFEDD5',
@@ -58,7 +58,7 @@ const FEATURES = [
   {
     id: 'Inventory',
     label: 'Stock & Inventory',
-    sublabel: 'Flour, honey, phyllo...',
+    sublabel: 'Raw ingredients & stock',
     icon: 'cube',
     color: '#475569',
     bg: '#F1F5F9',
@@ -122,7 +122,7 @@ export default function DashboardScreen({ navigation }) {
   const unreadNotifs = notifications.filter(n => !n.read).length;
 
   const currentHour = new Date().getHours();
-  const greetingText = currentHour < 12 ? 'Good Morning ☀️' : currentHour < 17 ? 'Good Afternoon 🌤️' : 'Good Evening 🌙';
+  const greetingText = currentHour < 12 ? 'Good morning' : currentHour < 17 ? 'Good afternoon' : 'Good evening';
 
   const handleNavigate = (route) => {
     if (route === 'Orders') {
@@ -156,9 +156,9 @@ export default function DashboardScreen({ navigation }) {
           <Text style={styles.headerGreeting}>{greetingText}</Text>
           <View style={styles.brandRow}>
             <Text style={styles.brandName}>Bakery</Text>
-            <Text style={styles.brandEmoji}>🥐</Text>
+            
           </View>
-          <Text style={styles.businessSub}>{auth.businessName || 'Artisan Bakery & Cafe'}</Text>
+          <Text style={styles.businessSub}>{auth.businessName || 'Bakery POS'}</Text>
         </View>
 
         <View style={styles.headerRight}>

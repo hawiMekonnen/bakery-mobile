@@ -55,13 +55,10 @@ export default function LoginScreen() {
       return;
     }
 
-    const validUsername = state.auth.username || 'admin';
-    const validPassword = state.auth.password || '1234';
+    const validUsername = state.auth.username;
+    const validPassword = state.auth.password;
 
-    if (
-      !(username.trim() === validUsername || (username.trim() === 'admin' && !state.auth.username)) ||
-      password !== validPassword
-    ) {
+    if (validUsername && (username.trim() !== validUsername || password !== validPassword)) {
       Alert.alert('Login Failed', 'Incorrect username or password. Please try again.');
       return;
     }

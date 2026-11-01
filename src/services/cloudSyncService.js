@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 
 export const APP_VERSION = '1.0.8';
 export const DEFAULT_SERVER_URL = 'http://192.168.0.116:5000';
-export const DEFAULT_LICENSE_KEY = 'SKY-BAKERY-001';
+export const DEFAULT_LICENSE_KEY = '';
 
 export const STORAGE_KEYS = {
   DEVICE_ID: '@skykin_hw_device_id_v2',

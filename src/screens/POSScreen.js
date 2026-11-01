@@ -198,7 +198,7 @@ export default function POSScreen({ navigation }) {
         <Ionicons name="search-outline" size={18} color={COLORS.textMuted} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search fetira, sambusa, baklava, coffee..."
+          placeholder="Search menu items..."
           placeholderTextColor={COLORS.textMuted}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -243,6 +243,17 @@ export default function POSScreen({ navigation }) {
         columnWrapperStyle={styles.columnWrapper}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 60, paddingHorizontal: 20 }}>
+            <Ionicons name="fast-food-outline" size={48} color={COLORS.textMuted} />
+            <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.textPrimary, marginTop: 12, marginBottom: 4 }}>No Menu Items Found</Text>
+            <Text style={{ fontSize: 13, color: COLORS.textMuted, textAlign: 'center', lineHeight: 18 }}>
+              {products.length === 0
+                ? "Your catalog is empty. Add menu items in BakerAdmin or under the Products tab to start selling."
+                : "No products match your search query."}
+            </Text>
+          </View>
+        }
         renderItem={({ item }) => {
           const inCart = cart.find(c => c.id === item.id);
           const inCartQty = inCart ? inCart.quantity : 0;
@@ -255,7 +266,7 @@ export default function POSScreen({ navigation }) {
             >
               <View style={styles.productTop}>
                 <View style={styles.emojiCircle}>
-                  <Text style={styles.productEmoji}>{item.emoji || '🥐'}</Text>
+                  <Ionicons name="pricetag-outline" size={20} color={COLORS.primary} />
                 </View>
                 {inCartQty > 0 && (
                   <View style={styles.inCartPill}>

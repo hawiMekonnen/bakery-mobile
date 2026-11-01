@@ -177,18 +177,18 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const testPrintReceipt = async () => {
-    const dummyOrder = {
-      id: 'TEST-PRINT',
+    const testReceiptPayload = {
+      id: 'TEST-' + Date.now().toString(36).toUpperCase(),
       createdAt: new Date().toISOString(),
       customerName: 'Terminal Self-Test',
       paymentMethod: 'Cash',
-      items: [{ name: 'Artisan Sourdough Loaf', quantity: 1, price: 85 }],
-      subtotal: 85,
+      items: [{ name: 'Printer Alignment Test', quantity: 1, price: 0 }],
+      subtotal: 0,
       tax: 0,
-      total: 85
+      total: 0
     };
     try {
-      const res = await printReceiptDirect(dummyOrder, { businessName: auth.businessName || 'Bakery POS' });
+      const res = await printReceiptDirect(testReceiptPayload, { businessName: auth.businessName || 'Bakery POS' });
       if (!res.success) {
         Alert.alert('Printer Notice', res.message || 'Configure a Bluetooth printer first.');
       }

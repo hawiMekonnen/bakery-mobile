@@ -276,7 +276,7 @@ export default function ProductsScreen({ navigation }) {
               <Text style={styles.fieldLabel}>PRODUCT NAME</Text>
               <TextInput
                 style={styles.modalInput}
-                placeholder="e.g. Crispy Honey Fetira"
+                placeholder="Product name"
                 placeholderTextColor={COLORS.textMuted}
                 value={name}
                 onChangeText={setName}

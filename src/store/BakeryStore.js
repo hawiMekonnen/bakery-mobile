@@ -29,66 +29,19 @@ const LEGACY_STORAGE_KEYS = [
   '@bakery_state',
 ];
 
-export const INITIAL_PRODUCTS = [
-  // Traditional Ethiopian & Middle Eastern Pastries
-  { id: 1, name: 'Crispy Honey Fetira', category: 'Pastry', price: 75, cost: 25, emoji: '🥞', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-  { id: 2, name: 'Egg & Cheese Fetira', category: 'Savory', price: 95, cost: 35, emoji: '🫓', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-  { id: 3, name: 'Pistachio Baklava', category: 'Pastry', price: 65, cost: 24, emoji: '🥮', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-  { id: 4, name: 'Honey Walnut Baklava', category: 'Pastry', price: 60, cost: 22, emoji: '🍯', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-  { id: 5, name: 'Crispy Lentil Sambusa', category: 'Savory', price: 25, cost: 8, emoji: '🥟', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-  { id: 6, name: 'Spiced Beef Sambusa', category: 'Savory', price: 35, cost: 14, emoji: '🥟', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-
-  // Bakery Staples & Pastries
-  { id: 7, name: 'Butter Croissant', category: 'Pastry', price: 55, cost: 20, emoji: '🥐', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-  { id: 8, name: 'Sourdough Loaf', category: 'Bread', price: 85, cost: 35, emoji: '🍞', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-  { id: 9, name: 'French Baguette', category: 'Bread', price: 60, cost: 22, emoji: '🥖', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-  { id: 10, name: 'Dark Chocolate Cake', category: 'Cakes', price: 350, cost: 140, emoji: '🎂', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-  { id: 11, name: 'Strawberry Cheesecake', category: 'Cakes', price: 280, cost: 110, emoji: '🍰', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-  { id: 12, name: 'Blueberry Muffin', category: 'Pastry', price: 45, cost: 18, emoji: '🧁', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-  { id: 13, name: 'Glazed Ring Donut', category: 'Pastry', price: 40, cost: 15, emoji: '🍩', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-  { id: 14, name: 'Choc-Chip Cookie', category: 'Pastry', price: 35, cost: 14, emoji: '🍪', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-  { id: 15, name: 'Cinnamon Roll', category: 'Pastry', price: 65, cost: 25, emoji: '🥯', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-
-  // Beverages & Sandwiches
-  { id: 16, name: 'Cardamom Spiced Tea', category: 'Coffee', price: 35, cost: 10, emoji: '🫖', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-  { id: 17, name: 'Artisan Espresso', category: 'Coffee', price: 40, cost: 12, emoji: '☕', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-  { id: 18, name: 'Caramel Iced Latte', category: 'Coffee', price: 65, cost: 20, emoji: '🧋', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-  { id: 19, name: 'Turkey Pesto Sandwich', category: 'Sandwiches', price: 120, cost: 55, emoji: '🥪', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-  { id: 20, name: 'Soft Artisan Pretzel', category: 'Bread', price: 45, cost: 15, emoji: '🥨', available: true, soldCount: 0, preparedCount: 30, remainingCount: 30 },
-];
-
-export const INITIAL_INVENTORY = [
-  { id: 1, name: 'All-Purpose Flour', unit: 'kg', stock: 50, minStock: 20, costPerUnit: 28 },
-  { id: 2, name: 'Phyllo Dough Sheets', unit: 'kg', stock: 15, minStock: 8, costPerUnit: 45 },
-  { id: 3, name: 'Pure Acacia Honey', unit: 'L', stock: 10, minStock: 5, costPerUnit: 90 },
-  { id: 4, name: 'Brown Lentils', unit: 'kg', stock: 15, minStock: 6, costPerUnit: 32 },
-  { id: 5, name: 'Shelled Pistachios', unit: 'kg', stock: 5, minStock: 3, costPerUnit: 180 },
-  { id: 6, name: 'Unsalted Butter', unit: 'kg', stock: 20, minStock: 10, costPerUnit: 65 },
-  { id: 7, name: 'Granulated Sugar', unit: 'kg', stock: 25, minStock: 15, costPerUnit: 35 },
-  { id: 8, name: 'Instant Dry Yeast', unit: 'kg', stock: 5, minStock: 2, costPerUnit: 95 },
-  { id: 9, name: 'Espresso Roast Beans', unit: 'kg', stock: 8, minStock: 5, costPerUnit: 350 },
-];
-
+export const INITIAL_PRODUCTS = [];
+export const INITIAL_INVENTORY = [];
 export const INITIAL_ORDERS = [];
 
 const DEFAULT_AUTH = {
-  username: 'admin',
-  password: '1234',
-  businessName: 'Bakery',
-  role: 'Manager',
+  username: '',
+  password: '',
+  businessName: '',
+  role: 'Staff',
   isLoggedIn: false,
 };
 
-const INITIAL_NOTIFICATIONS = [
-  {
-    id: 'notif-ready',
-    title: 'Register Online & Active',
-    message: 'Bakery system ready. All orders and products are permanently saved to your device.',
-    type: 'info',
-    timestamp: new Date().toISOString(),
-    read: false,
-  },
-];
+const INITIAL_NOTIFICATIONS = [];
 
 const DEFAULT_SECURITY = {
   managerPin: '1234',
@@ -840,12 +793,11 @@ export function BakeryProvider({ children }) {
           }
         }
 
-        // 4. Products & Inventory merging (preserve custom added items)
-        const savedProducts = (loadedData && Array.isArray(loadedData.products)) ? loadedData.products : [];
-        const existingProdNames = new Set(savedProducts.map(p => (p.name || '').toLowerCase()));
-        const missingDefaultProds = INITIAL_PRODUCTS.filter(p => !existingProdNames.has((p.name || '').toLowerCase()));
-        
-        // Strict Daily Reset: Count items sold today from today's orders only (starts at 0 every day)
+        // 4. Products & Inventory (Strictly real data; purge any lingering legacy mock items)
+        let savedProducts = (loadedData && Array.isArray(loadedData.products)) ? loadedData.products : [];
+        // Filter out legacy mock products
+        savedProducts = savedProducts.filter(p => p.name !== 'Crispy Honey Fetira' && p.name !== 'Egg & Cheese Fetira' && p.name !== 'Pistachio Baklava');
+
         const todayDateStr = new Date().toISOString().slice(0, 10);
         const todayOrdersList = (combinedOrders || []).filter(o => {
           const od = (o.createdAt || o.date || '').slice(0, 10);
@@ -858,9 +810,8 @@ export function BakeryProvider({ children }) {
           });
         });
 
-        const mergedProducts = [...savedProducts, ...missingDefaultProds].map(p => {
-          const prep = typeof p.preparedCount === 'number' ? p.preparedCount : 30;
-          // Starts from 0 every day unless sold in today's orders
+        const mergedProducts = savedProducts.map(p => {
+          const prep = typeof p.preparedCount === 'number' ? p.preparedCount : 0;
           const sold = todaySoldMap[p.id] || 0;
           return {
             ...p,
@@ -870,10 +821,9 @@ export function BakeryProvider({ children }) {
           };
         });
 
-        const savedInv = (loadedData && Array.isArray(loadedData.inventory)) ? loadedData.inventory : [];
-        const existingInvNames = new Set(savedInv.map(i => (i.name || '').toLowerCase()));
-        const missingDefaultInv = INITIAL_INVENTORY.filter(i => !existingInvNames.has((i.name || '').toLowerCase()));
-        const mergedInventory = [...savedInv, ...missingDefaultInv];
+        let savedInv = (loadedData && Array.isArray(loadedData.inventory)) ? loadedData.inventory : [];
+        savedInv = savedInv.filter(i => i.name !== 'All-Purpose Flour' && i.name !== 'Phyllo Dough Sheets' && i.name !== 'Pure Acacia Honey');
+        const mergedInventory = savedInv;
 
         const savedAuth = (loadedData && loadedData.auth) ? loadedData.auth : DEFAULT_AUTH;
         const savedSecurity = (loadedData && loadedData.security) ? loadedData.security : DEFAULT_SECURITY;

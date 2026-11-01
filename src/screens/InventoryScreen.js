@@ -155,6 +155,15 @@ export default function InventoryScreen({ navigation }) {
         keyExtractor={item => String(item.id)}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 60, paddingHorizontal: 20 }}>
+            <Ionicons name="cube-outline" size={48} color={COLORS.textMuted} />
+            <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.textPrimary, marginTop: 12, marginBottom: 4 }}>No Inventory Tracked</Text>
+            <Text style={{ fontSize: 13, color: COLORS.textMuted, textAlign: 'center', lineHeight: 18, marginBottom: 16 }}>
+              Tap "+ Add Item" above to track raw materials, stock levels, and valuations.
+            </Text>
+          </View>
+        }
         renderItem={({ item }) => {
           const isLow = (Number(item.stock) || 0) <= (Number(item.minStock) || 0);
 
