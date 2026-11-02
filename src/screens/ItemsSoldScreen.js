@@ -65,13 +65,22 @@ export default function ItemsSoldScreen({ navigation }) {
   }, 0);
   const sellThroughRate = totalPrepared > 0 ? Math.round((totalSold / totalPrepared) * 100) : 0;
 
-  // Handlers for Prepared Stepper
+  // Handlers for Prepared Stepper (Incremental & Direct Typed Input)
   const handleStepPrepared = (item, delta) => {
-    const currentPrep = typeof item.preparedCount === 'number' ? item.preparedCount : 30;
+    const currentPrep = typeof item.preparedCount === 'number' ? item.preparedCount : 0;
     const nextPrep = Math.max(0, currentPrep + delta);
     dispatch({
       type: 'UPDATE_PRODUCT_PREPARED',
       payload: { id: item.id, preparedCount: nextPrep },
+    });
+  };
+
+  const handleDirectPreparedChange = (item, text) => {
+    const clean = text.replace(/[^0-9]/g, '');
+    const val = clean === '' ? 0 : parseInt(clean, 10);
+    dispatch({
+      type: 'UPDATE_PRODUCT_PREPARED',
+      payload: { id: item.id, preparedCount: val },
     });
   };
 
@@ -195,14 +204,13 @@ export default function ItemsSoldScreen({ navigation }) {
                 <Ionicons name="remove" size={16} color={COLORS.textPrimary} />
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.stepValueBox}
-                onPress={() => openEditModal(item)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.stepValueText}>{prep}</Text>
-                <Text style={styles.tapEditHint}>Tap to edit</Text>
-              </TouchableOpacity>
+              <TextInput
+                style={styles.stepInput}
+                value={String(prep)}
+                keyboardType="number-pad"
+                selectTextOnFocus
+                onChangeText={(txt) => handleDirectPreparedChange(item, txt)}
+              />
 
               <TouchableOpacity
                 style={styles.stepBtn}
@@ -767,6 +775,21 @@ const styles = StyleSheet.create({
     fontSize: FONTS.md,
     fontWeight: '900',
     color: COLORS.textPrimary,
+  },
+  stepInput: {
+    minWidth: 44,
+    maxWidth: 68,
+    height: 30,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.xs,
+    paddingHorizontal: 4,
+    paddingVertical: 0,
+    fontSize: FONTS.sm,
+    fontWeight: '900',
+    color: COLORS.textPrimary,
+    textAlign: 'center',
   },
   tapEditHint: {
     fontSize: 8,

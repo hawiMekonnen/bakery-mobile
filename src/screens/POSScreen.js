@@ -93,6 +93,24 @@ export default function POSScreen({ navigation }) {
     });
   };
 
+  const setDirectQuantity = (id, text) => {
+    const clean = text.replace(/[^0-9]/g, '');
+    const qty = clean === '' ? 0 : parseInt(clean, 10);
+    setCart(prev => {
+      const existing = prev.find(item => item.id === id);
+      if (!existing) return prev;
+      return prev.map(item =>
+        item.id === id ? { ...item, quantity: qty } : item
+      );
+    });
+  };
+
+  const handleBlurQuantity = (id, qty) => {
+    if (!qty || qty <= 0) {
+      setCart(prev => prev.filter(item => item.id !== id));
+    }
+  };
+
   const clearCart = () => {
     setCart([]);
     setCustomerName('');
@@ -306,9 +324,42 @@ export default function POSScreen({ navigation }) {
 
               <View style={styles.productBottomRow}>
                 <Text style={styles.productPrice}>ETB {Number(item.price).toFixed(2)}</Text>
-                <View style={styles.addIconCircle}>
-                  <Ionicons name="add" size={16} color="#FFF" />
-                </View>
+                {inCartQty > 0 ? (
+                  <View style={styles.cardStepper}>
+                    <TouchableOpacity
+                      style={styles.cardStepBtn}
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        changeQuantityBy(item.id, -1);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="remove" size={12} color={COLORS.textPrimary} />
+                    </TouchableOpacity>
+                    <TextInput
+                      style={styles.cardStepInput}
+                      value={String(inCartQty)}
+                      keyboardType="number-pad"
+                      selectTextOnFocus
+                      onChangeText={(txt) => setDirectQuantity(item.id, txt)}
+                      onBlur={() => handleBlurQuantity(item.id, inCartQty)}
+                    />
+                    <TouchableOpacity
+                      style={styles.cardStepBtn}
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        changeQuantityBy(item.id, 1);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="add" size={12} color={COLORS.textPrimary} />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.addIconCircle}>
+                    <Ionicons name="add" size={16} color="#FFF" />
+                  </View>
+                )}
               </View>
             </TouchableOpacity>
           );
@@ -370,7 +421,14 @@ export default function POSScreen({ navigation }) {
                       <TouchableOpacity onPress={() => changeQuantityBy(item.id, -1)} style={styles.qtyBtn}>
                         <Ionicons name="remove" size={14} color={COLORS.textPrimary} />
                       </TouchableOpacity>
-                      <Text style={styles.qtyText}>{item.quantity}</Text>
+                      <TextInput
+                        style={styles.qtyInput}
+                        value={String(item.quantity)}
+                        keyboardType="number-pad"
+                        selectTextOnFocus
+                        onChangeText={(txt) => setDirectQuantity(item.id, txt)}
+                        onBlur={() => handleBlurQuantity(item.id, item.quantity)}
+                      />
                       <TouchableOpacity onPress={() => changeQuantityBy(item.id, 1)} style={styles.qtyBtn}>
                         <Ionicons name="add" size={14} color={COLORS.textPrimary} />
                       </TouchableOpacity>
@@ -762,6 +820,57 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: FONTS.xs,
     fontWeight: '700',
+  },
+  qtyInput: {
+    minWidth: 40,
+    maxWidth: 60,
+    height: 28,
+    paddingHorizontal: 4,
+    paddingVertical: 0,
+    textAlign: 'center',
+    fontSize: FONTS.xs,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    backgroundColor: '#FFF',
+    borderRadius: RADIUS.sm,
+    marginHorizontal: 3,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  cardStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surfaceSubtle,
+    borderRadius: RADIUS.md,
+    padding: 2,
+    borderWidth: 1,
+    borderColor: COLORS.primaryLight,
+  },
+  cardStepBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: RADIUS.sm,
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  cardStepInput: {
+    minWidth: 32,
+    maxWidth: 50,
+    height: 24,
+    paddingHorizontal: 2,
+    paddingVertical: 0,
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.primaryDark,
+    backgroundColor: '#FFF',
+    borderRadius: RADIUS.sm,
+    marginHorizontal: 2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   checkoutForm: {
     marginTop: 14,

@@ -299,7 +299,7 @@ export default function ProductsScreen({ navigation }) {
               {/* Price & Cost */}
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>SELLING PRICE ($)</Text>
+                  <Text style={styles.fieldLabel}>SELLING PRICE (ETB)</Text>
                   <TextInput
                     style={styles.modalInput}
                     placeholder="75.00"
@@ -310,7 +310,7 @@ export default function ProductsScreen({ navigation }) {
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.fieldLabel}>PRODUCTION COST ($)</Text>
+                  <Text style={styles.fieldLabel}>PRODUCTION COST (ETB)</Text>
                   <TextInput
                     style={styles.modalInput}
                     placeholder="25.00"
