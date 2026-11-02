@@ -64,12 +64,12 @@ export const FONTS = {
 };
 
 export const RADIUS = {
-  xs: 6,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 22,
-  full: 9999,
+  xs: 4,
+  sm: 6,
+  md: 8,
+  lg: 8,
+  xl: 8,
+  full: 8,
 };
 
 export const SHADOWS = {

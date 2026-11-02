@@ -93,12 +93,12 @@ export default function BluetoothPrinterModal({
       if (result.success) {
         setConnectedPrinterState(result.printer);
         Alert.alert(
-          'Connected! 🖨️',
+          'Connected',
           `"${printer.name}" is verified and ready to print.`
         );
       } else {
         Alert.alert(
-          'Connection Failed ⚠️',
+          'Connection Failed',
           result.message || 'Could not connect. Ensure printer is turned ON, has paper, and is within range.'
         );
       }
@@ -132,7 +132,7 @@ export default function BluetoothPrinterModal({
       const result = await testPrintReceipt(connectedPrinter, businessName);
       if (result.success) {
         Alert.alert(
-          'Test Printed! 🖨️',
+          'Test Printed',
           `Slip printed successfully on ${result.printerName || 'Bluetooth thermal printer'}.`
         );
       } else {
@@ -156,7 +156,7 @@ export default function BluetoothPrinterModal({
       const result = await printToBluetoothPrinter(orderToPrint, businessName, paperWidth);
       if (result.success) {
         Alert.alert(
-          'Receipt Printed! 🖨️',
+          'Receipt Printed',
           `Receipt #${orderToPrint.id} printed directly to ${result.printerName || 'printer'}.`
         );
         if (onPrinted) onPrinted(result);

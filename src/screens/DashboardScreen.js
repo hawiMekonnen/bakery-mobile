@@ -296,7 +296,7 @@ export default function DashboardScreen({ navigation }) {
         <View style={styles.sectionBlock}>
           <View style={styles.sectionTitleRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={styles.sectionEmoji}>💵</Text>
+              <Ionicons name="wallet-outline" size={18} color={COLORS.primary} style={{ marginRight: 6 }} />
               <Text style={styles.sectionTitle}>Today's Collections</Text>
             </View>
             <TouchableOpacity onPress={() => navigation.navigate('Analytics')}>
@@ -307,7 +307,7 @@ export default function DashboardScreen({ navigation }) {
           <View style={styles.incomeCard}>
             <View style={styles.incomeMethodRow}>
               <View style={[styles.incomeMethodBox, { borderLeftColor: COLORS.cashColor }]}>
-                <Text style={styles.incomeMethodEmoji}>💵</Text>
+                <Ionicons name="cash-outline" size={18} color={COLORS.cashColor} style={{ marginBottom: 4 }} />
                 <Text style={styles.incomeMethodLabel}>CASH</Text>
                 <Text style={[styles.incomeMethodVal, { color: COLORS.cashColor }]}>
                   ETB {todayCash.toFixed(2)}
@@ -315,7 +315,7 @@ export default function DashboardScreen({ navigation }) {
               </View>
 
               <View style={[styles.incomeMethodBox, { borderLeftColor: COLORS.cardColor }]}>
-                <Text style={styles.incomeMethodEmoji}>💳</Text>
+                <Ionicons name="card-outline" size={18} color={COLORS.cardColor} style={{ marginBottom: 4 }} />
                 <Text style={styles.incomeMethodLabel}>CARD</Text>
                 <Text style={[styles.incomeMethodVal, { color: COLORS.cardColor }]}>
                   ETB {todayCard.toFixed(2)}
@@ -323,7 +323,7 @@ export default function DashboardScreen({ navigation }) {
               </View>
 
               <View style={[styles.incomeMethodBox, { borderLeftColor: COLORS.mobileColor }]}>
-                <Text style={styles.incomeMethodEmoji}>📱</Text>
+                <Ionicons name="phone-portrait-outline" size={18} color={COLORS.mobileColor} style={{ marginBottom: 4 }} />
                 <Text style={styles.incomeMethodLabel}>MOBILE</Text>
                 <Text style={[styles.incomeMethodVal, { color: COLORS.mobileColor }]}>
                   ETB {todayMobile.toFixed(2)}
@@ -342,7 +342,7 @@ export default function DashboardScreen({ navigation }) {
         <View style={styles.sectionBlock}>
           <View style={styles.sectionTitleRow}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={styles.sectionEmoji}>🧾</Text>
+              <Ionicons name="receipt-outline" size={18} color={COLORS.primary} style={{ marginRight: 6 }} />
               <Text style={styles.sectionTitle}>Recent Orders ({orders.length})</Text>
             </View>
             <TouchableOpacity onPress={() => handleNavigate('Orders')}>
@@ -352,7 +352,7 @@ export default function DashboardScreen({ navigation }) {
 
           {orders.length === 0 ? (
             <View style={styles.emptyOrdersCard}>
-              <Text style={{ fontSize: 28, marginBottom: 6 }}>🛍️</Text>
+              <Ionicons name="bag-handle-outline" size={36} color={COLORS.textMuted} style={{ marginBottom: 6 }} />
               <Text style={styles.emptyOrdersTitle}>No Orders Yet</Text>
               <Text style={styles.emptyOrdersSub}>
                 Start a new sale from Point of Sale. Your orders will be safely saved here.
@@ -456,7 +456,7 @@ export default function DashboardScreen({ navigation }) {
                 activeOpacity={0.8}
               >
                 <View style={styles.topProductEmojiBox}>
-                  <Text style={{ fontSize: 32 }}>{p.emoji || '🥐'}</Text>
+                  <Ionicons name="fast-food-outline" size={26} color={COLORS.primary} />
                 </View>
                 <Text style={styles.topProductName} numberOfLines={1}>{p.name}</Text>
                 <Text style={styles.topProductPrice}>ETB {Number(p.price).toFixed(2)}</Text>

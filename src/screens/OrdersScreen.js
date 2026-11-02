@@ -77,7 +77,7 @@ export default function OrdersScreen({ navigation }) {
       const result = await printToBluetoothPrinter(selectedOrder, auth.businessName || 'Bakery', paperWidth);
       if (result.success) {
         Alert.alert(
-          'Receipt Printed! 🧾🖨️',
+          'Receipt Printed',
           `Receipt #${selectedOrder.id} printed directly to ${result.printerName || 'Bluetooth thermal printer'}.`
         );
       } else {
@@ -123,7 +123,7 @@ export default function OrdersScreen({ navigation }) {
       <ScreenHeader
         canGoBack={canGoBack}
         onBack={() => navigation.goBack()}
-        emoji="🧾"
+        icon="receipt-outline"
         title="Order History"
         subtitle={`${filteredOrders.length} sales • ETB ${totalRevenue.toFixed(2)} total`}
         rightAction={
@@ -194,7 +194,7 @@ export default function OrdersScreen({ navigation }) {
               style={{ marginRight: 4 }}
             />
             <Text style={[styles.dateChipText, selectedDate !== 'All' && selectedDate !== todayStr && selectedDate !== yesterdayStr && styles.dateChipTextActive]}>
-              {selectedDate !== 'All' && selectedDate !== todayStr && selectedDate !== yesterdayStr ? selectedDate : 'Select Any Day 📅'}
+              {selectedDate !== 'All' && selectedDate !== todayStr && selectedDate !== yesterdayStr ? selectedDate : 'Select Date'}
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -248,7 +248,7 @@ export default function OrdersScreen({ navigation }) {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconCircle}>
-              <Text style={{ fontSize: 44 }}>🧾</Text>
+              <Ionicons name="receipt-outline" size={44} color={COLORS.textMuted} />
             </View>
             <Text style={styles.emptyTitle}>
               {selectedDate !== 'All' ? 'No Orders on This Date' : 'No Sales Recorded Yet'}
@@ -386,7 +386,7 @@ export default function OrdersScreen({ navigation }) {
                   {(selectedOrder.items || []).map((it, idx) => (
                     <View key={idx} style={styles.receiptItemRow}>
                       <View style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}>
-                        <Text style={{ fontSize: 16, marginRight: 6 }}>{it.emoji || '🥐'}</Text>
+                        <Ionicons name="fast-food-outline" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
                         <Text style={styles.receiptItemName}>{it.name} x{it.quantity}</Text>
                       </View>
                       <Text style={styles.receiptItemPrice}>

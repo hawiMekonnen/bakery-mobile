@@ -17,12 +17,7 @@ import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
 
 const CATEGORIES = ['All', 'Pastry', 'Savory', 'Bread', 'Cakes', 'Coffee', 'Sandwiches'];
-const EMOJI_OPTIONS = [
-  '🥞', '🫓', '🥟', '🥮', '🍯',
-  '🥐', '🍞', '🥖', '🥨', '🎂',
-  '🍰', '🧁', '🍩', '🍪', '🥧',
-  '☕', '🧋', '🫖', '🥪', '🍕'
-];
+const EMOJI_OPTIONS = [];
 
 export default function ProductsScreen({ navigation }) {
   const { state, dispatch } = useBakery();
@@ -38,7 +33,7 @@ export default function ProductsScreen({ navigation }) {
   const [category, setCategory] = useState('Pastry');
   const [price, setPrice] = useState('');
   const [cost, setCost] = useState('');
-  const [emoji, setEmoji] = useState('🥐');
+  const [emoji, setEmoji] = useState('');
   const [available, setAvailable] = useState(true);
 
   const filteredProducts = products.filter(p => {
@@ -55,7 +50,7 @@ export default function ProductsScreen({ navigation }) {
     setCategory('Pastry');
     setPrice('');
     setCost('');
-    setEmoji('🥐');
+    setEmoji('');
     setAvailable(true);
     setModalVisible(true);
   };
@@ -66,7 +61,7 @@ export default function ProductsScreen({ navigation }) {
     setCategory(p.category || 'Pastry');
     setPrice(String(p.price));
     setCost(String(p.cost || ''));
-    setEmoji(p.emoji || '🥐');
+    setEmoji(p.emoji || '');
     setAvailable(p.available !== false);
     setModalVisible(true);
   };
@@ -134,7 +129,7 @@ export default function ProductsScreen({ navigation }) {
       <ScreenHeader
         canGoBack
         onBack={() => navigation.goBack()}
-        emoji="🥐"
+        icon="restaurant-outline"
         title="Bakery Menu"
         subtitle={`${products.length} total items • ${availableCount} active`}
         rightAction={
@@ -205,7 +200,7 @@ export default function ProductsScreen({ navigation }) {
             activeOpacity={0.75}
           >
             <View style={styles.itemEmojiBox}>
-              <Text style={{ fontSize: 28 }}>{item.emoji || '🥐'}</Text>
+              <View style={{ width: 40, height: 40, borderRadius: 6, backgroundColor: COLORS.primaryLight, alignItems: 'center', justifyContent: 'center' }}><Ionicons name="fast-food-outline" size={20} color={COLORS.primary} /></View>
             </View>
 
             <View style={styles.itemInfo}>

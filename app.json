@@ -1,19 +1,20 @@
 {
   "expo": {
-    "name": "Bakery",
-    "slug": "bakery",
-    "version": "1.0.7",
+    "name": "Bakery POS",
+    "slug": "bakery-pos",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.skykin.bakerypos"
     },
     "android": {
-      "package": "com.bakery.bakerypos",
-      "versionCode": 8,
+      "package": "com.skykin.bakerypos",
+      "versionCode": 9,
       "adaptiveIcon": {
-        "backgroundColor": "#C25E00",
+        "backgroundColor": "#D97706",
         "foregroundImage": "./assets/icon.png"
       },
       "permissions": [

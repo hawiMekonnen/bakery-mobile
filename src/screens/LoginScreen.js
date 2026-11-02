@@ -100,16 +100,16 @@ export default function LoginScreen() {
         {/* Logo Area */}
         <View style={styles.logoArea}>
           <View style={styles.logoBadge}>
-            <Text style={styles.logoEmoji}>🥐</Text>
+            <Text style={styles.logoLetter}>B</Text>
           </View>
-          <Text style={styles.logoTitle}>Bakery</Text>
-          <Text style={styles.logoSubtitle}>Artisan Bakery Management</Text>
+          <Text style={styles.logoTitle}>Bakery POS</Text>
+          <Text style={styles.logoSubtitle}>Point of Sale Terminal</Text>
         </View>
 
         {/* Login Card */}
         <View style={styles.loginCard}>
-          <Text style={styles.cardTitle}>Welcome Back</Text>
-          <Text style={styles.cardSubtitle}>Sign in to manage your bakery</Text>
+          <Text style={styles.cardTitle}>Terminal Sign In</Text>
+          <Text style={styles.cardSubtitle}>Enter operator credentials to begin shift</Text>
 
           {/* Username Field */}
           <View style={styles.fieldGroup}>
@@ -207,17 +207,20 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   logoBadge: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    backgroundColor: COLORS.primaryLight,
+    width: 64,
+    height: 64,
+    borderRadius: 8,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
     ...SHADOWS.md,
   },
-  logoEmoji: {
-    fontSize: 38,
+  logoLetter: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'HelveticaNeue-Bold' : 'sans-serif-medium',
   },
   logoTitle: {
     fontSize: 28,
@@ -303,7 +306,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     backgroundColor: '#FEF3C7',
-    borderRadius: 20,
+    borderRadius: 8,
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',

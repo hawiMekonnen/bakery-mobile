@@ -22,9 +22,9 @@ import { printReceipt, shareReceiptPDF } from '../utils/receiptPrinter';
 const CATEGORIES = ['All', 'Pastry', 'Savory', 'Bread', 'Cakes', 'Coffee', 'Sandwiches'];
 
 const PAYMENT_METHODS = [
-  { id: 'Cash', label: 'Cash', icon: 'cash-outline', emoji: '💵' },
-  { id: 'Card', label: 'Card', icon: 'card-outline', emoji: '💳' },
-  { id: 'Mobile', label: 'Mobile', icon: 'phone-portrait-outline', emoji: '📱' },
+  { id: 'Cash', label: 'Cash', icon: 'cash-outline' },
+  { id: 'Card', label: 'Card', icon: 'card-outline' },
+  { id: 'Mobile', label: 'Mobile', icon: 'phone-portrait-outline' },
 ];
 
 export default function POSScreen({ navigation }) {
@@ -36,6 +36,7 @@ export default function POSScreen({ navigation }) {
   const [cart, setCart] = useState([]);
   const [cartModalVisible, setCartModalVisible] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [amountReceived, setAmountReceived] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [notes, setNotes] = useState('');
   const [receiptModalVisible, setReceiptModalVisible] = useState(false);
@@ -116,12 +117,16 @@ export default function POSScreen({ navigation }) {
     setCustomerName('');
     setNotes('');
     setPaymentMethod('Cash');
+    setAmountReceived('');
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subtotal * 0.05;
   const total = subtotal + tax;
   const totalItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const parsedReceived = parseFloat(amountReceived);
+  const effectiveReceived = isNaN(parsedReceived) ? total : parsedReceived;
+  const changeDue = Math.max(0, effectiveReceived - total);
 
   const handleCheckout = () => {
     if (cart.length === 0) {
@@ -140,12 +145,14 @@ export default function POSScreen({ navigation }) {
       subtotal: parseFloat(subtotal.toFixed(2)),
       tax: parseFloat(tax.toFixed(2)),
       total: parseFloat(total.toFixed(2)),
+      amountReceived: parseFloat(effectiveReceived.toFixed(2)),
+      changeDue: parseFloat(changeDue.toFixed(2)),
       items: cart.map(item => ({
         id: item.id,
         name: item.name,
         price: item.price,
         quantity: item.quantity,
-        emoji: item.emoji || '🥐',
+        emoji: item.emoji || '',
       })),
     };
 
@@ -168,7 +175,7 @@ export default function POSScreen({ navigation }) {
       const result = await printToBluetoothPrinter(lastCompletedOrder, auth.businessName || 'Bakery', paperWidth);
       if (result.success) {
         Alert.alert(
-          'Receipt Printed! 🧾🖨️',
+          'Receipt Printed',
           `Receipt #${lastCompletedOrder.id} printed directly to ${result.printerName || 'Bluetooth thermal printer'}.`
         );
       } else {
@@ -194,7 +201,7 @@ export default function POSScreen({ navigation }) {
       <ScreenHeader
         canGoBack
         onBack={() => navigation.goBack()}
-        emoji="🛒"
+        icon="cart-outline"
         title="Point of Sale"
         subtitle={`${products.length} products • Quick register`}
         rightAction={
@@ -404,7 +411,7 @@ export default function POSScreen({ navigation }) {
 
             {cart.length === 0 ? (
               <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-                <Text style={{ fontSize: 44, marginBottom: 8 }}>🛒</Text>
+                <Ionicons name="cart-outline" size={44} color={COLORS.textMuted} style={{ marginBottom: 8 }} />
                 <Text style={{ fontSize: FONTS.md, fontWeight: '700', color: COLORS.textPrimary }}>Cart is empty</Text>
                 <Text style={{ fontSize: FONTS.xs, color: COLORS.textMuted, marginTop: 4 }}>Tap any product card to add to order</Text>
               </View>
@@ -412,7 +419,7 @@ export default function POSScreen({ navigation }) {
               <ScrollView style={{ maxHeight: 280 }}>
                 {cart.map(item => (
                   <View key={item.id} style={styles.cartItemRow}>
-                    <Text style={{ fontSize: 24, marginRight: 10 }}>{item.emoji || '🥐'}</Text>
+                    <View style={{ width: 32, height: 32, borderRadius: 6, backgroundColor: COLORS.primaryLight, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}><Ionicons name="fast-food-outline" size={16} color={COLORS.primary} /></View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.cartItemName}>{item.name}</Text>
                       <Text style={styles.cartItemPrice}>ETB {Number(item.price).toFixed(2)} each</Text>
@@ -448,7 +455,7 @@ export default function POSScreen({ navigation }) {
                       style={[styles.payMethodBtn, paymentMethod === m.id && styles.payMethodBtnActive]}
                       onPress={() => setPaymentMethod(m.id)}
                     >
-                      <Text style={{ fontSize: 16, marginRight: 4 }}>{m.emoji}</Text>
+                      <Ionicons name={m.icon} size={15} color={paymentMethod === m.id ? '#FFF' : COLORS.textPrimary} style={{ marginRight: 6 }} />
                       <Text style={[styles.payMethodText, paymentMethod === m.id && { color: '#FFF' }]}>{m.label}</Text>
                     </TouchableOpacity>
                   ))}
@@ -461,6 +468,46 @@ export default function POSScreen({ navigation }) {
                   value={customerName}
                   onChangeText={setCustomerName}
                 />
+
+                {paymentMethod === 'Cash' && (
+                  <View style={{ marginBottom: 12 }}>
+                    <Text style={styles.formLabel}>AMOUNT RECEIVED (ETB)</Text>
+                    <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8 }}>
+                      <TextInput
+                        style={[styles.customerInput, { flex: 1, marginBottom: 0, fontWeight: '700' }]}
+                        placeholder={`e.g. ${total.toFixed(0)}`}
+                        placeholderTextColor={COLORS.textMuted}
+                        keyboardType="decimal-pad"
+                        value={amountReceived}
+                        onChangeText={setAmountReceived}
+                      />
+                      <TouchableOpacity
+                        style={styles.quickAmountBtn}
+                        onPress={() => setAmountReceived(total.toFixed(0))}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.quickAmountText}>Exact</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.quickAmountBtn}
+                        onPress={() => {
+                          const base = parseFloat(amountReceived) || total;
+                          setAmountReceived(String(Math.ceil(base / 100) * 100 || 100));
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.quickAmountText}>Round</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.changeDueRow}>
+                      <Text style={styles.changeDueLabel}>Change Due</Text>
+                      <Text style={[styles.changeDueVal, { color: effectiveReceived >= total ? COLORS.success : '#EF4444' }]}>
+                        ETB {changeDue.toFixed(2)}
+                      </Text>
+                    </View>
+                  </View>
+                )}
 
                 <View style={styles.cartSummaryRow}>
                   <Text style={styles.cartSummaryLabel}>Subtotal</Text>
@@ -502,7 +549,7 @@ export default function POSScreen({ navigation }) {
               <View style={styles.successIconCircle}>
                 <Ionicons name="checkmark" size={32} color="#FFF" />
               </View>
-              <Text style={styles.successTitle}>Payment Completed!</Text>
+              <Text style={styles.successTitle}>Payment Completed</Text>
               <Text style={styles.successSub}>Order {lastCompletedOrder.id} successfully recorded</Text>
               <Text style={styles.successAmount}>ETB {Number(lastCompletedOrder.total).toFixed(2)}</Text>
               <Text style={styles.successMethod}>Paid via {lastCompletedOrder.paymentMethod}</Text>
@@ -942,14 +989,49 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: COLORS.primaryDark,
   },
+  quickAmountBtn: {
+    backgroundColor: COLORS.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quickAmountText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  changeDueRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginTop: 4,
+  },
+  changeDueLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  changeDueVal: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
   completeOrderBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.success,
+    backgroundColor: COLORS.primary,
     borderRadius: RADIUS.md,
+    minHeight: 48,
     paddingVertical: 13,
     marginTop: 12,
+    ...SHADOWS.sm,
   },
   completeOrderText: {
     color: '#FFF',

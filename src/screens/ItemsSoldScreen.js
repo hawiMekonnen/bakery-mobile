@@ -145,7 +145,7 @@ export default function ItemsSoldScreen({ navigation }) {
 
   const handleAuthorizedReset = () => {
     dispatch({ type: 'RESET_DAILY_ITEMS_SOLD', payload: { resetPrepared: false } });
-    Alert.alert('Shift Reset Authorized! ✓', 'Daily sold counts have been reset to 0.');
+    Alert.alert('Shift Reset Authorized', 'Daily sold counts have been reset to 0.');
   };
 
   const renderProductItem = ({ item }) => {
@@ -175,7 +175,7 @@ export default function ItemsSoldScreen({ navigation }) {
         <View style={styles.cardTopRow}>
           <View style={styles.prodLeft}>
             <View style={styles.emojiCircle}>
-              <Text style={styles.emojiText}>{item.emoji || '🥐'}</Text>
+              <Ionicons name="fast-food-outline" size={20} color={COLORS.primary} style={{ marginRight: 6 }} />
             </View>
             <View style={styles.prodInfo}>
               <Text style={styles.prodName}>{item.name}</Text>
@@ -283,7 +283,7 @@ export default function ItemsSoldScreen({ navigation }) {
       <ScreenHeader
         canGoBack={true}
         onBack={() => navigation.goBack()}
-        emoji="🥐"
+        icon="stats-chart-outline"
         title="Daily Items Sold"
         subtitle="Prepared vs Sold Inventory Tracker"
       />

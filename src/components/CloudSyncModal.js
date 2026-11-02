@@ -80,7 +80,7 @@ export default function CloudSyncModal({ visible, onClose, onSyncComplete = null
     setTesting(false);
 
     if (reg.success) {
-      Alert.alert('License Verified! ✓', `Device bound to license ${licenseKeyInput.toUpperCase()}`);
+      Alert.alert('License Verified', `Device bound to license ${licenseKeyInput.toUpperCase()}`);
       loadAll();
     } else if (reg.networkOffline) {
       Alert.alert('Saved (Offline)', 'Settings saved. Server could not be reached right now.');
@@ -96,7 +96,7 @@ export default function CloudSyncModal({ visible, onClose, onSyncComplete = null
 
     if (res.success) {
       Alert.alert(
-        'Cloud Sync Successful! 🚀',
+        'Cloud Sync Successful',
         `Successfully synced ${res.ordersCount} orders and ${res.productsCount} products to Admin Server.`
       );
       loadAll();
@@ -133,7 +133,7 @@ export default function CloudSyncModal({ visible, onClose, onSyncComplete = null
                   shopName: res.shopName,
                 },
               });
-              Alert.alert('Disaster Recovery Complete! ✓', res.message);
+              Alert.alert('Disaster Recovery Complete', res.message);
               onClose();
             } else {
               Alert.alert('Restore Failed', res.message);

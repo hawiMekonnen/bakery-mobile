@@ -105,7 +105,7 @@ export default function InventoryScreen({ navigation }) {
       <ScreenHeader
         canGoBack
         onBack={() => navigation.goBack()}
-        emoji="📦"
+        icon="cube-outline"
         title="Stock & Inventory"
         subtitle={`${inventory.length} raw ingredients • ${lowStockItems.length} low stock`}
         rightAction={

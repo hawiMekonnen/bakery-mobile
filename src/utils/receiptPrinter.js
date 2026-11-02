@@ -170,7 +170,7 @@ export function generateReceiptHTML(order, businessName = 'Bakery', paperWidth =
 
         <div class="footer">
           Thank you for choosing ${businessName}!<br>
-          Please come again soon 🥐<br>
+          Please come again soon<br>
           Retain slip for your records
         </div>
 
@@ -205,7 +205,7 @@ Subtotal: ETB ${Number(order.subtotal || 0).toFixed(2)}
 Tax (5%): ETB ${Number(order.tax || 0).toFixed(2)}
 TOTAL:    ETB ${Number(order.total || 0).toFixed(2)}
 ================================
-Thank you for your visit! 🥐
+Thank you for your visit!
 `.trim();
 }
 

@@ -77,7 +77,7 @@ export default function WifiSyncModal({ visible, onClose, onSyncComplete = null 
     if (res.success) {
       setLastSync(res);
       Alert.alert(
-        'Wi-Fi Sync Successful! 🚀',
+        'Wi-Fi Sync Successful',
         `Successfully synced ${res.ordersCount} orders and ${res.productsCount} products to Admin Server at ${res.serverUrl}`
       );
       if (onSyncComplete) onSyncComplete(res);

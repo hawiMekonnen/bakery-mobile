@@ -84,7 +84,7 @@ export default function AnalyticsScreen({ navigation }) {
       <ScreenHeader
         canGoBack
         onBack={() => navigation.goBack()}
-        emoji="💳"
+        icon="bar-chart-outline"
         title="Income Ledger"
         subtitle={`Period: ETB ${periodRevenue.toFixed(2)} • All time: ETB ${allTimeRevenue.toFixed(2)}`}
         rightAction={
@@ -141,7 +141,7 @@ export default function AnalyticsScreen({ navigation }) {
                 style={{ marginRight: 4 }}
               />
               <Text style={[styles.periodPillText, selectedDate !== 'All' && selectedDate !== todayStr && selectedDate !== yesterdayStr && styles.periodPillTextActive]}>
-                {selectedDate !== 'All' && selectedDate !== todayStr && selectedDate !== yesterdayStr ? selectedDate : 'Select Any Day 📅'}
+                {selectedDate !== 'All' && selectedDate !== todayStr && selectedDate !== yesterdayStr ? selectedDate : 'Select Date'}
               </Text>
             </TouchableOpacity>
           </ScrollView>
@@ -185,7 +185,7 @@ export default function AnalyticsScreen({ navigation }) {
           <View style={[styles.methodRow, { borderLeftColor: COLORS.cashColor }]}>
             <View style={styles.methodInfo}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ fontSize: 20, marginRight: 8 }}>💵</Text>
+                <Ionicons name="cash-outline" size={20} color={COLORS.cashColor} style={{ marginRight: 8 }} />
                 <View>
                   <Text style={styles.methodName}>Cash Drawer</Text>
                   <Text style={styles.methodCount}>{cashOrders.length} transactions</Text>
@@ -200,7 +200,7 @@ export default function AnalyticsScreen({ navigation }) {
           <View style={[styles.methodRow, { borderLeftColor: COLORS.cardColor }]}>
             <View style={styles.methodInfo}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ fontSize: 20, marginRight: 8 }}>💳</Text>
+                <Ionicons name="card-outline" size={20} color={COLORS.cardColor} style={{ marginRight: 8 }} />
                 <View>
                   <Text style={styles.methodName}>Credit & Debit Card</Text>
                   <Text style={styles.methodCount}>{cardOrders.length} transactions</Text>
@@ -215,7 +215,7 @@ export default function AnalyticsScreen({ navigation }) {
           <View style={[styles.methodRow, { borderLeftColor: COLORS.mobileColor, borderBottomWidth: 0 }]}>
             <View style={styles.methodInfo}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ fontSize: 20, marginRight: 8 }}>📱</Text>
+                <Ionicons name="phone-portrait-outline" size={20} color={COLORS.mobileColor} style={{ marginRight: 8 }} />
                 <View>
                   <Text style={styles.methodName}>Mobile Money / Telebirr</Text>
                   <Text style={styles.methodCount}>{mobileOrders.length} transactions</Text>
