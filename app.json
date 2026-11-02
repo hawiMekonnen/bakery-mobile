@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Bakery POS",
-    "slug": "bakery-pos",
+    "slug": "bakery",
     "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
