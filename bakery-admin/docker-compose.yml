@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  bakery-admin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bakery-admin-portal
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=123Newadissadmin
+      - JWT_SECRET=skykin_bakery_super_secret_jwt_key_2026
+    volumes:
+      # Persistent storage volume so all licenses, devices, and orders survive container restarts
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

@@ -1,0 +1,2483 @@
+{
+  "admin": {
+    "username": "admin",
+    "passwordHash": "b3acb66d1f16edd9b139b1e644dac7171eccb31220be8c029cd1988d4e4937c8",
+    "updatedAt": "2026-10-31T07:22:00.000Z"
+  },
+  "shops": [
+    {
+      "id": "SHOP-001",
+      "name": "SkyKin Artisan Bakery (Main Branch)",
+      "contactPhone": "+251 911 234 567",
+      "email": "contact@skykinbakery.com",
+      "address": "Bole Medhanialem, Addis Ababa",
+      "plan": "enterprise",
+      "paidUntil": "2027-12-31T23:59:59.000Z",
+      "gracePeriodDays": 7,
+      "autoSuspend": true,
+      "status": "active",
+      "createdAt": "2026-11-01T12:03:08.158Z",
+      "updatedAt": "2026-11-01T12:03:08.158Z"
+    },
+    {
+      "id": "SHOP-MVXSM0RP",
+      "name": "Sarbet Artisan Cafe",
+      "contactPhone": "+251 922 333 444",
+      "email": "sarbet@bakery.com",
+      "address": "Sarbet, Addis Ababa",
+      "plan": "standard",
+      "paidUntil": "2027-06-30T23:59:59.000Z",
+      "gracePeriodDays": 7,
+      "autoSuspend": true,
+      "status": "active",
+      "createdAt": "2026-11-01T12:15:03.014Z",
+      "updatedAt": "2026-11-01T12:15:03.014Z"
+    },
+    {
+      "id": "SHOP-MVXT7KW2",
+      "name": "Sarbet Artisan Cafe",
+      "contactPhone": "+251 922 333 444",
+      "email": "sarbet@bakery.com",
+      "address": "Sarbet, Addis Ababa",
+      "plan": "standard",
+      "paidUntil": "2027-06-30T23:59:59.000Z",
+      "gracePeriodDays": 7,
+      "autoSuspend": true,
+      "status": "active",
+      "createdAt": "2026-11-01T12:31:48.866Z",
+      "updatedAt": "2026-11-01T12:31:48.866Z"
+    }
+  ],
+  "licenses": [
+    {
+      "id": "LIC-REC-MVXS7NLW",
+      "licenseKey": "LIC-C90TPU",
+      "shopId": "SHOP-001",
+      "shopName": "Bakery POS Terminal",
+      "maxDevices": 5,
+      "status": "active",
+      "expiresAt": "2027-12-31T23:59:59.000Z",
+      "createdAt": "2026-10-31T07:33:36.917Z",
+      "updatedAt": "2026-11-01T12:03:52.772Z"
+    },
+    {
+      "id": "LIC-REC-MVXS7NLW",
+      "licenseKey": "LIC-YCUOXV",
+      "shopId": "SHOP-001",
+      "shopName": "Bakery POS Terminal",
+      "maxDevices": 5,
+      "status": "active",
+      "expiresAt": "2027-12-31T23:59:59.000Z",
+      "createdAt": "2026-11-01T12:03:52.772Z",
+      "updatedAt": "2026-11-01T12:03:52.772Z"
+    },
+    {
+      "id": "LIC-MVXSM0RQ",
+      "licenseKey": "LIC-SARB-NCRS",
+      "shopId": "SHOP-MVXSM0RP",
+      "shopName": "Sarbet Artisan Cafe",
+      "maxDevices": 5,
+      "status": "active",
+      "expiresAt": "2027-06-30T23:59:59.000Z",
+      "createdAt": "2026-11-01T12:15:03.014Z",
+      "updatedAt": "2026-11-01T12:15:03.014Z"
+    },
+    {
+      "id": "LIC-MVXSM2D1",
+      "licenseKey": "LIC-BAKE-UVTB",
+      "shopId": "SHOP-001",
+      "shopName": "SkyKin Artisan Bakery (Main Branch)",
+      "maxDevices": 5,
+      "status": "active",
+      "expiresAt": "2027-12-31T23:59:59.000Z",
+      "createdAt": "2026-11-01T12:15:05.077Z",
+      "updatedAt": "2026-11-01T12:15:05.077Z"
+    },
+    {
+      "id": "LIC-MVXSM5JL",
+      "licenseKey": "LIC-SARB-TCD9",
+      "shopId": "SHOP-001",
+      "shopName": "SkyKin Artisan Bakery (Main Branch)",
+      "maxDevices": 5,
+      "status": "active",
+      "expiresAt": "2027-12-31T23:59:59.000Z",
+      "createdAt": "2026-11-01T12:15:09.201Z",
+      "updatedAt": "2026-11-01T12:15:09.201Z"
+    },
+    {
+      "id": "LIC-MVXT7KW2",
+      "licenseKey": "LIC-SARB-7FB9",
+      "shopId": "SHOP-MVXT7KW2",
+      "shopName": "Sarbet Artisan Cafe",
+      "maxDevices": 5,
+      "status": "active",
+      "expiresAt": "2027-06-30T23:59:59.000Z",
+      "createdAt": "2026-11-01T12:31:48.866Z",
+      "updatedAt": "2026-11-01T12:31:48.866Z"
+    },
+    {
+      "id": "LIC-MVXT7MH0",
+      "licenseKey": "LIC-BAKE-45V9",
+      "shopId": "SHOP-001",
+      "shopName": "SkyKin Artisan Bakery (Main Branch)",
+      "maxDevices": 5,
+      "status": "active",
+      "expiresAt": "2027-12-31T23:59:59.000Z",
+      "createdAt": "2026-11-01T12:31:50.916Z",
+      "updatedAt": "2026-11-01T12:31:50.916Z"
+    },
+    {
+      "id": "LIC-MVXT7PMM",
+      "licenseKey": "LIC-SARB-UWCN",
+      "shopId": "SHOP-001",
+      "shopName": "SkyKin Artisan Bakery (Main Branch)",
+      "maxDevices": 5,
+      "status": "active",
+      "expiresAt": "2027-12-31T23:59:59.000Z",
+      "createdAt": "2026-11-01T12:31:55.006Z",
+      "updatedAt": "2026-11-01T12:31:55.006Z"
+    }
+  ],
+  "devices": [
+    {
+      "id": "DEV-MVW33RSV",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "LIC-C90TPU",
+      "shopName": "Bakery POS Terminal",
+      "model": "Android POS Terminal",
+      "osVersion": "Android 14",
+      "appVersion": "1.0.7",
+      "status": "active",
+      "lastIp": "192.168.0.116",
+      "lastPing": "2026-11-01T11:30:52.797Z",
+      "lastSync": "2026-11-01T11:30:52.797Z",
+      "requestedAt": "2026-10-31T07:33:15.007Z",
+      "registeredAt": "2026-10-31T07:33:36.917Z",
+      "statusUpdatedAt": "2026-10-31T09:00:24.637Z",
+      "shopId": "SHOP-001",
+      "platform": "android",
+      "orderCount": 3,
+      "pendingCommand": null,
+      "offlineToken": {
+        "token": "eyJkZXZpY2VJZCI6IkRFVi1BTkRSLVBIT05FLU1WVzMzQ05RLVUwVk1KIiwic2hvcElkIjoiU0hPUC0wMDEiLCJsaWNlbnNlS2V5IjoiTElDLUM5MFRQVSIsInN0YXR1cyI6ImFjdGl2ZSIsImlzc3VlZEF0IjoiMjAyNi0xMS0wMVQxMjowMzo1Mi43NzJaIiwiZXhwaXJlc0F0IjoiMjAyNi0xMS0wNFQxMjowMzo1Mi43NzJaIiwibWF4T2ZmbGluZUhvdXJzIjo3Mn0.NybxV2KQfnt9REPJn40ZT6kbpqhrjSS3Pz7vSg1myUg",
+        "expiresAt": "2026-11-04T12:03:52.772Z",
+        "maxOfflineHours": 72
+      }
+    },
+    {
+      "id": "DEV-MVXR1KYW",
+      "deviceId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "licenseKey": "LIC-YCUOXV",
+      "shopName": "Bakery POS Terminal",
+      "model": "Web POS Client",
+      "osVersion": "Web",
+      "appVersion": "1.0.8",
+      "status": "pending",
+      "lastIp": "192.168.0.116",
+      "lastPing": "2026-11-01T11:31:09.800Z",
+      "lastSync": null,
+      "requestedAt": "2026-11-01T11:31:09.800Z",
+      "registeredAt": null,
+      "shopId": "SHOP-001",
+      "platform": "web",
+      "orderCount": 0,
+      "pendingCommand": null,
+      "offlineToken": {
+        "token": "eyJkZXZpY2VJZCI6IkRFVi1XRUItUE9TLU1WWFIxS1lRLTFEUkwiLCJzaG9wSWQiOiJTSE9QLTAwMSIsImxpY2Vuc2VLZXkiOiJMSUMtWUNVT1hWIiwic3RhdHVzIjoiYWN0aXZlIiwiaXNzdWVkQXQiOiIyMDI2LTExLTAxVDEyOjAzOjUyLjc3MloiLCJleHBpcmVzQXQiOiIyMDI2LTExLTA0VDEyOjAzOjUyLjc3MloiLCJtYXhPZmZsaW5lSG91cnMiOjcyfQ.xoGXUG_6OnJe4S2zlXjEGMwNQx0Bi88gYEta3LqvbaU",
+        "expiresAt": "2026-11-04T12:03:52.772Z",
+        "maxOfflineHours": 72
+      }
+    },
+    {
+      "id": "DEV-MVXSM2D1",
+      "deviceId": "DEV-ANDR-TEST1-1793535303",
+      "shopId": "SHOP-001",
+      "shopName": "Bakery POS Terminal",
+      "licenseKey": "LIC-BAKE-UVTB",
+      "model": "Samsung Galaxy A15",
+      "platform": "android",
+      "osVersion": "Android 14",
+      "appVersion": "1.0.8",
+      "status": "suspended",
+      "lastIp": "127.0.0.1",
+      "lastPing": "2026-11-01T12:15:23.557Z",
+      "lastSync": "2026-11-01T12:15:15.353Z",
+      "orderCount": 1,
+      "pendingOrdersCount": 0,
+      "requestedAt": "2026-11-01T12:15:05.077Z",
+      "registeredAt": "2026-11-01T12:15:07.142Z",
+      "statusReason": "Monthly subscription unpaid",
+      "statusUpdatedAt": "2026-11-01T12:15:19.447Z",
+      "pendingCommand": {
+        "command": "suspend",
+        "reason": "Monthly subscription unpaid",
+        "issuedAt": "2026-11-01T12:15:19.447Z",
+        "ackedAt": null
+      },
+      "offlineToken": {
+        "token": "eyJkZXZpY2VJZCI6IkRFVi1BTkRSLVRFU1QxLTE3OTM1MzUzMDMiLCJzaG9wSWQiOiJTSE9QLTAwMSIsImxpY2Vuc2VLZXkiOiJMSUMtQkFLRS1VVlRCIiwic3RhdHVzIjoiYWN0aXZlIiwiaXNzdWVkQXQiOiIyMDI2LTExLTAxVDEyOjE1OjA3LjE0MloiLCJleHBpcmVzQXQiOiIyMDI2LTExLTA0VDEyOjE1OjA3LjE0MloiLCJtYXhPZmZsaW5lSG91cnMiOjcyfQ.9_sgvGHzYqQ3rtq8q-kHoH8FFQRPH9A8nuglz6cO-0Q",
+        "expiresAt": "2026-11-04T12:15:07.142Z",
+        "maxOfflineHours": 72
+      }
+    },
+    {
+      "id": "DEV-MVXSM5JL",
+      "deviceId": "DEV-IOS-TEST2-1793535307",
+      "shopId": "SHOP-001",
+      "shopName": "Sarbet Artisan Cafe",
+      "licenseKey": "LIC-SARB-TCD9",
+      "model": "iPhone 15 Pro",
+      "platform": "ios",
+      "osVersion": "iOS 17.5",
+      "appVersion": "1.0.8",
+      "status": "active",
+      "lastIp": "127.0.0.1",
+      "lastPing": "2026-11-01T12:15:09.201Z",
+      "lastSync": null,
+      "orderCount": 0,
+      "pendingOrdersCount": 0,
+      "requestedAt": "2026-11-01T12:15:09.201Z",
+      "registeredAt": "2026-11-01T12:15:11.266Z",
+      "statusReason": "Approved by administrator",
+      "statusUpdatedAt": "2026-11-01T12:15:11.266Z",
+      "pendingCommand": {
+        "command": "activate",
+        "reason": "Approved by administrator",
+        "issuedAt": "2026-11-01T12:15:11.266Z",
+        "ackedAt": null
+      },
+      "offlineToken": {
+        "token": "eyJkZXZpY2VJZCI6IkRFVi1JT1MtVEVTVDItMTc5MzUzNTMwNyIsInNob3BJZCI6IlNIT1AtMDAxIiwibGljZW5zZUtleSI6IkxJQy1TQVJCLVRDRDkiLCJzdGF0dXMiOiJhY3RpdmUiLCJpc3N1ZWRBdCI6IjIwMjYtMTEtMDFUMTI6MTU6MTEuMjY2WiIsImV4cGlyZXNBdCI6IjIwMjYtMTEtMDRUMTI6MTU6MTEuMjY2WiIsIm1heE9mZmxpbmVIb3VycyI6NzJ9.zje2xYgQqljcOyoN07uqqNXEhVsnizXa1VBUQSdDO-Q",
+        "expiresAt": "2026-11-04T12:15:11.266Z",
+        "maxOfflineHours": 72
+      }
+    },
+    {
+      "id": "DEV-MVXT7MH0",
+      "deviceId": "DEV-ANDR-TEST1-1793536308",
+      "shopId": "SHOP-001",
+      "shopName": "Bakery POS Terminal",
+      "licenseKey": "LIC-BAKE-45V9",
+      "model": "Samsung Galaxy A15",
+      "platform": "android",
+      "osVersion": "Android 14",
+      "appVersion": "1.0.8",
+      "status": "active",
+      "lastIp": "127.0.0.1",
+      "lastPing": "2026-11-01T12:32:15.483Z",
+      "lastSync": "2026-11-01T12:32:01.133Z",
+      "orderCount": 1,
+      "pendingOrdersCount": 0,
+      "requestedAt": "2026-11-01T12:31:50.916Z",
+      "registeredAt": "2026-11-01T12:31:52.950Z",
+      "statusReason": "Payment received and verified",
+      "statusUpdatedAt": "2026-11-01T12:32:13.418Z",
+      "pendingCommand": {
+        "command": "activate",
+        "reason": "Payment received and verified",
+        "issuedAt": "2026-11-01T12:32:13.418Z",
+        "ackedAt": null
+      },
+      "offlineToken": {
+        "token": "eyJkZXZpY2VJZCI6IkRFVi1BTkRSLVRFU1QxLTE3OTM1MzYzMDgiLCJzaG9wSWQiOiJTSE9QLTAwMSIsImxpY2Vuc2VLZXkiOiJMSUMtQkFLRS00NVY5Iiwic3RhdHVzIjoiYWN0aXZlIiwiaXNzdWVkQXQiOiIyMDI2LTExLTAxVDEyOjMyOjEzLjQxOFoiLCJleHBpcmVzQXQiOiIyMDI2LTExLTA0VDEyOjMyOjEzLjQxOFoiLCJtYXhPZmZsaW5lSG91cnMiOjcyfQ.IUReZHDD4SvPmFgrxVWuWJdnP1-f8nzJ21dIc5gzsjA",
+        "expiresAt": "2026-11-04T12:32:13.418Z",
+        "maxOfflineHours": 72
+      }
+    },
+    {
+      "id": "DEV-MVXT7PMM",
+      "deviceId": "DEV-IOS-TEST2-1793536312",
+      "shopId": "SHOP-001",
+      "shopName": "Sarbet Artisan Cafe",
+      "licenseKey": "LIC-SARB-UWCN",
+      "model": "iPhone 15 Pro",
+      "platform": "ios",
+      "osVersion": "iOS 17.5",
+      "appVersion": "1.0.8",
+      "status": "active",
+      "lastIp": "127.0.0.1",
+      "lastPing": "2026-11-01T12:31:55.006Z",
+      "lastSync": null,
+      "orderCount": 0,
+      "pendingOrdersCount": 0,
+      "requestedAt": "2026-11-01T12:31:55.006Z",
+      "registeredAt": "2026-11-01T12:31:57.055Z",
+      "statusReason": "Approved by administrator",
+      "statusUpdatedAt": "2026-11-01T12:31:57.055Z",
+      "pendingCommand": {
+        "command": "activate",
+        "reason": "Approved by administrator",
+        "issuedAt": "2026-11-01T12:31:57.055Z",
+        "ackedAt": null
+      },
+      "offlineToken": {
+        "token": "eyJkZXZpY2VJZCI6IkRFVi1JT1MtVEVTVDItMTc5MzUzNjMxMiIsInNob3BJZCI6IlNIT1AtMDAxIiwibGljZW5zZUtleSI6IkxJQy1TQVJCLVVXQ04iLCJzdGF0dXMiOiJhY3RpdmUiLCJpc3N1ZWRBdCI6IjIwMjYtMTEtMDFUMTI6MzE6NTcuMDU1WiIsImV4cGlyZXNBdCI6IjIwMjYtMTEtMDRUMTI6MzE6NTcuMDU1WiIsIm1heE9mZmxpbmVIb3VycyI6NzJ9.oxQsFJ6r7j4K-1LQvMi_pOwiZXtN7ottt26AcicIIJo",
+        "expiresAt": "2026-11-04T12:31:57.055Z",
+        "maxOfflineHours": 72
+      }
+    }
+  ],
+  "orders": [
+    {
+      "id": "ORD-2441",
+      "createdAt": "2026-10-31T07:38:44.426Z",
+      "customerName": "Walk-in Customer",
+      "paymentMethod": "Cash",
+      "notes": "",
+      "status": "Completed",
+      "subtotal": 150,
+      "tax": 7.5,
+      "total": 157.5,
+      "items": [
+        {
+          "id": 1,
+          "name": "Crispy Honey Fetira",
+          "price": 75,
+          "quantity": 2,
+          "emoji": "🥞"
+        }
+      ],
+      "account": "admin",
+      "createdBy": "admin",
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "syncedAt": "2026-10-31T07:38:45.395Z"
+    },
+    {
+      "id": "ORD-1488",
+      "createdAt": "2026-10-31T08:59:13.308Z",
+      "customerName": "Walk-in Customer",
+      "paymentMethod": "Cash",
+      "notes": "",
+      "status": "Completed",
+      "subtotal": 225,
+      "tax": 11.25,
+      "total": 236.25,
+      "items": [
+        {
+          "id": 1,
+          "name": "Crispy Honey Fetira",
+          "price": 75,
+          "quantity": 3,
+          "emoji": "🥞"
+        }
+      ],
+      "account": "admin",
+      "createdBy": "admin",
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "terminalName": "Bakery POS Terminal",
+      "syncedAt": "2026-10-31T08:59:36.733Z"
+    },
+    {
+      "id": "ORD-6305",
+      "createdAt": "2026-10-31T09:00:19.339Z",
+      "customerName": "Walk-in Customer",
+      "paymentMethod": "Cash",
+      "notes": "",
+      "status": "Completed",
+      "subtotal": 75,
+      "tax": 3.75,
+      "total": 78.75,
+      "items": [
+        {
+          "id": 1,
+          "name": "Crispy Honey Fetira",
+          "price": 75,
+          "quantity": 1,
+          "emoji": "🥞"
+        }
+      ],
+      "account": "admin",
+      "createdBy": "admin",
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "terminalName": "Bakery POS Terminal",
+      "syncedAt": "2026-10-31T09:00:26.723Z"
+    },
+    {
+      "id": "ORD-TEST-1793535311",
+      "createdAt": "2026-11-01T10:00:00.000Z",
+      "customerName": "Abel Tesfaye",
+      "paymentMethod": "Cash",
+      "subtotal": 150,
+      "tax": 7.5,
+      "total": 157.5,
+      "items": [
+        {
+          "name": "Crispy Honey Fetira",
+          "quantity": 2,
+          "price": 75
+        }
+      ],
+      "shopId": "SHOP-001",
+      "shopName": "Bakery POS Terminal",
+      "licenseKey": "LIC-BAKE-UVTB",
+      "deviceId": "DEV-ANDR-TEST1-1793535303",
+      "phoneModel": "Samsung Galaxy A15",
+      "terminalName": "Bakery POS Terminal",
+      "syncedAt": "2026-11-01T12:15:15.353Z"
+    },
+    {
+      "id": "ORD-TEST-1793536317",
+      "createdAt": "2026-11-01T10:00:00.000Z",
+      "customerName": "Abel Tesfaye",
+      "paymentMethod": "Cash",
+      "subtotal": 150,
+      "tax": 7.5,
+      "total": 157.5,
+      "items": [
+        {
+          "name": "Crispy Honey Fetira",
+          "quantity": 2,
+          "price": 75
+        }
+      ],
+      "shopId": "SHOP-001",
+      "shopName": "Bakery POS Terminal",
+      "licenseKey": "LIC-BAKE-45V9",
+      "deviceId": "DEV-ANDR-TEST1-1793536308",
+      "phoneModel": "Samsung Galaxy A15",
+      "terminalName": "Bakery POS Terminal",
+      "syncedAt": "2026-11-01T12:32:01.133Z"
+    }
+  ],
+  "products": [
+    {
+      "id": 1,
+      "name": "Crispy Honey Fetira",
+      "category": "Pastry",
+      "price": 75,
+      "cost": 25,
+      "emoji": "🥞",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 2,
+      "name": "Egg & Cheese Fetira",
+      "category": "Savory",
+      "price": 95,
+      "cost": 35,
+      "emoji": "🫓",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 3,
+      "name": "Pistachio Baklava",
+      "category": "Pastry",
+      "price": 65,
+      "cost": 24,
+      "emoji": "🥮",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 4,
+      "name": "Honey Walnut Baklava",
+      "category": "Pastry",
+      "price": 60,
+      "cost": 22,
+      "emoji": "🍯",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 5,
+      "name": "Crispy Lentil Sambusa",
+      "category": "Savory",
+      "price": 25,
+      "cost": 8,
+      "emoji": "🥟",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 6,
+      "name": "Spiced Beef Sambusa",
+      "category": "Savory",
+      "price": 35,
+      "cost": 14,
+      "emoji": "🥟",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 7,
+      "name": "Butter Croissant",
+      "category": "Pastry",
+      "price": 55,
+      "cost": 20,
+      "emoji": "🥐",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 8,
+      "name": "Sourdough Loaf",
+      "category": "Bread",
+      "price": 85,
+      "cost": 35,
+      "emoji": "🍞",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 9,
+      "name": "French Baguette",
+      "category": "Bread",
+      "price": 60,
+      "cost": 22,
+      "emoji": "🥖",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 10,
+      "name": "Dark Chocolate Cake",
+      "category": "Cakes",
+      "price": 350,
+      "cost": 140,
+      "emoji": "🎂",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 11,
+      "name": "Strawberry Cheesecake",
+      "category": "Cakes",
+      "price": 280,
+      "cost": 110,
+      "emoji": "🍰",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 12,
+      "name": "Blueberry Muffin",
+      "category": "Pastry",
+      "price": 45,
+      "cost": 18,
+      "emoji": "🧁",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 13,
+      "name": "Glazed Ring Donut",
+      "category": "Pastry",
+      "price": 40,
+      "cost": 15,
+      "emoji": "🍩",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 14,
+      "name": "Choc-Chip Cookie",
+      "category": "Pastry",
+      "price": 35,
+      "cost": 14,
+      "emoji": "🍪",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 15,
+      "name": "Cinnamon Roll",
+      "category": "Pastry",
+      "price": 65,
+      "cost": 25,
+      "emoji": "🥯",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 16,
+      "name": "Cardamom Spiced Tea",
+      "category": "Coffee",
+      "price": 35,
+      "cost": 10,
+      "emoji": "🫖",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 17,
+      "name": "Artisan Espresso",
+      "category": "Coffee",
+      "price": 40,
+      "cost": 12,
+      "emoji": "☕",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 18,
+      "name": "Caramel Iced Latte",
+      "category": "Coffee",
+      "price": 65,
+      "cost": 20,
+      "emoji": "🧋",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 19,
+      "name": "Turkey Pesto Sandwich",
+      "category": "Sandwiches",
+      "price": 120,
+      "cost": 55,
+      "emoji": "🥪",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 20,
+      "name": "Soft Artisan Pretzel",
+      "category": "Bread",
+      "price": 45,
+      "cost": 15,
+      "emoji": "🥨",
+      "available": true,
+      "soldCount": 0,
+      "preparedCount": 30,
+      "remainingCount": 30,
+      "licenseKey": "SKY-BAKERY-001",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "phoneModel": "Apple iOS Device",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    }
+  ],
+  "inventory": [
+    {
+      "id": 1,
+      "name": "All-Purpose Flour",
+      "unit": "kg",
+      "stock": 50,
+      "minStock": 20,
+      "costPerUnit": 28,
+      "licenseKey": "SKY-BAKERY-001",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 2,
+      "name": "Phyllo Dough Sheets",
+      "unit": "kg",
+      "stock": 15,
+      "minStock": 8,
+      "costPerUnit": 45,
+      "licenseKey": "SKY-BAKERY-001",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 3,
+      "name": "Pure Acacia Honey",
+      "unit": "L",
+      "stock": 10,
+      "minStock": 5,
+      "costPerUnit": 90,
+      "licenseKey": "SKY-BAKERY-001",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 4,
+      "name": "Brown Lentils",
+      "unit": "kg",
+      "stock": 15,
+      "minStock": 6,
+      "costPerUnit": 32,
+      "licenseKey": "SKY-BAKERY-001",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 5,
+      "name": "Shelled Pistachios",
+      "unit": "kg",
+      "stock": 5,
+      "minStock": 3,
+      "costPerUnit": 180,
+      "licenseKey": "SKY-BAKERY-001",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 6,
+      "name": "Unsalted Butter",
+      "unit": "kg",
+      "stock": 20,
+      "minStock": 10,
+      "costPerUnit": 65,
+      "licenseKey": "SKY-BAKERY-001",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 7,
+      "name": "Granulated Sugar",
+      "unit": "kg",
+      "stock": 25,
+      "minStock": 15,
+      "costPerUnit": 35,
+      "licenseKey": "SKY-BAKERY-001",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 8,
+      "name": "Instant Dry Yeast",
+      "unit": "kg",
+      "stock": 5,
+      "minStock": 2,
+      "costPerUnit": 95,
+      "licenseKey": "SKY-BAKERY-001",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    },
+    {
+      "id": 9,
+      "name": "Espresso Roast Beans",
+      "unit": "kg",
+      "stock": 8,
+      "minStock": 5,
+      "costPerUnit": 350,
+      "licenseKey": "SKY-BAKERY-001",
+      "lastSync": "2026-11-01T11:30:52.797Z"
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "AUDIT-MVXT83U2-5KY",
+      "adminUser": "admin",
+      "shopId": "SHOP-001",
+      "terminalId": "DEV-ANDR-TEST1-1793536308",
+      "action": "terminal_activate",
+      "reason": "Payment received and verified",
+      "timestamp": "2026-11-01T12:32:13.418Z",
+      "metadata": {
+        "prevStatus": "suspended",
+        "newStatus": "active",
+        "model": "Samsung Galaxy A15"
+      }
+    },
+    {
+      "id": "AUDIT-MVXT7XIY-I47",
+      "adminUser": "admin",
+      "shopId": "SHOP-001",
+      "terminalId": "DEV-ANDR-TEST1-1793536308",
+      "action": "terminal_suspend",
+      "reason": "Monthly subscription unpaid",
+      "timestamp": "2026-11-01T12:32:05.242Z",
+      "metadata": {
+        "prevStatus": "active",
+        "newStatus": "suspended",
+        "model": "Samsung Galaxy A15"
+      }
+    },
+    {
+      "id": "AUDIT-MVXT7R7J-A24",
+      "adminUser": "admin",
+      "shopId": "SHOP-001",
+      "terminalId": "DEV-IOS-TEST2-1793536312",
+      "action": "terminal_approve",
+      "reason": "Approved terminal iPhone 15 Pro",
+      "timestamp": "2026-11-01T12:31:57.055Z",
+      "metadata": {
+        "licenseKey": "LIC-SARB-UWCN"
+      }
+    },
+    {
+      "id": "AUDIT-MVXT7PMM-MSR",
+      "adminUser": "mobile_client",
+      "shopId": "SHOP-001",
+      "terminalId": "DEV-IOS-TEST2-1793536312",
+      "action": "device_request_access",
+      "reason": "Access request from iPhone 15 Pro (DEV-IOS-TEST2-1793536312)",
+      "timestamp": "2026-11-01T12:31:55.006Z",
+      "metadata": {
+        "ip": "127.0.0.1",
+        "model": "iPhone 15 Pro",
+        "osVersion": "iOS 17.5",
+        "appVersion": "1.0.8"
+      }
+    },
+    {
+      "id": "AUDIT-MVXT7O1J-A1Y",
+      "adminUser": "admin",
+      "shopId": "SHOP-001",
+      "terminalId": "DEV-ANDR-TEST1-1793536308",
+      "action": "terminal_approve",
+      "reason": "Approved terminal Samsung Galaxy A15",
+      "timestamp": "2026-11-01T12:31:52.951Z",
+      "metadata": {
+        "licenseKey": "LIC-BAKE-45V9"
+      }
+    },
+    {
+      "id": "AUDIT-MVXT7MH0-RXF",
+      "adminUser": "mobile_client",
+      "shopId": "SHOP-001",
+      "terminalId": "DEV-ANDR-TEST1-1793536308",
+      "action": "device_request_access",
+      "reason": "Access request from Samsung Galaxy A15 (DEV-ANDR-TEST1-1793536308)",
+      "timestamp": "2026-11-01T12:31:50.916Z",
+      "metadata": {
+        "ip": "127.0.0.1",
+        "model": "Samsung Galaxy A15",
+        "osVersion": "Android 14",
+        "appVersion": "1.0.8"
+      }
+    },
+    {
+      "id": "AUDIT-MVXT7KW3-BQX",
+      "adminUser": "admin",
+      "shopId": "SHOP-MVXT7KW2",
+      "terminalId": "SYSTEM",
+      "action": "shop_created",
+      "reason": "Created shop Sarbet Artisan Cafe with default license LIC-SARB-7FB9",
+      "timestamp": "2026-11-01T12:31:48.867Z",
+      "metadata": {
+        "plan": "standard",
+        "paidUntil": "2027-06-30T23:59:59.000Z"
+      }
+    }
+  ],
+  "syncLogs": [
+    {
+      "id": "SYNC-MVXT7UCT",
+      "terminalId": "DEV-ANDR-TEST1-1793536308",
+      "shopId": "SHOP-001",
+      "ordersCount": 1,
+      "addedCount": 0,
+      "dupCount": 1,
+      "pendingRemaining": 0,
+      "timestamp": "2026-11-01T12:32:01.133Z",
+      "status": "success"
+    },
+    {
+      "id": "SYNC-MVXT7SRX",
+      "terminalId": "DEV-ANDR-TEST1-1793536308",
+      "shopId": "SHOP-001",
+      "ordersCount": 1,
+      "addedCount": 1,
+      "dupCount": 0,
+      "pendingRemaining": 0,
+      "timestamp": "2026-11-01T12:31:59.085Z",
+      "status": "success"
+    },
+    {
+      "id": "SYNC-MVXSMAAH",
+      "terminalId": "DEV-ANDR-TEST1-1793535303",
+      "shopId": "SHOP-001",
+      "ordersCount": 1,
+      "addedCount": 0,
+      "dupCount": 1,
+      "pendingRemaining": 0,
+      "timestamp": "2026-11-01T12:15:15.353Z",
+      "status": "success"
+    },
+    {
+      "id": "SYNC-MVXSM8PW",
+      "terminalId": "DEV-ANDR-TEST1-1793535303",
+      "shopId": "SHOP-001",
+      "ordersCount": 1,
+      "addedCount": 1,
+      "dupCount": 0,
+      "pendingRemaining": 0,
+      "timestamp": "2026-11-01T12:15:13.316Z",
+      "status": "success"
+    },
+    {
+      "timestamp": "2026-11-01T11:30:52.797Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:29:52.793Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:28:54.242Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:27:52.794Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:26:52.794Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:25:52.798Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:24:52.789Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:23:52.793Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:22:52.793Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:21:52.801Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:20:52.785Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:19:52.786Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:18:52.799Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:17:52.802Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:16:52.790Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:15:52.805Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:14:52.800Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:13:52.802Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:12:52.812Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:11:52.806Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:10:52.790Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:09:52.794Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:08:52.806Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:07:52.805Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:06:52.812Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:05:51.782Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:04:50.783Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:04:00.781Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:03:35.773Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:03:10.781Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:02:45.788Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:02:20.112Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:01:55.109Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-11-01T11:01:30.173Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:27:58.752Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:27:58.744Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:26:58.739Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:26:58.731Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:25:58.762Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:25:58.752Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:24:58.741Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:24:58.732Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:23:58.780Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:23:58.772Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:22:58.792Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:22:58.784Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:21:58.761Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:21:58.755Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:20:58.733Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:20:58.726Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:19:58.743Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:19:58.736Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:18:58.747Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:18:58.740Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:17:58.761Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:17:58.750Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:16:58.759Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:16:58.751Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:15:58.750Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:15:58.742Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:15:22.727Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:14:58.721Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:14:57.716Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:14:32.724Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:14:07.742Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:13:58.727Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:13:42.728Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:13:17.736Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:12:58.726Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:12:52.319Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:12:42.892Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:11:58.787Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:11:58.771Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:10:58.770Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:10:58.763Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:09:58.756Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:09:58.739Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:08:58.759Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:08:58.750Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:07:58.761Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:07:58.746Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:06:58.788Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:06:58.781Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:05:58.760Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:05:58.747Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:04:58.774Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:04:58.766Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:03:58.775Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:03:58.759Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:02:58.748Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:02:58.741Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:02:52.732Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:01:58.746Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:01:51.718Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:01:16.733Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:00:51.733Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:00:50.744Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:00:26.723Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 3,
+      "newOrdersSaved": 1,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:00:25.725Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:00:01.725Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 2,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T09:00:00.734Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:59:36.733Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 2,
+      "newOrdersSaved": 1,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:59:35.728Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:59:10.958Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:59:10.720Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:58:45.945Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:58:45.720Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:58:20.994Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:58:20.715Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:57:58.749Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:57:30.729Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:57:05.724Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:56:40.749Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:56:15.730Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:55:50.734Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:55:30.516Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:54:58.755Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:53:58.740Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:52:58.733Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:52:29.185Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:47:58.733Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:46:58.733Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:45:58.733Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:44:58.741Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:43:58.742Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:42:58.747Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:41:58.734Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:40:59.795Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:39:58.753Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:38:58.754Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:37:58.730Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:36:58.737Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:35:58.731Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:34:58.742Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:33:58.733Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:32:58.735Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:31:58.762Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:30:58.743Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:29:58.719Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:28:58.717Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:27:58.737Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:26:58.774Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:25:58.754Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:24:58.768Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:23:58.738Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:22:58.740Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:21:58.755Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:20:58.763Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:19:58.740Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:18:58.774Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:17:58.761Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:16:58.754Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:15:58.751Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:14:58.759Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:13:58.727Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:12:58.777Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:11:58.757Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T08:10:58.810Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:45:00.726Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:44:35.738Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:44:10.726Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:43:45.403Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:43:20.407Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:42:55.401Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:42:30.404Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:42:05.407Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:41:40.391Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:41:30.634Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:40:58.719Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:40:00.729Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:39:35.717Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:39:10.412Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:38:45.395Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 1,
+      "newOrdersSaved": 1,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:38:20.395Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 0,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:37:55.408Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 0,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:37:30.410Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 0,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:37:05.406Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 0,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:36:42.198Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 0,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:35:58.735Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 0,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:35:25.730Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 0,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:35:00.732Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 0,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:34:35.756Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 0,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:34:10.722Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 0,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    },
+    {
+      "timestamp": "2026-10-31T07:33:45.409Z",
+      "deviceId": "DEV-ANDR-PHONE-MVW33CNQ-U0VMJ",
+      "licenseKey": "SKY-BAKERY-001",
+      "ordersReceived": 0,
+      "newOrdersSaved": 0,
+      "clientIp": "192.168.0.116"
+    }
+  ],
+  "business": {
+    "name": "Bakery",
+    "currency": "ETB",
+    "taxRate": 0,
+    "updatedAt": "2026-10-31T07:22:00.000Z"
+  },
+  "terminals": {}
+}

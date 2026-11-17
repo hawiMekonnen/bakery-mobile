@@ -8,12 +8,12 @@ import {
   TextInput,
   Modal,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBakery } from '../store/BakeryStore';
 import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
 import ScreenHeader from '../components/ScreenHeader';
-
 
 const CATEGORIES = ['All', 'Pastry', 'Savory', 'Bread', 'Cakes', 'Coffee', 'Sandwiches'];
 
@@ -32,9 +32,8 @@ export default function ItemsSoldScreen({ navigation }) {
   const [batchSetModalVisible, setBatchSetModalVisible] = useState(false);
   const [batchPreparedInput, setBatchPreparedInput] = useState('30');
 
-
   // Filtered Products
-  const filteredProducts = products.filter(p => {
+  const filteredProducts = products.filter((p) => {
     const matchesCat = selectedCategory === 'All' || p.category === selectedCategory;
     const matchesSearch = (p.name || '').toLowerCase().includes(search.toLowerCase());
     return matchesCat && matchesSearch;
@@ -42,15 +41,15 @@ export default function ItemsSoldScreen({ navigation }) {
 
   // Strict Daily Calculation: Items sold starts from 0 every day based on today's orders
   const todayDateStr = new Date().toISOString().slice(0, 10);
-  const todayOrders = (state.orders || []).filter(o => {
+  const todayOrders = (state.orders || []).filter((o) => {
     const od = (o.createdAt || o.date || '').slice(0, 10);
     return od === todayDateStr;
   });
 
   // Product ID -> quantity sold TODAY map
   const todaySoldMap = {};
-  todayOrders.forEach(order => {
-    (order.items || []).forEach(it => {
+  todayOrders.forEach((order) => {
+    (order.items || []).forEach((it) => {
       todaySoldMap[it.id] = (todaySoldMap[it.id] || 0) + (Number(it.quantity) || 1);
     });
   });
@@ -65,13 +64,22 @@ export default function ItemsSoldScreen({ navigation }) {
   }, 0);
   const sellThroughRate = totalPrepared > 0 ? Math.round((totalSold / totalPrepared) * 100) : 0;
 
-  // Handlers for Prepared Stepper
+  // Handlers for Prepared Stepper (Incremental & Direct Typed Input)
   const handleStepPrepared = (item, delta) => {
-    const currentPrep = typeof item.preparedCount === 'number' ? item.preparedCount : 30;
+    const currentPrep = typeof item.preparedCount === 'number' ? item.preparedCount : 0;
     const nextPrep = Math.max(0, currentPrep + delta);
     dispatch({
       type: 'UPDATE_PRODUCT_PREPARED',
       payload: { id: item.id, preparedCount: nextPrep },
+    });
+  };
+
+  const handleDirectPreparedChange = (item, text) => {
+    const clean = text.replace(/[^0-9]/g, '');
+    const val = clean === '' ? 0 : parseInt(clean, 10);
+    dispatch({
+      type: 'UPDATE_PRODUCT_PREPARED',
+      payload: { id: item.id, preparedCount: val },
     });
   };
 
@@ -80,26 +88,6 @@ export default function ItemsSoldScreen({ navigation }) {
       type: 'ADD_PRODUCT_BATCH',
       payload: { id: item.id, amount },
     });
-  };
-
-  const openEditModal = (item) => {
-    setEditingProduct(item);
-    const current = typeof item.preparedCount === 'number' ? item.preparedCount : 30;
-    setEditPreparedInput(String(current));
-  };
-
-  const handleSaveSinglePrepared = () => {
-    if (!editingProduct) return;
-    const val = parseInt(editPreparedInput, 10);
-    if (isNaN(val) || val < 0) {
-      Alert.alert('Invalid Count', 'Please enter a valid positive number.');
-      return;
-    }
-    dispatch({
-      type: 'UPDATE_PRODUCT_PREPARED',
-      payload: { id: editingProduct.id, preparedCount: val },
-    });
-    setEditingProduct(null);
   };
 
   const handleApplyBatchSet = () => {
@@ -113,13 +101,13 @@ export default function ItemsSoldScreen({ navigation }) {
       payload: { amount: val },
     });
     setBatchSetModalVisible(false);
-    Alert.alert('Updated!', `All items have been set to ${val} prepared units.`);
+    Alert.alert('Updated', `All items have been set to ${val} prepared units.`);
   };
 
   const handleResetDay = () => {
     Alert.alert(
       'Reset Daily Sales Count',
-      'Are you sure you want to reset today\'s sales counts to zero?',
+      'Are you sure you want to reset today\'s sales counts to zero for a new shift?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -134,29 +122,23 @@ export default function ItemsSoldScreen({ navigation }) {
     );
   };
 
-  const handleAuthorizedReset = () => {
-    dispatch({ type: 'RESET_DAILY_ITEMS_SOLD', payload: { resetPrepared: false } });
-    Alert.alert('Shift Reset Authorized! ✓', 'Daily sold counts have been reset to 0.');
-  };
-
   const renderProductItem = ({ item }) => {
     const prep = typeof item.preparedCount === 'number' ? item.preparedCount : 30;
-    // Strictly starts from 0 every single day
     const sold = todaySoldMap[item.id] || 0;
     const remaining = Math.max(0, prep - sold);
     const progressPercent = prep > 0 ? Math.min(100, Math.round((sold / prep) * 100)) : 0;
 
-    let statusColor = '#16A34A';
-    let statusBg = '#DCFCE7';
+    let statusColor = COLORS.brandGreenText;
+    let statusBg = COLORS.softGreen;
     let statusText = `${remaining} in stock`;
 
     if (remaining === 0) {
-      statusColor = '#DC2626';
-      statusBg = '#FEE2E2';
+      statusColor = COLORS.dangerText;
+      statusBg = COLORS.dangerBg;
       statusText = 'SOLD OUT';
     } else if (remaining <= 5) {
-      statusColor = '#D97706';
-      statusBg = '#FEF3C7';
+      statusColor = COLORS.warningText;
+      statusBg = COLORS.warningBg;
       statusText = `LOW: ${remaining} LEFT`;
     }
 
@@ -165,13 +147,13 @@ export default function ItemsSoldScreen({ navigation }) {
         {/* Top Product Header Row */}
         <View style={styles.cardTopRow}>
           <View style={styles.prodLeft}>
-            <View style={styles.emojiCircle}>
-              <Text style={styles.emojiText}>{item.emoji || '🥐'}</Text>
+            <View style={styles.iconTile}>
+              <Ionicons name="fast-food-outline" size={20} color={COLORS.brandGreenText} />
             </View>
             <View style={styles.prodInfo}>
               <Text style={styles.prodName}>{item.name}</Text>
               <Text style={styles.prodMeta}>
-                {item.category} • ${Number(item.price).toFixed(2)}
+                {item.category} • ETB {Number(item.price).toFixed(2)}
               </Text>
             </View>
           </View>
@@ -192,24 +174,23 @@ export default function ItemsSoldScreen({ navigation }) {
                 onPress={() => handleStepPrepared(item, -1)}
                 activeOpacity={0.7}
               >
-                <Ionicons name="remove" size={16} color={COLORS.textPrimary} />
+                <Ionicons name="remove" size={14} color={COLORS.ink} />
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.stepValueBox}
-                onPress={() => openEditModal(item)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.stepValueText}>{prep}</Text>
-                <Text style={styles.tapEditHint}>Tap to edit</Text>
-              </TouchableOpacity>
+              <TextInput
+                style={styles.stepInput}
+                value={String(prep)}
+                keyboardType="number-pad"
+                selectTextOnFocus
+                onChangeText={(txt) => handleDirectPreparedChange(item, txt)}
+              />
 
               <TouchableOpacity
                 style={styles.stepBtn}
                 onPress={() => handleStepPrepared(item, +1)}
                 activeOpacity={0.7}
               >
-                <Ionicons name="add" size={16} color={COLORS.textPrimary} />
+                <Ionicons name="add" size={14} color={COLORS.ink} />
               </TouchableOpacity>
             </View>
 
@@ -230,7 +211,7 @@ export default function ItemsSoldScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Sold Column (Deducted when sold in POS) */}
+          {/* Sold Column */}
           <View style={styles.metricCol}>
             <Text style={styles.metricLabel}>SOLD TODAY</Text>
             <View style={styles.soldValueBox}>
@@ -239,10 +220,10 @@ export default function ItemsSoldScreen({ navigation }) {
             </View>
           </View>
 
-          {/* Remaining Column (Prepared minus Sold) */}
+          {/* Remaining Column */}
           <View style={styles.metricCol}>
             <Text style={styles.metricLabel}>REMAINING</Text>
-            <View style={[styles.remainingValueBox, { borderColor: statusColor + '55' }]}>
+            <View style={[styles.remainingValueBox, { borderColor: statusColor + '40' }]}>
               <Text style={[styles.remainingValueText, { color: statusColor }]}>{remaining}</Text>
               <Text style={styles.remainingSublabel}>available</Text>
             </View>
@@ -257,7 +238,7 @@ export default function ItemsSoldScreen({ navigation }) {
                 styles.progressBar,
                 {
                   width: `${progressPercent}%`,
-                  backgroundColor: remaining === 0 ? '#DC2626' : COLORS.primary,
+                  backgroundColor: remaining === 0 ? COLORS.dangerText : COLORS.brandGreen,
                 },
               ]}
             />
@@ -275,61 +256,61 @@ export default function ItemsSoldScreen({ navigation }) {
       <ScreenHeader
         canGoBack={true}
         onBack={() => navigation.goBack()}
-        emoji="🥐"
+        icon="stats-chart-outline"
         title="Daily Items Sold"
         subtitle="Prepared vs Sold Inventory Tracker"
       />
 
       <FlatList
         data={filteredProducts}
-        keyExtractor={item => String(item.id)}
+        keyExtractor={(item) => String(item.id)}
         renderItem={renderProductItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <>
-            {/* Top Summary Metrics: 2x2 Grid with generous width, tall padding & zero cutoff */}
+            {/* Top Summary Metrics: 2x2 Grid */}
             <View style={styles.summaryGrid2x2}>
               <View style={styles.summaryRow}>
                 {/* Total Prepared */}
-                <View style={[styles.summaryCard, styles.cardPrepared]}>
+                <View style={styles.summaryCard}>
                   <View style={styles.cardHeaderRow}>
                     <Text style={styles.cardPreparedLbl}>TOTAL PREPARED</Text>
-                    <Ionicons name="basket-outline" size={16} color="#64748B" />
+                    <Ionicons name="basket-outline" size={16} color={COLORS.muted} />
                   </View>
-                  <Text style={styles.cardPreparedVal}>{totalPrepared}</Text>
+                  <Text style={styles.cardVal}>{totalPrepared}</Text>
                   <Text style={styles.cardSubText}>Initial daily batch</Text>
                 </View>
 
                 {/* Sold in POS */}
-                <View style={[styles.summaryCard, styles.cardSold]}>
+                <View style={styles.summaryCard}>
                   <View style={styles.cardHeaderRow}>
                     <Text style={styles.cardSoldLbl}>SOLD IN POS</Text>
-                    <Ionicons name="cart-outline" size={16} color="#2563EB" />
+                    <Ionicons name="cart-outline" size={16} color={COLORS.brandGreenText} />
                   </View>
-                  <Text style={styles.cardSoldVal}>{totalSold}</Text>
-                  <Text style={styles.cardSubText}>Sold today (resets daily)</Text>
+                  <Text style={[styles.cardVal, { color: COLORS.brandGreenText }]}>{totalSold}</Text>
+                  <Text style={styles.cardSubText}>Sold today</Text>
                 </View>
               </View>
 
               <View style={styles.summaryRow}>
                 {/* Remaining Stock */}
-                <View style={[styles.summaryCard, styles.cardRemaining]}>
+                <View style={styles.summaryCard}>
                   <View style={styles.cardHeaderRow}>
-                    <Text style={styles.cardRemainingLbl}>REMAINING STOCK</Text>
-                    <Ionicons name="cube-outline" size={16} color="#16A34A" />
+                    <Text style={styles.cardRemainingLbl}>REMAINING</Text>
+                    <Ionicons name="cube-outline" size={16} color={COLORS.brandDarkGreen} />
                   </View>
-                  <Text style={styles.cardRemainingVal}>{totalRemaining}</Text>
+                  <Text style={styles.cardVal}>{totalRemaining}</Text>
                   <Text style={styles.cardSubText}>Available to sell</Text>
                 </View>
 
                 {/* Sell-Through */}
-                <View style={[styles.summaryCard, styles.cardRate]}>
+                <View style={styles.summaryCard}>
                   <View style={styles.cardHeaderRow}>
                     <Text style={styles.cardRateLbl}>SELL-THROUGH</Text>
-                    <Ionicons name="pie-chart-outline" size={16} color="#D97706" />
+                    <Ionicons name="pie-chart-outline" size={16} color={COLORS.warningText} />
                   </View>
-                  <Text style={styles.cardRateVal}>{sellThroughRate}%</Text>
+                  <Text style={[styles.cardVal, { color: COLORS.warningText }]}>{sellThroughRate}%</Text>
                   <Text style={styles.cardSubText}>Prepared vs sold</Text>
                 </View>
               </View>
@@ -342,8 +323,8 @@ export default function ItemsSoldScreen({ navigation }) {
                 onPress={() => setBatchSetModalVisible(true)}
                 activeOpacity={0.8}
               >
-                <Ionicons name="options-outline" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
-                <Text style={styles.batchSetBtnText}>Quick Set All Prepared</Text>
+                <Ionicons name="options-outline" size={16} color={COLORS.brandDarkGreen} style={{ marginRight: 6 }} />
+                <Text style={styles.batchSetBtnText}>Quick Set All</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -351,135 +332,85 @@ export default function ItemsSoldScreen({ navigation }) {
                 onPress={handleResetDay}
                 activeOpacity={0.8}
               >
-                <Ionicons name="refresh-outline" size={16} color={COLORS.textSecondary} style={{ marginRight: 6 }} />
+                <Ionicons name="refresh-outline" size={16} color={COLORS.muted} style={{ marginRight: 6 }} />
                 <Text style={styles.newDayBtnText}>New Morning Shift</Text>
               </TouchableOpacity>
             </View>
 
             {/* Search Bar */}
-            <View style={styles.searchBar}>
-              <Ionicons name="search" size={18} color={COLORS.textMuted} style={{ marginRight: 8 }} />
+            <View style={styles.searchBox}>
+              <Ionicons name="search-outline" size={18} color={COLORS.muted} style={{ marginRight: 8 }} />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search prepared items..."
-                placeholderTextColor={COLORS.textMuted}
+                placeholderTextColor={COLORS.muted}
                 value={search}
                 onChangeText={setSearch}
               />
-              {search ? (
+              {search.length > 0 && (
                 <TouchableOpacity onPress={() => setSearch('')}>
-                  <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+                  <Ionicons name="close-circle" size={16} color={COLORS.muted} />
                 </TouchableOpacity>
-              ) : null}
+              )}
             </View>
 
             {/* Category Filter Pills */}
             <FlatList
               horizontal
               data={CATEGORIES}
-              keyExtractor={c => c}
+              keyExtractor={(c) => c}
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.categoryScroll}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.catPill,
-                    selectedCategory === item && styles.catPillActive,
-                  ]}
-                  onPress={() => setSelectedCategory(item)}
-                >
-                  <Text
-                    style={[
-                      styles.catPillText,
-                      selectedCategory === item && styles.catPillTextActive,
-                    ]}
+              renderItem={({ item }) => {
+                const isActive = selectedCategory === item;
+                return (
+                  <TouchableOpacity
+                    style={[styles.catPill, isActive && styles.catPillActive]}
+                    onPress={() => setSelectedCategory(item)}
                   >
-                    {item}
-                  </Text>
-                </TouchableOpacity>
-              )}
+                    <Text style={[styles.catPillText, isActive && styles.catPillTextActive]}>
+                      {item}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }}
             />
           </>
         }
       />
 
-      {/* Edit Single Item Prepared Count Modal */}
-      {editingProduct && (
-        <Modal visible={true} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalBox}>
-              <Text style={styles.modalTitle}>Edit Prepared Quantity</Text>
-              <Text style={styles.modalSubtitle}>
-                {editingProduct.emoji} {editingProduct.name}
-              </Text>
-              <TextInput
-                style={styles.modalInput}
-                keyboardType="numeric"
-                value={editPreparedInput}
-                onChangeText={setEditPreparedInput}
-                autoFocus
-                placeholder="e.g. 40"
-              />
-              <Text style={styles.modalHint}>
-                When items are sold in POS, they will automatically be deducted from this number.
-              </Text>
-              <View style={styles.modalBtnRow}>
-                <TouchableOpacity
-                  style={styles.modalCancelBtn}
-                  onPress={() => setEditingProduct(null)}
-                >
-                  <Text style={styles.modalCancelText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.modalSaveBtn}
-                  onPress={handleSaveSinglePrepared}
-                >
-                  <Text style={styles.modalSaveText}>Update</Text>
-                </TouchableOpacity>
-              </View>
+      {/* Batch Set All Modal */}
+      <Modal visible={batchSetModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.dialogCard}>
+            <Text style={styles.dialogTitle}>Quick Set All Prepared</Text>
+            <Text style={styles.dialogDesc}>
+              Set the prepared batch count for all products across the menu to a standard amount.
+            </Text>
+            <TextInput
+              style={styles.dialogInput}
+              keyboardType="number-pad"
+              value={batchPreparedInput}
+              onChangeText={setBatchPreparedInput}
+              selectTextOnFocus
+            />
+            <View style={styles.dialogActions}>
+              <TouchableOpacity
+                style={styles.dialogCancelBtn}
+                onPress={() => setBatchSetModalVisible(false)}
+              >
+                <Text style={styles.dialogCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.dialogConfirmBtn}
+                onPress={handleApplyBatchSet}
+              >
+                <Text style={styles.dialogConfirmText}>Apply to All</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        </Modal>
-      )}
-
-      {/* Quick Set All Prepared Modal */}
-      {batchSetModalVisible && (
-        <Modal visible={true} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalBox}>
-              <Text style={styles.modalTitle}>Set Prepared Quantity for All Items</Text>
-              <Text style={styles.modalSubtitle}>
-                Enter the daily initial prepared quantity to apply to all products in the bakery.
-              </Text>
-              <TextInput
-                style={styles.modalInput}
-                keyboardType="numeric"
-                value={batchPreparedInput}
-                onChangeText={setBatchPreparedInput}
-                autoFocus
-                placeholder="30"
-              />
-              <View style={styles.modalBtnRow}>
-                <TouchableOpacity
-                  style={styles.modalCancelBtn}
-                  onPress={() => setBatchSetModalVisible(false)}
-                >
-                  <Text style={styles.modalCancelText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.modalSaveBtn}
-                  onPress={handleApplyBatchSet}
-                >
-                  <Text style={styles.modalSaveText}>Set All Items</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-      )}
-
-
-
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -487,291 +418,229 @@ export default function ItemsSoldScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.appBg,
   },
   listContent: {
     paddingHorizontal: 16,
-    paddingTop: 12,
     paddingBottom: 110,
+    gap: 12,
   },
   summaryGrid2x2: {
-    gap: 10,
-    marginTop: 2,
-    marginBottom: 16,
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 10,
   },
   summaryRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   summaryCard: {
     flex: 1,
-    borderRadius: RADIUS.lg,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    minHeight: 82,
-    justifyContent: 'space-between',
-    ...SHADOWS.sm,
-  },
-  cardPrepared: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E2E8F0',
-  },
-  cardPreparedLbl: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#64748B',
-    letterSpacing: 0.5,
-  },
-  cardPreparedVal: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: COLORS.textPrimary,
-    marginVertical: 2,
-  },
-  cardSold: {
-    backgroundColor: '#EFF6FF',
-    borderColor: '#BFDBFE',
-  },
-  cardSoldLbl: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#2563EB',
-    letterSpacing: 0.5,
-  },
-  cardSoldVal: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#1D4ED8',
-    marginVertical: 2,
-  },
-  cardRemaining: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
-  },
-  cardRemainingLbl: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#16A34A',
-    letterSpacing: 0.5,
-  },
-  cardRemainingVal: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#15803D',
-    marginVertical: 2,
-  },
-  cardRate: {
-    backgroundColor: '#FFFBEB',
-    borderColor: '#FDE68A',
-  },
-  cardRateLbl: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#D97706',
-    letterSpacing: 0.5,
-  },
-  cardRateVal: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#B45309',
-    marginVertical: 2,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
+    padding: 14,
+    ...SHADOWS.card,
   },
   cardHeaderRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  cardPreparedLbl: {
+    fontSize: 10,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.muted,
+  },
+  cardSoldLbl: {
+    fontSize: 10,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.brandGreenText,
+  },
+  cardRemainingLbl: {
+    fontSize: 10,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.brandDarkGreen,
+  },
+  cardRateLbl: {
+    fontSize: 10,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.warningText,
+  },
+  cardVal: {
+    fontSize: 22,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.ink,
+    marginVertical: 2,
   },
   cardSubText: {
-    fontSize: 10,
-    color: COLORS.textMuted,
-    fontWeight: '500',
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
   },
   actionToolbar: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
+    gap: 8,
+    marginBottom: 10,
   },
   batchSetBtn: {
     flex: 1,
+    height: 42,
+    borderRadius: RADIUS.chip,
+    backgroundColor: COLORS.softGreen,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.primaryLight,
-    borderWidth: 1,
-    borderColor: COLORS.primary + '33',
-    paddingVertical: 10,
-    borderRadius: RADIUS.md,
   },
   batchSetBtnText: {
-    fontSize: FONTS.xs,
-    fontWeight: '800',
-    color: COLORS.primary,
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.bold,
+    color: COLORS.brandDarkGreen,
   },
   newDayBtn: {
     flex: 1,
+    height: 42,
+    borderRadius: RADIUS.chip,
+    backgroundColor: COLORS.card,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingVertical: 10,
-    borderRadius: RADIUS.md,
+    ...SHADOWS.card,
   },
   newDayBtnText: {
-    fontSize: FONTS.xs,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.bold,
+    color: COLORS.ink,
   },
-  searchBar: {
+  searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 12,
-    ...SHADOWS.sm,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.input,
+    paddingHorizontal: 14,
+    height: 48,
+    borderWidth: 1.5,
+    borderColor: COLORS.inputBorder,
+    marginBottom: 10,
+    ...SHADOWS.card,
   },
   searchInput: {
     flex: 1,
-    fontSize: FONTS.sm,
-    color: COLORS.textPrimary,
+    fontSize: FONTS.body,
+    fontFamily: FONTS.medium,
+    color: COLORS.ink,
   },
   categoryScroll: {
-    paddingBottom: 14,
     gap: 8,
+    marginBottom: 12,
   },
   catPill: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 7,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    borderRadius: RADIUS.chip,
+    backgroundColor: COLORS.card,
+    ...SHADOWS.card,
   },
   catPillActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    backgroundColor: COLORS.brandDarkGreen,
   },
   catPillText: {
-    fontSize: FONTS.xs,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.bold,
+    color: COLORS.ink,
   },
   catPillTextActive: {
-    color: '#FFF',
+    color: '#FFFFFF',
   },
-  // Card styles
   card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
     padding: 14,
-    marginBottom: 12,
-    ...SHADOWS.sm,
+    ...SHADOWS.card,
   },
   cardTopRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 12,
   },
   prodLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    marginRight: 10,
   },
-  emojiCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.surfaceSubtle,
+  iconTile: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.tile,
+    backgroundColor: COLORS.softGreen,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
-  },
-  emojiText: {
-    fontSize: 20,
   },
   prodInfo: {
     flex: 1,
   },
   prodName: {
-    fontSize: FONTS.md,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
+    fontSize: FONTS.body,
+    fontFamily: FONTS.bold,
+    color: COLORS.ink,
   },
   prodMeta: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
-    fontWeight: '600',
-    marginTop: 1,
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
+    marginTop: 2,
   },
   statusBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: RADIUS.xs,
+    paddingVertical: 3,
+    borderRadius: RADIUS.badge,
   },
   statusBadgeText: {
     fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    fontFamily: FONTS.extraBold,
   },
   metricsRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 10,
+    backgroundColor: COLORS.appBg,
+    borderRadius: RADIUS.chip,
+    padding: 10,
   },
   metricCol: {
     flex: 1,
-    backgroundColor: COLORS.surfaceSubtle,
-    borderRadius: RADIUS.md,
-    padding: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
   },
   metricLabel: {
-    fontSize: 8,
-    fontWeight: '800',
-    color: COLORS.textMuted,
-    letterSpacing: 0.5,
+    fontSize: 9,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.muted,
     marginBottom: 6,
   },
   stepperWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.chip,
+    padding: 2,
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
   },
   stepBtn: {
     width: 26,
     height: 26,
-    borderRadius: 13,
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    borderRadius: 6,
+    backgroundColor: COLORS.appBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepValueBox: {
-    paddingHorizontal: 6,
-    alignItems: 'center',
-  },
-  stepValueText: {
-    fontSize: FONTS.md,
-    fontWeight: '900',
-    color: COLORS.textPrimary,
-  },
-  tapEditHint: {
-    fontSize: 8,
-    color: COLORS.primary,
-    fontWeight: '700',
+  stepInput: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 12,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.ink,
+    paddingVertical: 0,
   },
   quickAddRow: {
     flexDirection: 'row',
@@ -779,59 +648,63 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   quickChip: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: RADIUS.xs,
+    flex: 1,
+    backgroundColor: COLORS.card,
+    borderRadius: 6,
+    paddingVertical: 3,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.hairline,
   },
   quickChipText: {
     fontSize: 9,
-    fontWeight: '700',
-    color: COLORS.primary,
+    fontFamily: FONTS.bold,
+    color: COLORS.brandGreenText,
   },
   soldValueBox: {
+    flex: 1,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.chip,
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
+    paddingVertical: 8,
   },
   soldValueText: {
-    fontSize: FONTS.xl,
-    fontWeight: '900',
-    color: '#2563EB',
+    fontSize: 16,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.ink,
   },
   soldSublabel: {
     fontSize: 9,
-    color: COLORS.textMuted,
-    fontWeight: '600',
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
   },
   remainingValueBox: {
+    flex: 1,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.chip,
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    backgroundColor: '#FFF',
+    paddingVertical: 8,
     borderWidth: 1.5,
-    borderRadius: RADIUS.sm,
-    width: '100%',
-    paddingVertical: 4,
   },
   remainingValueText: {
-    fontSize: FONTS.xl,
-    fontWeight: '900',
+    fontSize: 16,
+    fontFamily: FONTS.extraBold,
   },
   remainingSublabel: {
     fontSize: 9,
-    color: COLORS.textMuted,
-    fontWeight: '600',
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
   },
   progressContainer: {
-    marginTop: 2,
+    marginTop: 10,
   },
   progressTrack: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: COLORS.borderLight,
+    backgroundColor: COLORS.appBg,
     overflow: 'hidden',
-    marginBottom: 4,
   },
   progressBar: {
     height: '100%',
@@ -839,80 +712,79 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 10,
-    color: COLORS.textMuted,
-    fontWeight: '600',
-    textAlign: 'right',
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
+    marginTop: 4,
   },
-  // Modals
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backgroundColor: 'rgba(14, 31, 23, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
-  },
-  modalBox: {
-    width: '100%',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.xl,
     padding: 20,
-    ...SHADOWS.lg,
   },
-  modalTitle: {
-    fontSize: FONTS.md,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
+  dialogCard: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
+    padding: 22,
+    ...SHADOWS.hero,
+  },
+  dialogTitle: {
+    fontSize: FONTS.h2,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.ink,
     marginBottom: 4,
   },
-  modalSubtitle: {
-    fontSize: FONTS.xs,
-    color: COLORS.textSecondary,
+  dialogDesc: {
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
     marginBottom: 14,
+    lineHeight: 18,
   },
-  modalInput: {
-    backgroundColor: COLORS.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
+  dialogInput: {
+    height: 48,
+    borderRadius: RADIUS.input,
+    backgroundColor: COLORS.appBg,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: FONTS.xl,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
+    fontSize: FONTS.body,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.ink,
+    borderWidth: 1,
+    borderColor: COLORS.inputBorder,
     textAlign: 'center',
-    marginBottom: 8,
   },
-  modalHint: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    marginBottom: 16,
-    lineHeight: 16,
-  },
-  modalBtnRow: {
+  dialogActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
     gap: 10,
+    marginTop: 18,
   },
-  modalCancelBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.surfaceSubtle,
+  dialogCancelBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: RADIUS.chip,
+    backgroundColor: COLORS.appBg,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  modalCancelText: {
-    fontSize: FONTS.xs,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
+  dialogCancelText: {
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.bold,
+    color: COLORS.ink,
   },
-  modalSaveBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primary,
+  dialogConfirmBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: RADIUS.chip,
+    backgroundColor: COLORS.brandDarkGreen,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  modalSaveText: {
-    fontSize: FONTS.xs,
-    fontWeight: '800',
-    color: '#FFF',
+  dialogConfirmText: {
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
   },
 });

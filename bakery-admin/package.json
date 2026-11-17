@@ -12,8 +12,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "express": "^4.21.2",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
+    "dotenv": "^18.0.9",
+    "express": "^4.21.2",
+    "lucide-react": "^1.66.0",
+    "pg": "^8.23.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

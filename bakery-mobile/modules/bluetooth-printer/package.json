@@ -1,0 +1,10 @@
+{
+  "name": "bluetooth-printer",
+  "version": "1.0.0",
+  "description": "Direct Native Bluetooth SPP Thermal Receipt Printer Module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {},
+  "author": "Bakery POS",
+  "license": "MIT"
+}

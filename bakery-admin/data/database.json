@@ -1,82 +1,884 @@
 {
-  "business": {
-    "name": "Bakery",
-    "currency": "$",
-    "taxRate": 0.05,
-    "updatedAt": "2026-10-04T09:29:33.251Z"
+  "admin": {
+    "username": "admin",
+    "passwordHash": "$2b$12$F55ibIvFmLae8j2rOqeYnuf5r29sA6L2am3AgIqWBClqD1.l8AaAu",
+    "updatedAt": "2026-11-14T10:13:50.971Z"
   },
-  "terminals": {
-    "mobile-terminal-01": {
-      "id": "mobile-terminal-01",
-      "name": "Mobile POS (Android)",
-      "lastSeen": "2026-10-04T11:11:36.666Z",
-      "clientIp": "127.0.0.1",
-      "appVersion": "2.0",
-      "ordersCount": 0,
-      "status": "online"
-    },
-    "test-audit-01": {
-      "id": "test-audit-01",
-      "name": "Audit Phone Terminal",
-      "lastSeen": "2026-10-04T11:33:00.421Z",
-      "clientIp": "127.0.0.1",
-      "appVersion": "2.0",
-      "ordersCount": 1,
-      "status": "online"
+  "shops": [
+    {
+      "id": "SHOP-MVXVAV2M",
+      "name": "Arada Artisan Bakery",
+      "contactPhone": "+251 911 888 999",
+      "email": "arada@bakery.com",
+      "address": "Piazza, Addis Ababa",
+      "plan": "enterprise",
+      "paidUntil": "2027-12-31T23:59:59.000Z",
+      "gracePeriodDays": 10,
+      "autoSuspend": true,
+      "status": "active",
+      "createdAt": "2026-11-01T13:30:21.262Z",
+      "updatedAt": "2026-11-01T13:30:21.262Z"
     }
-  },
+  ],
+  "licenses": [
+    {
+      "id": "LIC-MVXVAV2M",
+      "licenseKey": "LIC-ARAD-HQKR",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Arada Artisan Bakery",
+      "maxDevices": 5,
+      "status": "active",
+      "expiresAt": "2027-12-31T23:59:59.000Z",
+      "createdAt": "2026-11-01T13:30:21.262Z",
+      "updatedAt": "2026-11-01T13:30:21.262Z"
+    },
+    {
+      "id": "LIC-MVXVAWNK",
+      "licenseKey": "LIC-MXU03W",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Arada Artisan Bakery",
+      "maxDevices": 5,
+      "status": "active",
+      "expiresAt": "2027-12-31T23:59:59.000Z",
+      "createdAt": "2026-11-01T13:30:23.312Z",
+      "updatedAt": "2026-11-01T13:30:23.312Z"
+    },
+    {
+      "id": "LIC-MVXVAY84",
+      "licenseKey": "LIC-ARAD-8DRZ",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Arada Artisan Bakery",
+      "maxDevices": 5,
+      "status": "active",
+      "expiresAt": "2027-12-31T23:59:59.000Z",
+      "createdAt": "2026-11-01T13:30:25.348Z",
+      "updatedAt": "2026-11-01T13:30:25.348Z"
+    },
+    {
+      "id": "LIC-MVYRS6TG",
+      "licenseKey": "LIC-BAKE-NZGW",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Arada Artisan Bakery",
+      "maxDevices": 5,
+      "status": "active",
+      "expiresAt": "2027-12-31T23:59:59.000Z",
+      "createdAt": "2026-11-02T04:39:37.348Z",
+      "updatedAt": "2026-11-02T04:39:37.348Z"
+    },
+    {
+      "id": "LIC-MW1SYPNA",
+      "licenseKey": "LIC-MAIN-PTPU",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Arada Artisan Bakery",
+      "maxDevices": 5,
+      "status": "active",
+      "expiresAt": "2027-12-31T23:59:59.000Z",
+      "createdAt": "2026-11-04T07:35:59.830Z",
+      "updatedAt": "2026-11-04T07:35:59.830Z"
+    },
+    {
+      "id": "LIC-MWG7XYM3",
+      "licenseKey": "LIC-BAKE-MQM9",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Arada Artisan Bakery",
+      "maxDevices": 5,
+      "status": "active",
+      "expiresAt": "2027-12-31T23:59:59.000Z",
+      "createdAt": "2026-11-14T09:44:05.499Z",
+      "updatedAt": "2026-11-14T09:44:05.499Z"
+    },
+    {
+      "id": "LIC-MWG8DJW6",
+      "licenseKey": "LIC-BAKE-11EK",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Arada Artisan Bakery",
+      "maxDevices": 5,
+      "status": "active",
+      "expiresAt": "2027-12-31T23:59:59.000Z",
+      "createdAt": "2026-11-14T09:56:12.918Z",
+      "updatedAt": "2026-11-14T09:56:12.918Z"
+    }
+  ],
+  "devices": [
+    {
+      "id": "DEV-MVXVAY84",
+      "deviceId": "DEV-ANDR-REAL-POS-1793539823",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Arada Artisan Bakery",
+      "licenseKey": "LIC-ARAD-8DRZ",
+      "model": "Sunmi V2 PRO Mobile Terminal",
+      "platform": "android",
+      "osVersion": "Android 11",
+      "appVersion": "1.0.8",
+      "status": "pending",
+      "lastIp": "127.0.0.1",
+      "lastPing": "2026-11-01T13:30:29.445Z",
+      "lastSync": "2026-11-01T13:30:29.445Z",
+      "orderCount": 1,
+      "pendingOrdersCount": 0,
+      "requestedAt": "2026-11-01T13:30:25.348Z",
+      "registeredAt": null,
+      "statusReason": "Waiting for administrator approval in BakerAdmin",
+      "statusUpdatedAt": "2026-11-01T13:30:37.623Z",
+      "pendingCommand": {
+        "command": "unlink",
+        "reason": "Terminal unlinked by admin",
+        "issuedAt": "2026-11-01T13:30:37.623Z",
+        "ackedAt": null
+      },
+      "offlineToken": {
+        "token": "eyJkZXZpY2VJZCI6IkRFVi1BTkRSLVJFQUwtUE9TLTE3OTM1Mzk4MjMiLCJzaG9wSWQiOiJTSE9QLU1WWFZBVjJNIiwibGljZW5zZUtleSI6IkxJQy1BUkFELThEUloiLCJzdGF0dXMiOiJhY3RpdmUiLCJpc3N1ZWRBdCI6IjIwMjYtMTEtMTRUMTA6MDc6MzYuOTg4WiIsImV4cGlyZXNBdCI6IjIwMjYtMTEtMTdUMTA6MDc6MzYuOTg4WiIsIm1heE9mZmxpbmVIb3VycyI6NzJ9.RECgDV4djhBd71nPDCDi_UbsKrgW41by_k8u0GgcC_c",
+        "expiresAt": "2026-11-17T10:07:36.988Z",
+        "maxOfflineHours": 72
+      }
+    },
+    {
+      "id": "DEV-MVYRS6TG",
+      "deviceId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Bakery POS Terminal",
+      "licenseKey": "LIC-BAKE-NZGW",
+      "model": "Web POS Client",
+      "platform": "web",
+      "osVersion": "Web",
+      "appVersion": "1.0.8",
+      "status": "active",
+      "lastIp": "127.0.0.1",
+      "lastPing": "2026-11-14T10:21:18.461Z",
+      "lastSync": "2026-11-14T10:21:18.461Z",
+      "orderCount": 10,
+      "pendingOrdersCount": 1,
+      "requestedAt": "2026-11-02T04:39:37.348Z",
+      "registeredAt": null,
+      "statusReason": "Payment verified, re-activated by administrator",
+      "statusUpdatedAt": "2026-11-14T10:15:37.814Z",
+      "pendingCommand": {
+        "command": "activate",
+        "reason": "Payment verified, re-activated by administrator",
+        "issuedAt": "2026-11-14T10:15:37.814Z",
+        "ackedAt": "2026-11-14T10:17:15.414Z"
+      },
+      "offlineToken": {
+        "token": "eyJkZXZpY2VJZCI6IkRFVi1XRUItUE9TLU1WWFIxS1lRLTFEUkwiLCJzaG9wSWQiOiJTSE9QLU1WWFZBVjJNIiwibGljZW5zZUtleSI6IkxJQy1CQUtFLU5aR1ciLCJzdGF0dXMiOiJhY3RpdmUiLCJpc3N1ZWRBdCI6IjIwMjYtMTEtMTRUMTA6MTU6MzcuODE0WiIsImV4cGlyZXNBdCI6IjIwMjYtMTEtMTdUMTA6MTU6MzcuODE0WiIsIm1heE9mZmxpbmVIb3VycyI6NzJ9.v6GUtLvMeUGFpv1L1EaQ-SjXpDz-a9CBPkr7nQT_gTU",
+        "expiresAt": "2026-11-17T10:15:37.814Z",
+        "maxOfflineHours": 72
+      }
+    },
+    {
+      "id": "DEV-MWG7XYM3",
+      "deviceId": "DEV-ANDR-PHONE-TEST01",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Bakery POS Terminal",
+      "licenseKey": "LIC-BAKE-MQM9",
+      "model": "Pixel 7",
+      "platform": "android",
+      "osVersion": "Android 14",
+      "appVersion": "1.0.8",
+      "status": "pending",
+      "lastIp": "127.0.0.1",
+      "lastPing": "2026-11-14T09:44:05.499Z",
+      "lastSync": null,
+      "orderCount": 0,
+      "pendingOrdersCount": 0,
+      "requestedAt": "2026-11-14T09:44:05.499Z",
+      "registeredAt": null,
+      "statusReason": "Waiting for administrator approval in BakerAdmin",
+      "statusUpdatedAt": "2026-11-14T09:44:05.499Z",
+      "pendingCommand": null,
+      "offlineToken": {
+        "token": "eyJkZXZpY2VJZCI6IkRFVi1BTkRSLVBIT05FLVRFU1QwMSIsInNob3BJZCI6IlNIT1AtTVZYVkFWMk0iLCJsaWNlbnNlS2V5IjoiTElDLUJBS0UtTVFNOSIsInN0YXR1cyI6ImFjdGl2ZSIsImlzc3VlZEF0IjoiMjAyNi0xMS0xNFQxMDowNzozNi45ODhaIiwiZXhwaXJlc0F0IjoiMjAyNi0xMS0xN1QxMDowNzozNi45ODhaIiwibWF4T2ZmbGluZUhvdXJzIjo3Mn0.0ZpnBYsBDVc3tTzuv_KBJ16R9ldDGSrZhZUOCSXFbRE",
+        "expiresAt": "2026-11-17T10:07:36.988Z",
+        "maxOfflineHours": 72
+      }
+    },
+    {
+      "id": "DEV-MWG8DJW6",
+      "deviceId": "DEV-WEB-POS-LAPTOP-TEST",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Bakery POS Terminal",
+      "licenseKey": "LIC-BAKE-11EK",
+      "model": "Web POS Client",
+      "platform": "web",
+      "osVersion": "Windows",
+      "appVersion": "1.0.8",
+      "status": "active",
+      "lastIp": "127.0.0.1",
+      "lastPing": "2026-11-14T09:56:12.918Z",
+      "lastSync": null,
+      "orderCount": 0,
+      "pendingOrdersCount": 0,
+      "requestedAt": "2026-11-14T09:56:12.918Z",
+      "registeredAt": null,
+      "statusReason": "Hardware verified & authorized for store operations",
+      "statusUpdatedAt": "2026-11-14T10:46:01.537Z",
+      "pendingCommand": {
+        "command": "activate",
+        "reason": "Hardware verified & authorized for store operations",
+        "issuedAt": "2026-11-14T10:46:01.537Z",
+        "ackedAt": null
+      },
+      "offlineToken": {
+        "token": "eyJkZXZpY2VJZCI6IkRFVi1XRUItUE9TLUxBUFRPUC1URVNUIiwic2hvcElkIjoiU0hPUC1NVlhWQVYyTSIsImxpY2Vuc2VLZXkiOiJMSUMtQkFLRS0xMUVLIiwic3RhdHVzIjoiYWN0aXZlIiwiaXNzdWVkQXQiOiIyMDI2LTExLTE0VDEwOjQ2OjAxLjUzN1oiLCJleHBpcmVzQXQiOiIyMDI2LTExLTE3VDEwOjQ2OjAxLjUzN1oiLCJtYXhPZmZsaW5lSG91cnMiOjcyfQ.l4RZCx9iHXHatfrvwy6T83w_ca3OrS5fFgpGOJbTdSE",
+        "expiresAt": "2026-11-17T10:46:01.537Z",
+        "maxOfflineHours": 72
+      }
+    }
+  ],
   "orders": [
     {
-      "id": "ORD-AUDIT-999",
-      "createdAt": "2026-10-04T11:33:00.420Z",
-      "customerName": "Audit Customer",
+      "id": "ORD-ARADA-1793539827",
+      "customerName": "Walk-in Guest",
       "paymentMethod": "Cash",
-      "total": 150,
-      "subtotal": 142.85,
-      "tax": 7.15,
+      "createdAt": "2026-11-01T13:30:27.000Z",
+      "subtotal": 280,
+      "tax": 0,
+      "total": 280,
+      "items": [
+        {
+          "name": "Whole Grain Loaf",
+          "quantity": 2,
+          "price": 140
+        }
+      ],
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Arada Artisan Bakery",
+      "licenseKey": "LIC-MXU03W",
+      "deviceId": "DEV-ANDR-REAL-POS-1793539823",
+      "phoneModel": "Sunmi V2 PRO Mobile Terminal",
+      "terminalName": "Arada Artisan Bakery",
+      "syncedAt": "2026-11-01T13:30:29.445Z"
+    },
+    {
+      "id": "ORD-9297",
+      "createdAt": "2026-11-08T17:58:46.489Z",
+      "customerName": "Walk-in Customer",
+      "paymentMethod": "Cash",
+      "status": "Completed",
+      "subtotal": 60,
+      "tax": 0,
+      "total": 60,
+      "amountReceived": 60,
+      "changeDue": 0,
+      "items": [
+        {
+          "id": 4,
+          "name": "Honey Walnut Baklava",
+          "price": 60,
+          "quantity": 1
+        }
+      ],
+      "syncStatus": "synced",
+      "account": "admin",
+      "createdBy": "admin",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Bakery POS Terminal",
+      "licenseKey": "LIC-BAKE-NZGW",
+      "deviceId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "phoneModel": "Web POS Client",
+      "terminalName": "Bakery POS Terminal",
+      "syncedAt": "2026-11-14T10:17:49.378Z"
+    },
+    {
+      "id": "ORD-6418",
+      "createdAt": "2026-11-08T17:58:10.030Z",
+      "customerName": "Walk-in Customer",
+      "paymentMethod": "Cash",
+      "status": "Completed",
+      "subtotal": 60,
+      "tax": 0,
+      "total": 60,
+      "amountReceived": 60,
+      "changeDue": 0,
+      "items": [
+        {
+          "id": 4,
+          "name": "Honey Walnut Baklava",
+          "price": 60,
+          "quantity": 1
+        }
+      ],
+      "syncStatus": "synced",
+      "account": "admin",
+      "createdBy": "admin",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Bakery POS Terminal",
+      "licenseKey": "LIC-BAKE-NZGW",
+      "deviceId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "phoneModel": "Web POS Client",
+      "terminalName": "Bakery POS Terminal",
+      "syncedAt": "2026-11-14T10:17:49.378Z"
+    },
+    {
+      "id": "ORD-3209",
+      "createdAt": "2026-11-08T17:50:47.941Z",
+      "customerName": "Walk-in Customer",
+      "paymentMethod": "Cash",
+      "status": "Completed",
+      "subtotal": 70,
+      "tax": 3.5,
+      "total": 73.5,
+      "amountReceived": 73.5,
+      "changeDue": 0,
+      "items": [
+        {
+          "id": 6,
+          "name": "Spiced Beef Sambusa",
+          "price": 35,
+          "quantity": 2
+        }
+      ],
+      "syncStatus": "synced",
+      "account": "admin",
+      "createdBy": "admin",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Bakery POS Terminal",
+      "licenseKey": "LIC-BAKE-NZGW",
+      "deviceId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "phoneModel": "Web POS Client",
+      "terminalName": "Bakery POS Terminal",
+      "syncedAt": "2026-11-14T10:17:49.378Z"
+    },
+    {
+      "id": "ORD-5763",
+      "createdAt": "2026-11-08T17:49:04.892Z",
+      "customerName": "Walk-in Customer",
+      "paymentMethod": "Cash",
+      "status": "Completed",
+      "subtotal": 35,
+      "tax": 1.75,
+      "total": 36.75,
+      "amountReceived": 36.75,
+      "changeDue": 0,
+      "items": [
+        {
+          "id": 6,
+          "name": "Spiced Beef Sambusa",
+          "price": 35,
+          "quantity": 1
+        }
+      ],
+      "syncStatus": "synced",
+      "account": "admin",
+      "createdBy": "admin",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Bakery POS Terminal",
+      "licenseKey": "LIC-BAKE-NZGW",
+      "deviceId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "phoneModel": "Web POS Client",
+      "terminalName": "Bakery POS Terminal",
+      "syncedAt": "2026-11-14T10:17:49.378Z"
+    },
+    {
+      "id": "ORD-6598",
+      "createdAt": "2026-11-08T14:35:38.596Z",
+      "customerName": "Walk-in Customer",
+      "paymentMethod": "Cash",
+      "notes": "",
+      "status": "Completed",
+      "subtotal": 60,
+      "tax": 3,
+      "total": 63,
+      "amountReceived": 63,
+      "changeDue": 0,
+      "items": [
+        {
+          "id": 4,
+          "name": "Honey Walnut Baklava",
+          "price": 60,
+          "quantity": 1,
+          "emoji": "🍯"
+        }
+      ],
+      "syncStatus": "synced",
+      "account": "admin",
+      "createdBy": "admin",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Bakery POS Terminal",
+      "licenseKey": "LIC-BAKE-NZGW",
+      "deviceId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "phoneModel": "Web POS Client",
+      "terminalName": "Bakery POS Terminal",
+      "syncedAt": "2026-11-14T10:17:49.378Z"
+    },
+    {
+      "id": "ORD-6305",
+      "createdAt": "2026-10-31T09:00:19.339Z",
+      "customerName": "Walk-in Customer",
+      "paymentMethod": "Cash",
+      "notes": "",
+      "status": "Completed",
+      "subtotal": 75,
+      "tax": 3.75,
+      "total": 78.75,
       "items": [
         {
           "id": 1,
           "name": "Crispy Honey Fetira",
-          "quantity": 2,
-          "price": 75
+          "price": 75,
+          "quantity": 1,
+          "emoji": "🥞"
         }
       ],
-      "syncedAt": "2026-10-04T11:33:00.421Z",
-      "terminalId": "test-audit-01"
-    }
-  ],
-  "products": [
-    {
-      "id": 1,
-      "name": "Crispy Honey Fetira",
-      "category": "Pastry",
-      "price": 75,
-      "preparedCount": 50,
-      "soldCount": 14,
-      "remainingCount": 36,
-      "available": true
-    }
-  ],
-  "inventory": [],
-  "syncLogs": [
-    {
-      "id": "log-1791113580421",
-      "terminalId": "test-audit-01",
-      "terminalName": "Audit Phone Terminal",
-      "timestamp": "2026-10-04T11:33:00.421Z",
-      "incomingOrdersCount": 1,
-      "newOrdersCount": 1,
-      "clientIp": "127.0.0.1"
+      "account": "admin",
+      "createdBy": "admin",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Bakery POS Terminal",
+      "licenseKey": "LIC-BAKE-NZGW",
+      "deviceId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "phoneModel": "Web POS Client",
+      "terminalName": "Bakery POS Terminal",
+      "syncedAt": "2026-11-14T10:17:49.378Z",
+      "syncStatus": "synced"
     },
     {
-      "id": "log-1791112296666",
-      "terminalId": "mobile-terminal-01",
-      "terminalName": "Mobile POS (Android)",
-      "timestamp": "2026-10-04T11:11:36.666Z",
-      "incomingOrdersCount": 0,
-      "newOrdersCount": 0,
-      "clientIp": "127.0.0.1"
+      "id": "ORD-1488",
+      "createdAt": "2026-10-31T08:59:13.308Z",
+      "customerName": "Walk-in Customer",
+      "paymentMethod": "Cash",
+      "notes": "",
+      "status": "Completed",
+      "subtotal": 225,
+      "tax": 11.25,
+      "total": 236.25,
+      "items": [
+        {
+          "id": 1,
+          "name": "Crispy Honey Fetira",
+          "price": 75,
+          "quantity": 3,
+          "emoji": "🥞"
+        }
+      ],
+      "account": "admin",
+      "createdBy": "admin",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Bakery POS Terminal",
+      "licenseKey": "LIC-BAKE-NZGW",
+      "deviceId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "phoneModel": "Web POS Client",
+      "terminalName": "Bakery POS Terminal",
+      "syncedAt": "2026-11-14T10:17:49.378Z",
+      "syncStatus": "synced"
+    },
+    {
+      "id": "ORD-2441",
+      "createdAt": "2026-10-31T07:38:44.426Z",
+      "customerName": "Walk-in Customer",
+      "paymentMethod": "Cash",
+      "notes": "",
+      "status": "Completed",
+      "subtotal": 150,
+      "tax": 7.5,
+      "total": 157.5,
+      "items": [
+        {
+          "id": 1,
+          "name": "Crispy Honey Fetira",
+          "price": 75,
+          "quantity": 2,
+          "emoji": "🥞"
+        }
+      ],
+      "account": "admin",
+      "createdBy": "admin",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Bakery POS Terminal",
+      "licenseKey": "LIC-BAKE-NZGW",
+      "deviceId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "phoneModel": "Web POS Client",
+      "terminalName": "Bakery POS Terminal",
+      "syncedAt": "2026-11-14T10:17:49.378Z",
+      "syncStatus": "synced"
+    },
+    {
+      "id": "ORD-3592",
+      "createdAt": "2026-11-14T10:16:18.279Z",
+      "customerName": "Walk-in Customer",
+      "paymentMethod": "Cash",
+      "status": "Completed",
+      "subtotal": 180,
+      "tax": 0,
+      "total": 180,
+      "amountReceived": 180,
+      "changeDue": 0,
+      "items": [
+        {
+          "id": 4,
+          "name": "Honey Walnut Baklava",
+          "price": 60,
+          "quantity": 3
+        }
+      ],
+      "syncStatus": "synced",
+      "account": "admin",
+      "createdBy": "admin",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Bakery POS Terminal",
+      "licenseKey": "LIC-BAKE-NZGW",
+      "deviceId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "phoneModel": "Web POS Client",
+      "terminalName": "Bakery POS Terminal",
+      "syncedAt": "2026-11-14T10:17:49.378Z"
+    },
+    {
+      "id": "ORD-5108",
+      "createdAt": "2026-11-14T10:21:12.926Z",
+      "customerName": "Walk-in Customer",
+      "paymentMethod": "Cash",
+      "status": "Completed",
+      "subtotal": 35,
+      "tax": 0,
+      "total": 35,
+      "amountReceived": 35,
+      "changeDue": 0,
+      "items": [
+        {
+          "id": 6,
+          "name": "Spiced Beef Sambusa",
+          "price": 35,
+          "quantity": 1
+        }
+      ],
+      "syncStatus": "pending",
+      "account": "admin",
+      "createdBy": "admin",
+      "shopId": "SHOP-MVXVAV2M",
+      "shopName": "Bakery POS Terminal",
+      "licenseKey": "LIC-BAKE-NZGW",
+      "deviceId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "phoneModel": "Web POS Client",
+      "terminalName": "Bakery POS Terminal",
+      "syncedAt": "2026-11-14T10:21:18.461Z"
     }
-  ]
+  ],
+  "products": [],
+  "inventory": [
+    {
+      "id": 4,
+      "name": "Brown Lentils",
+      "unit": "kg",
+      "stock": 15,
+      "minStock": 6,
+      "costPerUnit": 32,
+      "updatedAt": "2026-11-14T10:21:18.461Z"
+    },
+    {
+      "id": 5,
+      "name": "Shelled Pistachios",
+      "unit": "kg",
+      "stock": 5,
+      "minStock": 3,
+      "costPerUnit": 180,
+      "updatedAt": "2026-11-14T10:21:18.461Z"
+    },
+    {
+      "id": 6,
+      "name": "Unsalted Butter",
+      "unit": "kg",
+      "stock": 20,
+      "minStock": 10,
+      "costPerUnit": 65,
+      "updatedAt": "2026-11-14T10:21:18.461Z"
+    },
+    {
+      "id": 7,
+      "name": "Granulated Sugar",
+      "unit": "kg",
+      "stock": 25,
+      "minStock": 15,
+      "costPerUnit": 35,
+      "updatedAt": "2026-11-14T10:21:18.461Z"
+    },
+    {
+      "id": 8,
+      "name": "Instant Dry Yeast",
+      "unit": "kg",
+      "stock": 5,
+      "minStock": 2,
+      "costPerUnit": 95,
+      "updatedAt": "2026-11-14T10:21:18.461Z"
+    },
+    {
+      "id": 9,
+      "name": "Espresso Roast Beans",
+      "unit": "kg",
+      "stock": 8,
+      "minStock": 5,
+      "costPerUnit": 350,
+      "updatedAt": "2026-11-14T10:21:18.461Z"
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "AUDIT-MWGA5LXD-N6X",
+      "adminUser": "admin",
+      "shopId": "SHOP-MVXVAV2M",
+      "terminalId": "DEV-WEB-POS-LAPTOP-TEST",
+      "action": "terminal_activate",
+      "reason": "Hardware verified & authorized for store operations",
+      "timestamp": "2026-11-14T10:46:01.537Z",
+      "metadata": {
+        "prevStatus": "pending",
+        "newStatus": "active",
+        "model": "Web POS Client"
+      }
+    },
+    {
+      "id": "AUDIT-MWG92IQE-5RS",
+      "adminUser": "admin",
+      "shopId": "SHOP-MVXVAV2M",
+      "terminalId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "action": "terminal_activate",
+      "reason": "Payment verified, re-activated by administrator",
+      "timestamp": "2026-11-14T10:15:37.814Z",
+      "metadata": {
+        "prevStatus": "pending",
+        "newStatus": "active",
+        "model": "Web POS Client"
+      }
+    },
+    {
+      "id": "AUDIT-MWG8DJW6-B7F",
+      "adminUser": "mobile_client",
+      "shopId": "SHOP-MVXVAV2M",
+      "terminalId": "DEV-WEB-POS-LAPTOP-TEST",
+      "action": "device_request_access",
+      "reason": "Access request from Web POS Client (DEV-WEB-POS-LAPTOP-TEST)",
+      "timestamp": "2026-11-14T09:56:12.918Z",
+      "metadata": {
+        "ip": "127.0.0.1",
+        "model": "Web POS Client",
+        "osVersion": "Windows",
+        "appVersion": "1.0.8"
+      }
+    },
+    {
+      "id": "AUDIT-MWG7XYM4-Z8G",
+      "adminUser": "mobile_client",
+      "shopId": "SHOP-MVXVAV2M",
+      "terminalId": "DEV-ANDR-PHONE-TEST01",
+      "action": "device_request_access",
+      "reason": "Access request from Pixel 7 (DEV-ANDR-PHONE-TEST01)",
+      "timestamp": "2026-11-14T09:44:05.500Z",
+      "metadata": {
+        "ip": "127.0.0.1",
+        "model": "Pixel 7",
+        "osVersion": "Android 14",
+        "appVersion": "1.0.8"
+      }
+    },
+    {
+      "id": "AUDIT-MW7W1QUA-RKE",
+      "adminUser": "admin@10.0.2.15",
+      "shopId": "SHOP-MVXVAV2M",
+      "terminalId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "action": "terminal_activate",
+      "reason": "Payment verified, re-activated by administrator",
+      "timestamp": "2026-11-08T13:48:57.250Z",
+      "metadata": {
+        "prevStatus": "suspended",
+        "newStatus": "active",
+        "model": "Web POS Client"
+      }
+    },
+    {
+      "id": "AUDIT-MW1TIVIV-ZFF",
+      "adminUser": "admin@10.0.2.15",
+      "shopId": "SHOP-MVXVAV2M",
+      "terminalId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "action": "terminal_suspend",
+      "reason": "Payment overdue or administrative hold",
+      "timestamp": "2026-11-04T07:51:40.567Z",
+      "metadata": {
+        "prevStatus": "active",
+        "newStatus": "suspended",
+        "model": "Web POS Client"
+      }
+    },
+    {
+      "id": "AUDIT-MW1SYPO0-XO4",
+      "adminUser": "admin@10.0.2.15",
+      "shopId": "SHOP-MVXVAV2M",
+      "terminalId": "DEV-TEST-PHONE-1234",
+      "action": "terminal_approve",
+      "reason": "Approved terminal Android POS Terminal",
+      "timestamp": "2026-11-04T07:35:59.856Z",
+      "metadata": {
+        "licenseKey": "LIC-MAIN-PTPU"
+      }
+    },
+    {
+      "id": "AUDIT-MW1SYPNA-QED",
+      "adminUser": "mobile_client",
+      "shopId": "SHOP-MVXVAV2M",
+      "terminalId": "DEV-TEST-PHONE-1234",
+      "action": "device_request_access",
+      "reason": "Access request from Android POS Terminal (DEV-TEST-PHONE-1234)",
+      "timestamp": "2026-11-04T07:35:59.830Z",
+      "metadata": {
+        "ip": "127.0.0.1",
+        "model": "Android POS Terminal",
+        "osVersion": "Android 14",
+        "appVersion": "1.0.8"
+      }
+    },
+    {
+      "id": "AUDIT-MVYS2ERX-AC3",
+      "adminUser": "admin",
+      "shopId": "SHOP-MVXVAV2M",
+      "terminalId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "action": "terminal_activate",
+      "reason": "Payment verified, re-activated by administrator",
+      "timestamp": "2026-11-02T04:47:34.221Z",
+      "metadata": {
+        "prevStatus": "pending",
+        "newStatus": "active",
+        "model": "Web POS Client"
+      }
+    },
+    {
+      "id": "AUDIT-MVYRS6TG-V8I",
+      "adminUser": "mobile_client",
+      "shopId": "SHOP-MVXVAV2M",
+      "terminalId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "action": "device_request_access",
+      "reason": "Access request from Web POS Client (DEV-WEB-POS-MVXR1KYQ-1DRL)",
+      "timestamp": "2026-11-02T04:39:37.349Z",
+      "metadata": {
+        "ip": "192.168.0.116",
+        "model": "Web POS Client",
+        "osVersion": "Windows",
+        "appVersion": "1.0.8"
+      }
+    },
+    {
+      "id": "AUDIT-MVXVB7P3-VOX",
+      "adminUser": "admin",
+      "shopId": "SHOP-MVXVAV2M",
+      "terminalId": "DEV-ANDR-REAL-POS-1793539823",
+      "action": "terminal_unlink",
+      "reason": "Terminal unlinked by admin",
+      "timestamp": "2026-11-01T13:30:37.623Z",
+      "metadata": {
+        "prevStatus": "active",
+        "newStatus": "unlinked",
+        "model": "Sunmi V2 PRO Mobile Terminal"
+      }
+    },
+    {
+      "id": "AUDIT-MVXVAZT4-719",
+      "adminUser": "admin",
+      "shopId": "SHOP-MVXVAV2M",
+      "terminalId": "DEV-ANDR-REAL-POS-1793539823",
+      "action": "terminal_approve",
+      "reason": "Approved terminal Sunmi V2 PRO Mobile Terminal",
+      "timestamp": "2026-11-01T13:30:27.400Z",
+      "metadata": {
+        "licenseKey": "LIC-ARAD-8DRZ"
+      }
+    },
+    {
+      "id": "AUDIT-MVXVAY84-FDG",
+      "adminUser": "mobile_client",
+      "shopId": "SHOP-MVXVAV2M",
+      "terminalId": "DEV-ANDR-REAL-POS-1793539823",
+      "action": "device_request_access",
+      "reason": "Access request from Sunmi V2 PRO Mobile Terminal (DEV-ANDR-REAL-POS-1793539823)",
+      "timestamp": "2026-11-01T13:30:25.348Z",
+      "metadata": {
+        "ip": "127.0.0.1",
+        "model": "Sunmi V2 PRO Mobile Terminal",
+        "osVersion": "Android 11",
+        "appVersion": "1.0.8"
+      }
+    },
+    {
+      "id": "AUDIT-MVXVAWNK-XLR",
+      "adminUser": "admin",
+      "shopId": "SHOP-MVXVAV2M",
+      "terminalId": "SYSTEM",
+      "action": "license_created",
+      "reason": "Issued license LIC-MXU03W (max 5 terminals)",
+      "timestamp": "2026-11-01T13:30:23.312Z",
+      "metadata": {
+        "licenseKey": "LIC-MXU03W"
+      }
+    },
+    {
+      "id": "AUDIT-MVXVAV2M-1TJ",
+      "adminUser": "admin",
+      "shopId": "SHOP-MVXVAV2M",
+      "terminalId": "SYSTEM",
+      "action": "shop_created",
+      "reason": "Created shop Arada Artisan Bakery with default license LIC-ARAD-HQKR",
+      "timestamp": "2026-11-01T13:30:21.262Z",
+      "metadata": {
+        "plan": "enterprise",
+        "paidUntil": "2027-12-31T23:59:59.000Z"
+      }
+    }
+  ],
+  "syncLogs": [
+    {
+      "id": "SYNC-MWG99TKT",
+      "terminalId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "shopId": "SHOP-MVXVAV2M",
+      "ordersCount": 1,
+      "addedCount": 1,
+      "dupCount": 0,
+      "pendingRemaining": 0,
+      "timestamp": "2026-11-14T10:21:18.461Z",
+      "status": "success"
+    },
+    {
+      "id": "SYNC-MWG95C8Y",
+      "terminalId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "shopId": "SHOP-MVXVAV2M",
+      "ordersCount": 9,
+      "addedCount": 0,
+      "dupCount": 9,
+      "pendingRemaining": 0,
+      "timestamp": "2026-11-14T10:17:49.378Z",
+      "status": "success"
+    },
+    {
+      "id": "SYNC-MWG93JM0",
+      "terminalId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "shopId": "SHOP-MVXVAV2M",
+      "ordersCount": 1,
+      "addedCount": 1,
+      "dupCount": 0,
+      "pendingRemaining": 0,
+      "timestamp": "2026-11-14T10:16:25.608Z",
+      "status": "success"
+    },
+    {
+      "id": "SYNC-MWG92Y5U",
+      "terminalId": "DEV-WEB-POS-MVXR1KYQ-1DRL",
+      "shopId": "SHOP-MVXVAV2M",
+      "ordersCount": 8,
+      "addedCount": 8,
+      "dupCount": 0,
+      "pendingRemaining": 0,
+      "timestamp": "2026-11-14T10:15:57.810Z",
+      "status": "success"
+    },
+    {
+      "id": "SYNC-MVXVB1DX",
+      "terminalId": "DEV-ANDR-REAL-POS-1793539823",
+      "shopId": "SHOP-MVXVAV2M",
+      "ordersCount": 1,
+      "addedCount": 1,
+      "dupCount": 0,
+      "pendingRemaining": 0,
+      "timestamp": "2026-11-01T13:30:29.445Z",
+      "status": "success"
+    }
+  ],
+  "business": {
+    "name": "Bakery Admin",
+    "currency": "ETB",
+    "taxRate": 0,
+    "updatedAt": "2026-11-01T00:00:00.000Z"
+  }
 }

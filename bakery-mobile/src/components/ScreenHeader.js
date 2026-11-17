@@ -8,7 +8,6 @@ export default function ScreenHeader({
   title,
   subtitle,
   icon,
-  emoji,
   iconBg,
   iconColor,
   canGoBack = false,
@@ -19,7 +18,7 @@ export default function ScreenHeader({
   style,
 }) {
   const insets = useSafeAreaInsets();
-  const topPadding = Math.max(insets.top, 10) + 6;
+  const topPadding = Math.max(insets.top, 10) + 8;
 
   return (
     <View style={[styles.headerContainer, { paddingTop: topPadding }, style]}>
@@ -31,19 +30,15 @@ export default function ScreenHeader({
               style={styles.backBtn}
               onPress={onBack}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              activeOpacity={0.7}
+              activeOpacity={0.75}
             >
-              <Ionicons name="arrow-back" size={20} color={COLORS.textPrimary} />
+              <Ionicons name="chevron-back" size={20} color={COLORS.brandDarkGreen} />
             </TouchableOpacity>
           ) : null}
 
-          {(emoji || icon) ? (
-            <View style={[styles.iconBadge, { backgroundColor: iconBg || COLORS.primaryLight }]}>
-              {emoji ? (
-                <Text style={styles.emojiText}>{emoji}</Text>
-              ) : (
-                <Ionicons name={icon} size={20} color={iconColor || COLORS.primary} />
-              )}
+          {icon ? (
+            <View style={[styles.iconBadge, { backgroundColor: iconBg || COLORS.softGreen }]}>
+              <Ionicons name={icon} size={18} color={iconColor || COLORS.brandDarkGreen} />
             </View>
           ) : null}
 
@@ -53,8 +48,8 @@ export default function ScreenHeader({
                 {title}
               </Text>
               {badge ? (
-                <View style={[styles.inlineBadge, { backgroundColor: (badgeColor || COLORS.primary) + '1A' }]}>
-                  <Text style={[styles.inlineBadgeText, { color: badgeColor || COLORS.primary }]}>
+                <View style={[styles.inlineBadge, { backgroundColor: badgeColor ? badgeColor + '1A' : COLORS.softGreen }]}>
+                  <Text style={[styles.inlineBadgeText, { color: badgeColor || COLORS.greenTextLight }]}>
                     {badge}
                   </Text>
                 </View>
@@ -68,7 +63,7 @@ export default function ScreenHeader({
           </View>
         </View>
 
-        {/* Right Section: Interactive action */}
+        {/* Right Section */}
         {rightAction ? (
           <View style={styles.rightSection}>
             {rightAction}
@@ -81,13 +76,13 @@ export default function ScreenHeader({
 
 const styles = StyleSheet.create({
   headerContainer: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.card,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    borderBottomColor: COLORS.hairline,
+    paddingHorizontal: 20,
+    paddingBottom: 14,
     zIndex: 10,
-    ...SHADOWS.sm,
+    ...SHADOWS.card,
   },
   headerContent: {
     flexDirection: 'row',
@@ -102,26 +97,21 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.surfaceSubtle,
+    width: 38,
+    height: 38,
+    borderRadius: RADIUS.iconTile, // 13
+    backgroundColor: COLORS.softGreen,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
   iconBadge: {
     width: 38,
     height: 38,
-    borderRadius: RADIUS.md,
+    borderRadius: RADIUS.iconTile, // 13
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
-  },
-  emojiText: {
-    fontSize: 20,
   },
   titleColumn: {
     flex: 1,
@@ -132,29 +122,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   titleText: {
-    fontSize: FONTS.lg,
+    fontSize: 20,
     fontWeight: '800',
-    color: COLORS.textPrimary,
+    color: COLORS.ink,
     letterSpacing: -0.4,
   },
   inlineBadge: {
-    paddingHorizontal: 7,
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: RADIUS.full,
-    marginLeft: 6,
+    borderRadius: 8,
+    marginLeft: 8,
   },
   inlineBadgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
   },
   subtitleText: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
+    fontSize: 12,
     fontWeight: '500',
+    color: COLORS.mutedText,
     marginTop: 2,
   },
   rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
   },
 });

@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Platform,
   Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -22,7 +21,6 @@ export default function EulaModal({
   onAccept = null,
 }) {
   const [agreed, setAgreed] = useState(false);
-  const [acceptedDate, setAcceptedDate] = useState(null);
 
   useEffect(() => {
     if (visible) {
@@ -33,19 +31,15 @@ export default function EulaModal({
   const checkExistingAcceptance = async () => {
     try {
       const raw = await AsyncStorage.getItem(EULA_STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        setAcceptedDate(parsed.acceptedAt ? new Date(parsed.acceptedAt).toLocaleDateString() : 'Active');
-        if (!isFirstTimeSetup) {
-          setAgreed(true);
-        }
+      if (raw && !isFirstTimeSetup) {
+        setAgreed(true);
       }
     } catch (e) {}
   };
 
   const handleConfirmAccept = async () => {
     if (!agreed) {
-      Alert.alert('Agreement Required', 'Please check the box confirming you have read and agree to the EULA & Terms of Service.');
+      Alert.alert('Agreement Required', 'Please check the box to confirm that you accept the License Agreement.');
       return;
     }
 
@@ -54,10 +48,8 @@ export default function EulaModal({
         accepted: true,
         acceptedAt: new Date().toISOString(),
         version: '1.0',
-        licensor: 'SkyKin Technologies PLC',
       };
       await AsyncStorage.setItem(EULA_STORAGE_KEY, JSON.stringify(record));
-      setAcceptedDate(new Date().toLocaleDateString());
       if (onAccept) onAccept(record);
       if (onClose) onClose();
     } catch (e) {
@@ -69,7 +61,7 @@ export default function EulaModal({
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="fade"
       onRequestClose={() => {
         if (!isFirstTimeSetup && onClose) onClose();
       }}
@@ -78,223 +70,90 @@ export default function EulaModal({
         <View style={styles.modalBox}>
           {/* Header */}
           <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <View style={styles.badgeIcon}>
-                <Ionicons name="shield-checkmark" size={22} color="#1D4ED8" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={styles.companyRow}>
-                  <Text style={styles.companyTag}>SKYKIN TECHNOLOGIES PLC</Text>
-                  {acceptedDate ? (
-                    <View style={styles.statusChip}>
-                      <Text style={styles.statusChipText}>Active License</Text>
-                    </View>
-                  ) : null}
-                </View>
-                <Text style={styles.title}>EULA & Terms of Service</Text>
-                <Text style={styles.subtitle}>
-                  Internal POS & Operational Disclaimer
-                </Text>
-              </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.title}>License Agreement & Terms</Text>
+              <Text style={styles.subtitle}>Please review the operational terms</Text>
             </View>
             {!isFirstTimeSetup && (
               <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                <Ionicons name="close" size={20} color={COLORS.textSecondary} />
+                <Ionicons name="close" size={20} color={COLORS.ink} />
               </TouchableOpacity>
             )}
           </View>
 
-          {/* Scrollable Content */}
+          {/* Plain Text Body */}
           <ScrollView style={styles.body} showsVerticalScrollIndicator={true}>
-            {/* Regulatory Alert Banner */}
-            <View style={styles.alertCard}>
-              <View style={styles.alertHeaderRow}>
-                <Ionicons name="alert-circle" size={18} color="#B45309" style={{ marginRight: 6 }} />
-                <Text style={styles.alertTitle}>Important Legal & Regulatory Notice</Text>
-              </View>
-              <Text style={styles.alertDesc}>
-                This software is provided strictly as an internal inventory, management, and sales-tracking tool. It is NOT an official tax machine or registered fiscal cash register (ERCA / Ministry of Revenue). Receipts generated are for internal order tracking and do not constitute fiscal tax invoices.
-              </Text>
-            </View>
+            <Text style={styles.noticeHeading}>Important Notice</Text>
+            <Text style={styles.plainText}>
+              This software is provided strictly as an internal inventory, management, and sales-tracking tool. It is NOT an official tax machine or registered fiscal cash register (ERCA / Ministry of Revenue). Receipts generated are for internal order tracking and do not constitute fiscal tax invoices.
+            </Text>
 
-            {/* Quick Policy Highlights */}
-            <View style={styles.highlightsRow}>
-              <View style={styles.highlightCard}>
-                <Ionicons name="document-text-outline" size={20} color="#2563EB" />
-                <Text style={styles.highlightTitle}>License Only</Text>
-                <Text style={styles.highlightSub}>Single-shop license. Software ownership remains with SkyKin Tech.</Text>
-              </View>
+            <Text style={styles.sectionHeading}>1. Grant of License</Text>
+            <Text style={styles.plainText}>
+              Skyservice Bakery POS grants you a non-exclusive, non-transferable, revocable license to use this internal Point-of-Sale and Inventory Management Application solely for your internal business operations on authorized devices.
+            </Text>
 
-              <View style={styles.highlightCard}>
-                <Ionicons name="server-outline" size={20} color="#16A34A" />
-                <Text style={styles.highlightTitle}>Data Ownership</Text>
-                <Text style={styles.highlightSub}>Client owns 100% of data. Responsible for regular backups.</Text>
-              </View>
-            </View>
+            <Text style={styles.sectionHeading}>2. Intellectual Property & Restrictions</Text>
+            <Text style={styles.plainText}>
+              The software, including its source code, design, database structure, and documentation, is the exclusive intellectual property of the licensor. You agree not to copy, modify, translate, reverse-engineer, decompile, resell, or distribute the software to any third party.
+            </Text>
 
-            {/* Full Agreement Text */}
-            <View style={styles.legalBox}>
-              <Text style={styles.legalHeading}>END-USER LICENSE AGREEMENT (EULA) & TERMS OF SERVICE</Text>
-              <Text style={styles.legalNotice}>
-                IMPORTANT: PLEASE READ THIS AGREEMENT CAREFULLY BEFORE INSTALLING, ACCESSING, OR USING THIS POINT-OF-SALE (POS) SOFTWARE. BY INSTALLING, ACCESSING, OR USING THE SOFTWARE, YOU ("LICENSEE" OR "USER") AGREE TO BE BOUND BY THE TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT INSTALL OR USE THE SOFTWARE.
-              </Text>
+            <Text style={styles.sectionHeading}>3. Tax & Regulatory Responsibility</Text>
+            <Text style={styles.plainText}>
+              The licensee is solely responsible for complying with all applicable local tax laws, VAT regulations, and statutory reporting obligations, including the use of certified fiscal printers where required by law.
+            </Text>
 
-              <Text style={styles.sectionHeader}>1. GRANT OF LICENSE</Text>
-              <Text style={styles.legalP}>
-                Subject to the terms of this Agreement, SkyKin Technologies PLC ("Licensor") grants you a non-exclusive, non-transferable, revocable, limited license to install and use the internal Point-of-Sale and Inventory Management Application ("Software") solely for your internal business operations at the designated location(s) or device(s) specified in your service contract.
-              </Text>
+            <Text style={styles.sectionHeading}>4. Data Ownership & Storage</Text>
+            <Text style={styles.plainText}>
+              All business transaction records, order history, and product details entered into the application remain 100% the property of the client. Data is stored on your device and synced locally. The client is responsible for regular operational data management.
+            </Text>
 
-              <Text style={styles.sectionHeader}>2. INTELLECTUAL PROPERTY & RESTRICTIONS</Text>
-              <Text style={styles.legalP}>
-                1. Ownership: The Software, including all source code, algorithms, visual design, database structures, and documentation, is owned exclusively by the Licensor. This Agreement grants a license to use the Software; it does not sell or transfer ownership of the Software.
-              </Text>
-              <Text style={styles.legalP}>
-                2. Prohibited Actions: You shall not, directly or indirectly:
-              </Text>
-              <Text style={styles.legalBullet}>
-                • Copy, modify, translate, or create derivative works based on the Software.
-              </Text>
-              <Text style={styles.legalBullet}>
-                • Reverse-engineer, decompile, disassemble, or attempt to derive the source code of the Software.
-              </Text>
-              <Text style={styles.legalBullet}>
-                • Rent, lease, sublicense, resell, or distribute the Software to any third party.
-              </Text>
-              <Text style={styles.legalBullet}>
-                • Remove, alter, or obscure any copyright, trademark, or proprietary notices on the Software.
-              </Text>
+            <Text style={styles.sectionHeading}>5. Limitation of Liability</Text>
+            <Text style={styles.plainText}>
+              The software is provided on an "as-is" and "as-available" basis. In no event shall the licensor be liable for indirect, incidental, or consequential damages, loss of business data, cash drawer discrepancies, or hardware failures.
+            </Text>
 
-              <Text style={styles.sectionHeader}>3. TAX & FISCAL REGULATORY COMPLIANCE DISCLAIMER</Text>
-              <Text style={styles.legalP}>
-                1. Internal Tool Purpose: This Software is designed, licensed, and provided solely as an internal business operations, sales tracking, and inventory control tool.
-              </Text>
-              <Text style={styles.legalP}>
-                2. No Tax Machine / Fiscal Registration: Unless explicitly stated in a separate written agreement with Licensor, this Software is not integrated with, registered with, or certified by any government tax or revenue authority (including the Ministry of Revenue / ERCA).
-              </Text>
-              <Text style={styles.legalP}>
-                3. Receipts & Invoices: Receipts, dockets, order slips, or reports generated by this Software are intended strictly for internal management and customer tracking purposes. They do not constitute legal fiscal tax invoices or tax register receipts.
-              </Text>
-              <Text style={styles.legalP}>
-                4. Licensee Responsibility: The Licensee acknowledges and agrees that it is solely responsible for:
-              </Text>
-              <Text style={styles.legalBullet}>
-                • Complying with all applicable local tax laws, VAT regulations, and statutory reporting obligations.
-              </Text>
-              <Text style={styles.legalBullet}>
-                • Procuring, maintaining, and using government-certified fiscal printers or register devices if required by local law for their business operations.
-              </Text>
-              <Text style={styles.legalBullet}>
-                • Ensuring that the use of non-fiscal software aligns with their regulatory status.
-              </Text>
-
-              <Text style={styles.sectionHeader}>4. DATA ACCURACY, LOSS, AND BACKUPS</Text>
-              <Text style={styles.legalP}>
-                1. Data Accuracy: The Software relies entirely on data entered by the Licensee, its employees, or agents. Licensor is not responsible for errors in sales data, inventory discrepancies, miscalculated margins, financial reporting errors, or cash drawer shortfalls resulting from incorrect data entry or operational errors.
-              </Text>
-              <Text style={styles.legalP}>
-                2. Data Ownership: All business data entered into the Software remains the sole property of the Licensee.
-              </Text>
-              <Text style={styles.legalP}>
-                3. Data Backups & Recovery: If the Software operates on a local device or network, the Licensee is solely responsible for creating and maintaining regular backup copies of its database and transaction history. Licensor is not liable for data loss caused by hardware failure, malware, power loss, accidental deletion, or failure to perform backups.
-              </Text>
-
-              <Text style={styles.sectionHeader}>5. SYSTEM SECURITY & ACCESS</Text>
-              <Text style={styles.legalP}>
-                1. Account Credentials: The Licensee is responsible for safeguarding administrative login credentials, user PINs, and access keys created within the Software.
-              </Text>
-              <Text style={styles.legalP}>
-                2. Unauthorized Access: Licensor is not liable for unauthorized access, internal theft, or data tampering caused by weak passwords, shared accounts, or compromised local networks.
-              </Text>
-
-              <Text style={styles.sectionHeader}>6. DISCLAIMER OF WARRANTIES ("AS-IS")</Text>
-              <Text style={styles.legalP}>
-                TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE", WITH ALL FAULTS AND WITHOUT WARRANTY OF ANY KIND. LICENSOR EXPRESSLY DISCLAIMS ALL WARRANTIES, WHETHER EXPRESS, IMPLIED, OR STATUTORY, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. LICENSOR DOES NOT WARRANT THAT THE SOFTWARE WILL BE UNINTERRUPTED, ERROR-FREE, OR FREE FROM TECHNICAL DEFECTS.
-              </Text>
-
-              <Text style={styles.sectionHeader}>7. LIMITATION OF LIABILITY</Text>
-              <Text style={styles.legalP}>
-                1. Exclusion of Damages: IN NO EVENT SHALL LICENSOR BE LIABLE TO LICENSEE OR ANY THIRD PARTY FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES (INCLUDING LOSS OF PROFITS, LOSS OF REVENUE, LOSS OF DATA, OR BUSINESS INTERRUPTION) ARISING OUT OF OR IN CONNECTION WITH THE USE OR INABILITY TO USE THE SOFTWARE.
-              </Text>
-              <Text style={styles.legalP}>
-                2. Liability Cap: IN ALL CIRCUMSTANCES, LICENSOR'S AGGREGATE LIABILITY ARISING FROM OR RELATED TO THIS AGREEMENT SHALL NOT EXCEED THE TOTAL AMOUNT ACTUALLY PAID BY THE LICENSEE TO LICENSOR FOR THE SOFTWARE LICENSE FEE IN THE THREE (3) MONTHS PRECEDING THE CLAIM.
-              </Text>
-
-              <Text style={styles.sectionHeader}>8. SUPPORT AND MAINTENANCE</Text>
-              <Text style={styles.legalP}>
-                1. Included Support: Technical support, updates, and maintenance shall be provided only in accordance with the specific Support Level Agreement (SLA) or Service Contract agreed upon between Licensor and Licensee.
-              </Text>
-              <Text style={styles.legalP}>
-                2. Excluded Support: Support does not cover hardware failures, network infrastructure issues outside the Software, OS updates that break compatibility, or issues resulting from unauthorized modifications to the environment.
-              </Text>
-
-              <Text style={styles.sectionHeader}>9. TERMINATION</Text>
-              <Text style={styles.legalP}>
-                1. Termination for Breach: Licensor may immediately terminate this License if Licensee breaches any material term of this Agreement (including non-payment of subscription fees or unauthorized distribution).
-              </Text>
-              <Text style={styles.legalP}>
-                2. Effect of Termination: Upon termination, Licensee shall immediately cease all use of the Software and delete or destroy all copies of the Software in its possession.
-              </Text>
-
-              <Text style={styles.sectionHeader}>10. GOVERNING LAW AND JURISDICTION</Text>
-              <Text style={styles.legalP}>
-                This Agreement shall be governed by and construed in accordance with the laws of the Federal Democratic Republic of Ethiopia. Any disputes arising out of or in connection with this Agreement shall be subject to the exclusive jurisdiction of the competent courts located in Addis Ababa.
-              </Text>
-
-              <View style={styles.summaryFooterBox}>
-                <Text style={styles.summaryFooterTitle}>ACKNOWLEDGMENT & ACCEPTANCE</Text>
-                <Text style={styles.summaryFooterText}>
-                  By checking the "I Agree" box, clicking "Accept", or using this Software, you confirm that:
-                </Text>
-                <Text style={styles.summaryFooterBullet}>
-                  1. You have read, understood, and agreed to all terms of this Agreement.
-                </Text>
-                <Text style={styles.summaryFooterBullet}>
-                  2. You have the authority to bind the business or entity adopting this Software.
-                </Text>
-                <Text style={styles.summaryFooterBullet}>
-                  3. You acknowledge that this Software is an internal management tool and does not replace statutory tax registration or fiscal invoicing requirements.
-                </Text>
-              </View>
-            </View>
+            <Text style={styles.sectionHeading}>6. Termination</Text>
+            <Text style={styles.plainText}>
+              The licensor reserves the right to terminate access if license terms are violated. Upon termination, use of the software must immediately cease.
+            </Text>
           </ScrollView>
 
-          {/* Acceptance Checkbox & Button */}
+          {/* Footer Checkbox & Accept Button */}
           <View style={styles.footer}>
-            <TouchableOpacity
-              style={styles.checkboxRow}
-              onPress={() => setAgreed(!agreed)}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.checkbox, agreed && styles.checkboxActive]}>
-                {agreed && <Ionicons name="checkmark" size={16} color="#FFF" />}
-              </View>
-              <Text style={styles.checkboxLabel}>
-                I accept the SkyKin Technologies PLC EULA, Terms of Service, and Non-Fiscal Disclaimers.
-              </Text>
-            </TouchableOpacity>
-
-            <View style={styles.actionRow}>
-              {!isFirstTimeSetup && (
-                <TouchableOpacity
-                  style={styles.cancelBtn}
-                  onPress={onClose}
-                >
-                  <Text style={styles.cancelBtnText}>Close</Text>
-                </TouchableOpacity>
-              )}
-
+            {isFirstTimeSetup && (
               <TouchableOpacity
-                style={[styles.acceptBtn, (!agreed && isFirstTimeSetup) && styles.acceptBtnDisabled]}
-                onPress={handleConfirmAccept}
-                disabled={!agreed && isFirstTimeSetup}
-                activeOpacity={0.85}
+                style={styles.checkboxRow}
+                onPress={() => setAgreed(!agreed)}
+                activeOpacity={0.8}
               >
-                <Ionicons name="checkmark-circle" size={18} color="#FFF" style={{ marginRight: 6 }} />
-                <Text style={styles.acceptBtnText}>
-                  {isFirstTimeSetup ? 'Accept & Continue to POS' : 'Confirm Agreement'}
+                <View style={[styles.checkbox, agreed && styles.checkboxActive]}>
+                  {agreed && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+                </View>
+                <Text style={styles.checkboxLabel}>
+                  I confirm that I have read and agree to all software license terms and notices.
                 </Text>
               </TouchableOpacity>
-            </View>
+            )}
+
+            {isFirstTimeSetup ? (
+              <TouchableOpacity
+                style={[styles.acceptBtn, !agreed && { opacity: 0.5 }]}
+                onPress={handleConfirmAccept}
+                disabled={!agreed}
+                activeOpacity={0.88}
+              >
+                <Text style={styles.acceptBtnText}>Accept & Continue</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.acceptBtn}
+                onPress={onClose}
+                activeOpacity={0.88}
+              >
+                <Text style={styles.acceptBtnText}>Understood</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
@@ -305,270 +164,112 @@ export default function EulaModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: 'rgba(14, 31, 23, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    padding: 20,
   },
   modalBox: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.xl,
     width: '100%',
-    maxWidth: 520,
-    maxHeight: '92%',
-    padding: 20,
-    ...SHADOWS.lg,
+    maxWidth: 440,
+    maxHeight: '80%',
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
+    padding: 22,
+    ...SHADOWS.hero,
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    marginBottom: 12,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  badgeIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.md,
-    backgroundColor: '#EFF6FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  companyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 2,
-  },
-  companyTag: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#1D4ED8',
-    letterSpacing: 0.5,
-  },
-  statusChip: {
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: RADIUS.xs,
-  },
-  statusChipText: {
-    fontSize: 8,
-    fontWeight: '700',
-    color: '#15803D',
+    borderBottomColor: COLORS.hairline,
   },
   title: {
-    fontSize: FONTS.md,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
+    fontSize: FONTS.h3,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.ink,
   },
   subtitle: {
-    fontSize: 10,
-    color: COLORS.textSecondary,
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
+    marginTop: 2,
   },
   closeBtn: {
-    padding: 6,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.surfaceSubtle,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.appBg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   body: {
-    marginBottom: 14,
+    paddingVertical: 14,
   },
-  alertCard: {
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    borderRadius: RADIUS.md,
-    padding: 12,
-    marginBottom: 12,
-  },
-  alertHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  noticeHeading: {
+    fontSize: 13,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.warningText,
     marginBottom: 4,
   },
-  alertTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#B45309',
-  },
-  alertDesc: {
-    fontSize: 10,
-    color: '#78350F',
-    lineHeight: 15,
-  },
-  highlightsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
-  },
-  highlightCard: {
-    flex: 1,
-    backgroundColor: COLORS.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    padding: 10,
-  },
-  highlightTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    marginTop: 4,
-    marginBottom: 2,
-  },
-  highlightSub: {
-    fontSize: 9,
-    color: COLORS.textMuted,
-    lineHeight: 13,
-  },
-  legalBox: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: RADIUS.md,
-    padding: 14,
-    marginBottom: 6,
-  },
-  legalHeading: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: COLORS.textPrimary,
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  legalNotice: {
-    fontSize: 9,
-    color: '#475569',
-    lineHeight: 13,
-    marginBottom: 12,
-    fontStyle: 'italic',
-    textAlign: 'justify',
-  },
-  sectionHeader: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#1E293B',
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  legalP: {
-    fontSize: 9.5,
-    color: '#334155',
-    lineHeight: 14,
-    marginBottom: 6,
-    textAlign: 'justify',
-  },
-  legalBullet: {
-    fontSize: 9.5,
-    color: '#334155',
-    lineHeight: 14,
-    paddingLeft: 8,
-    marginBottom: 3,
-  },
-  summaryFooterBox: {
-    backgroundColor: '#EDE9FE',
-    borderWidth: 1,
-    borderColor: '#DDD6FE',
-    borderRadius: RADIUS.sm,
-    padding: 10,
+  sectionHeading: {
+    fontSize: 13,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.ink,
     marginTop: 12,
-  },
-  summaryFooterTitle: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#6D28D9',
     marginBottom: 4,
   },
-  summaryFooterText: {
-    fontSize: 9,
-    color: '#5B21B6',
-    lineHeight: 13,
-    marginBottom: 3,
-  },
-  summaryFooterBullet: {
-    fontSize: 9,
-    color: '#5B21B6',
-    lineHeight: 13,
-    paddingLeft: 6,
-    marginBottom: 2,
+  plainText: {
+    fontSize: 12,
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
+    lineHeight: 18,
+    marginBottom: 6,
   },
   footer: {
+    paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    paddingTop: 12,
+    borderTopColor: COLORS.hairline,
   },
   checkboxRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: RADIUS.xs,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: COLORS.inputBorder,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.appBg,
   },
   checkboxActive: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.brandGreen,
+    borderColor: COLORS.brandGreen,
   },
   checkboxLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
     flex: 1,
-    lineHeight: 14,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-  },
-  cancelBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    color: COLORS.ink,
+    lineHeight: 16,
   },
   acceptBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    height: 50,
+    borderRadius: RADIUS.button,
+    backgroundColor: COLORS.brandDarkGreen,
     justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: RADIUS.md,
-    ...SHADOWS.sm,
-    flex: 1,
-  },
-  acceptBtnDisabled: {
-    backgroundColor: '#94A3B8',
+    alignItems: 'center',
   },
   acceptBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#FFF',
+    fontSize: FONTS.body,
+    fontFamily: FONTS.extraBold,
+    color: '#FFFFFF',
   },
 });

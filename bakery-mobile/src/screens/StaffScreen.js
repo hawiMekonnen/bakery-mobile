@@ -7,21 +7,20 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
-  SafeAreaView,
   ScrollView,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBakery } from '../store/BakeryStore';
-import { COLORS, FONTS, RADIUS, SHADOW } from '../theme/colors';
-import { PrimaryButton, Badge, EmptyState } from '../components/UI';
+import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
+import ScreenHeader from '../components/ScreenHeader';
 
 const ROLES = ['Head Baker', 'Baker Assistant', 'Pastry Chef', 'Cashier', 'Barista', 'Store Manager'];
 const SHIFTS = ['Morning (05:00 - 13:00)', 'Afternoon (12:00 - 20:00)', 'Full Day (06:00 - 18:00)'];
 
-export default function StaffScreen() {
+export default function StaffScreen({ navigation }) {
   const { state, dispatch } = useBakery();
-  const { staff } = state;
+  const { staff = [] } = state;
 
   const [search, setSearch] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
@@ -33,11 +32,13 @@ export default function StaffScreen() {
   const [phone, setPhone] = useState('');
   const [shift, setShift] = useState(SHIFTS[0]);
 
-  const onDutyCount = staff.filter(s => s.status === 'On Duty').length;
+  const onDutyCount = staff.filter((s) => s.status === 'On Duty').length;
+  const canGoBack = navigation && typeof navigation.canGoBack === 'function' && navigation.canGoBack();
 
-  const filteredStaff = staff.filter(s =>
-    s.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.role.toLowerCase().includes(search.toLowerCase())
+  const filteredStaff = staff.filter(
+    (s) =>
+      s.name.toLowerCase().includes(search.toLowerCase()) ||
+      s.role.toLowerCase().includes(search.toLowerCase())
   );
 
   const openAddModal = () => {
@@ -118,478 +119,532 @@ export default function StaffScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        {/* Top Summary & Search */}
-        <View style={styles.topSection}>
-          <View style={styles.summaryBar}>
-            <View style={styles.summaryBox}>
-              <Text style={styles.summaryNum}>{onDutyCount}</Text>
-              <Text style={styles.summaryLabel}>On Duty Now</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryBox}>
-              <Text style={styles.summaryNum}>{staff.length}</Text>
-              <Text style={styles.summaryLabel}>Total Staff</Text>
-            </View>
-          </View>
+    <View style={styles.container}>
+      <ScreenHeader
+        canGoBack={canGoBack}
+        onBack={() => navigation.goBack()}
+        icon="people-outline"
+        title="Staff & Shifts"
+        subtitle={`${onDutyCount} on duty now • ${staff.length} team members`}
+        rightAction={
+          <TouchableOpacity
+            style={styles.headerAddBtn}
+            onPress={openAddModal}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="add" size={17} color="#FFF" style={{ marginRight: 4 }} />
+            <Text style={styles.headerAddText}>Add Staff</Text>
+          </TouchableOpacity>
+        }
+      />
 
-          <View style={styles.searchRow}>
-            <View style={styles.searchBar}>
-              <Ionicons name="search-outline" size={18} color={COLORS.textMuted} />
+      <FlatList
+        data={filteredStaff}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <>
+            {/* Top 2 Stats */}
+            <View style={styles.statsRow}>
+              <View style={styles.statCard}>
+                <Text style={[styles.statNum, { color: COLORS.brandGreenText }]}>{onDutyCount}</Text>
+                <Text style={styles.statLabel}>On Duty Now</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statNum}>{staff.length}</Text>
+                <Text style={styles.statLabel}>Total Staff</Text>
+              </View>
+            </View>
+
+            {/* Search Box */}
+            <View style={styles.searchBox}>
+              <Ionicons name="search-outline" size={18} color={COLORS.muted} style={{ marginRight: 8 }} />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search staff by name or role..."
-                placeholderTextColor={COLORS.textMuted}
+                placeholderTextColor={COLORS.muted}
                 value={search}
                 onChangeText={setSearch}
               />
               {search.length > 0 && (
                 <TouchableOpacity onPress={() => setSearch('')}>
-                  <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
+                  <Ionicons name="close-circle" size={16} color={COLORS.muted} />
                 </TouchableOpacity>
               )}
             </View>
-
-            <TouchableOpacity style={styles.addBtn} onPress={openAddModal}>
-              <Ionicons name="add" size={20} color="#FFF" />
-              <Text style={styles.addBtnText}>Add</Text>
-            </TouchableOpacity>
+          </>
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="people-outline" size={38} color={COLORS.muted} />
+            </View>
+            <Text style={styles.emptyTitle}>No staff members found</Text>
+            <Text style={styles.emptySub}>Tap "+ Add Staff" to record bakers and cashiers.</Text>
           </View>
-        </View>
+        }
+        renderItem={({ item }) => {
+          const isOnDuty = item.status === 'On Duty';
 
-        {/* Staff List */}
-        <FlatList
-          data={filteredStaff}
-          keyExtractor={item => item.id.toString()}
-          contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => {
-            const isOnDuty = item.status === 'On Duty';
-
-            return (
-              <View style={styles.staffCard}>
-                <View style={styles.staffCardHeader}>
-                  <View style={styles.avatarCircle}>
-                    <Text style={styles.avatarText}>
-                      {item.name.slice(0, 2).toUpperCase()}
-                    </Text>
-                  </View>
-
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.staffName}>{item.name}</Text>
-                    <Text style={styles.staffRole}>{item.role}</Text>
-                    <Text style={styles.staffMeta}>
-                      {item.shift || 'Morning Shift'} • {item.phone || 'No phone'}
-                    </Text>
-                  </View>
-
-                  <Badge
-                    text={item.status || 'Off Duty'}
-                    color={isOnDuty ? COLORS.success : COLORS.textMuted}
-                  />
+          return (
+            <View style={styles.staffCard}>
+              <View style={styles.cardHeader}>
+                <View style={styles.avatarTile}>
+                  <Text style={styles.avatarText}>
+                    {item.name.slice(0, 2).toUpperCase()}
+                  </Text>
                 </View>
 
-                {/* Footer Controls */}
-                <View style={styles.staffCardFooter}>
-                  <TouchableOpacity
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.staffName}>{item.name}</Text>
+                  <Text style={styles.staffRole}>{item.role}</Text>
+                  <Text style={styles.staffMeta}>
+                    {item.shift || 'Morning Shift'} • {item.phone || 'No phone'}
+                  </Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.dutyBadge,
+                    isOnDuty ? styles.dutyBadgeOn : styles.dutyBadgeOff,
+                  ]}
+                >
+                  <Text
                     style={[
-                      styles.toggleDutyBtn,
-                      isOnDuty ? styles.toggleDutyBtnOff : styles.toggleDutyBtnOn,
+                      styles.dutyBadgeText,
+                      isOnDuty ? styles.dutyBadgeTextOn : styles.dutyBadgeTextOff,
                     ]}
-                    onPress={() => handleToggleStatus(item)}
                   >
-                    <Ionicons
-                      name={isOnDuty ? 'log-out-outline' : 'log-in-outline'}
-                      size={16}
-                      color={isOnDuty ? COLORS.warning : COLORS.success}
-                    />
-                    <Text
-                      style={[
-                        styles.toggleDutyText,
-                        isOnDuty ? { color: COLORS.warning } : { color: COLORS.success },
-                      ]}
-                    >
-                      {isOnDuty ? 'Clock Out' : 'Clock In'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.actionBtnsGroup}>
-                    <TouchableOpacity
-                      style={styles.actionIcon}
-                      onPress={() => openEditModal(item)}
-                    >
-                      <Ionicons name="pencil-outline" size={18} color={COLORS.textSecondary} />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.actionIcon}
-                      onPress={() => handleDelete(item.id, item.name)}
-                    >
-                      <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
-                    </TouchableOpacity>
-                  </View>
+                    {item.status || 'Off Duty'}
+                  </Text>
                 </View>
               </View>
-            );
-          }}
-          ListEmptyComponent={
-            <EmptyState
-              icon="people-outline"
-              title="No Staff Members Found"
-              subtitle="Add bakery crew members and track their shifts."
-            />
-          }
-        />
 
-        {/* Add / Edit Staff Modal */}
-        <Modal
-          visible={modalVisible}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <SafeAreaView style={styles.modalSafeArea}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {editingStaff ? 'Edit Staff Member' : 'New Staff Member'}
+              <View style={styles.cardFooter}>
+                <TouchableOpacity
+                  style={[
+                    styles.toggleBtn,
+                    isOnDuty ? styles.toggleBtnOff : styles.toggleBtnOn,
+                  ]}
+                  onPress={() => handleToggleStatus(item)}
+                  activeOpacity={0.75}
+                >
+                  <Text
+                    style={[
+                      styles.toggleText,
+                      isOnDuty ? styles.toggleTextOff : styles.toggleTextOn,
+                    ]}
+                  >
+                    {isOnDuty ? 'Mark Off Duty' : 'Mark On Duty'}
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={styles.iconActions}>
+                  <TouchableOpacity
+                    style={styles.actionBtn}
+                    onPress={() => openEditModal(item)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="create-outline" size={17} color={COLORS.ink} />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.actionBtn}
+                    onPress={() => handleDelete(item.id, item.name)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="trash-outline" size={17} color={COLORS.dangerText} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          );
+        }}
+      />
+
+      {/* Add / Edit Staff Modal */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.sheetContainer}>
+            <View style={styles.sheetHandle} />
+
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>
+                {editingStaff ? 'Edit Staff Member' : 'Add New Staff'}
               </Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color={COLORS.textPrimary} />
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.sheetCloseBtn}>
+                <Ionicons name="close" size={20} color={COLORS.ink} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-              <Text style={styles.inputLabel}>Full Name *</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.fieldLabel}>FULL NAME</Text>
               <TextInput
-                style={styles.formInput}
-                placeholder="e.g. Maria Gonzalez"
-                placeholderTextColor={COLORS.textMuted}
+                style={styles.sheetInput}
+                placeholder="e.g. Abebe Bikila"
+                placeholderTextColor={COLORS.muted}
                 value={name}
                 onChangeText={setName}
               />
 
-              <Text style={styles.inputLabel}>Role / Position</Text>
-              <View style={styles.pillGrid}>
-                {ROLES.map(r => (
-                  <TouchableOpacity
-                    key={r}
-                    style={[styles.rolePill, role === r && styles.rolePillActive]}
-                    onPress={() => setRole(r)}
-                  >
-                    <Text style={[styles.rolePillText, role === r && styles.rolePillTextActive]}>
-                      {r}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <Text style={styles.fieldLabel}>ASSIGNED ROLE</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8, marginBottom: 14 }}
+              >
+                {ROLES.map((r) => {
+                  const isSel = role === r;
+                  return (
+                    <TouchableOpacity
+                      key={r}
+                      style={[styles.roleChip, isSel && styles.roleChipActive]}
+                      onPress={() => setRole(r)}
+                    >
+                      <Text style={[styles.roleChipText, isSel && styles.roleChipTextActive]}>
+                        {r}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
 
-              <Text style={styles.inputLabel}>Phone Number</Text>
+              <Text style={styles.fieldLabel}>PHONE NUMBER (OPTIONAL)</Text>
               <TextInput
-                style={styles.formInput}
-                placeholder="e.g. (555) 234-5678"
-                placeholderTextColor={COLORS.textMuted}
+                style={styles.sheetInput}
+                placeholder="+251 91 123 4567"
+                placeholderTextColor={COLORS.muted}
                 keyboardType="phone-pad"
                 value={phone}
                 onChangeText={setPhone}
               />
 
-              <Text style={styles.inputLabel}>Shift Schedule</Text>
-              <View style={styles.shiftList}>
-                {SHIFTS.map(s => (
-                  <TouchableOpacity
-                    key={s}
-                    style={[styles.shiftCard, shift === s && styles.shiftCardActive]}
-                    onPress={() => setShift(s)}
-                  >
-                    <Ionicons
-                      name="time-outline"
-                      size={18}
-                      color={shift === s ? COLORS.primary : COLORS.textMuted}
-                    />
-                    <Text style={[styles.shiftCardText, shift === s && styles.shiftCardTextActive]}>
-                      {s}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
+              <Text style={styles.fieldLabel}>SHIFT</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8, marginBottom: 18 }}
+              >
+                {SHIFTS.map((s) => {
+                  const isSel = shift === s;
+                  return (
+                    <TouchableOpacity
+                      key={s}
+                      style={[styles.roleChip, isSel && styles.roleChipActive]}
+                      onPress={() => setShift(s)}
+                    >
+                      <Text style={[styles.roleChipText, isSel && styles.roleChipTextActive]}>
+                        {s}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
 
-            <View style={styles.modalFooter}>
-              <PrimaryButton
-                title={editingStaff ? 'Update Staff Member' : 'Add Staff Member'}
+              <TouchableOpacity
+                style={styles.sheetSaveBtn}
                 onPress={handleSave}
-              />
-            </View>
-          </SafeAreaView>
-        </Modal>
-      </View>
-    </SafeAreaView>
+                activeOpacity={0.88}
+              >
+                <Text style={styles.sheetSaveText}>
+                  {editingStaff ? 'Save Updates' : 'Add to Staff Roster'}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
   container: {
     flex: 1,
+    backgroundColor: COLORS.appBg,
   },
-  topSection: {
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  summaryBar: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surfaceLight,
-    borderRadius: RADIUS.md,
-    padding: 10,
-    marginBottom: 10,
-    alignItems: 'center',
-    justifyContent: 'space-around',
-  },
-  summaryBox: {
-    alignItems: 'center',
-  },
-  summaryNum: {
-    fontSize: FONTS.lg,
-    fontWeight: '800',
-    color: COLORS.primary,
-  },
-  summaryLabel: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
-    fontWeight: '600',
-  },
-  summaryDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: COLORS.border,
-  },
-  searchRow: {
+  headerAddBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surfaceLight,
+    backgroundColor: COLORS.brandGreen,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    paddingVertical: 7,
+    borderRadius: RADIUS.chip,
+  },
+  headerAddText: {
+    color: '#FFFFFF',
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.bold,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 110,
+    gap: 12,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
+    padding: 14,
+    alignItems: 'center',
+    ...SHADOWS.card,
+  },
+  statNum: {
+    fontSize: 22,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.ink,
+  },
+  statLabel: {
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
+    marginTop: 2,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.input,
+    paddingHorizontal: 14,
+    height: 48,
+    borderWidth: 1.5,
+    borderColor: COLORS.inputBorder,
+    marginBottom: 12,
+    ...SHADOWS.card,
   },
   searchInput: {
     flex: 1,
-    fontSize: FONTS.sm,
-    color: COLORS.textPrimary,
-    marginLeft: 8,
-  },
-  addBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: RADIUS.md,
-    gap: 4,
-  },
-  addBtnText: {
-    color: '#FFF',
-    fontSize: FONTS.sm,
-    fontWeight: '700',
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 40,
+    fontSize: FONTS.body,
+    fontFamily: FONTS.medium,
+    color: COLORS.ink,
   },
   staffCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
     padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOW.sm,
+    ...SHADOWS.card,
   },
-  staffCardHeader: {
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    gap: 12,
   },
-  avatarCircle: {
+  avatarTile: {
     width: 44,
     height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFF7ED',
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
+    borderRadius: RADIUS.tile,
+    backgroundColor: COLORS.softGreen,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    fontSize: FONTS.sm,
-    fontWeight: '800',
-    color: COLORS.primary,
+    fontSize: 15,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.brandGreenText,
   },
   staffName: {
-    fontSize: FONTS.md,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
+    fontSize: FONTS.body,
+    fontFamily: FONTS.bold,
+    color: COLORS.ink,
   },
   staffRole: {
-    fontSize: FONTS.xs,
-    color: COLORS.secondary,
-    fontWeight: '600',
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
     marginTop: 1,
   },
   staffMeta: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
     marginTop: 2,
   },
-  staffCardFooter: {
+  dutyBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: RADIUS.badge,
+  },
+  dutyBadgeOn: {
+    backgroundColor: COLORS.softGreen,
+  },
+  dutyBadgeOff: {
+    backgroundColor: COLORS.appBg,
+  },
+  dutyBadgeText: {
+    fontSize: 10,
+    fontFamily: FONTS.bold,
+  },
+  dutyBadgeTextOn: {
+    color: COLORS.brandGreenText,
+  },
+  dutyBadgeTextOff: {
+    color: COLORS.muted,
+  },
+  cardFooter: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    paddingTop: 10,
-  },
-  toggleDutyBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: RADIUS.md,
-    gap: 6,
-  },
-  toggleDutyBtnOn: {
-    backgroundColor: '#E6F4EA',
-  },
-  toggleDutyBtnOff: {
-    backgroundColor: '#FEF3C7',
-  },
-  toggleDutyText: {
-    fontSize: FONTS.xs,
-    fontWeight: '700',
-  },
-  actionBtnsGroup: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  actionIcon: {
-    padding: 6,
-  },
-  modalSafeArea: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-  },
-  modalTitle: {
-    fontSize: FONTS.xl,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  modalContent: {
-    flex: 1,
-    padding: 16,
-  },
-  inputLabel: {
-    fontSize: FONTS.xs,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    textTransform: 'uppercase',
     marginTop: 12,
-    marginBottom: 6,
-    letterSpacing: 0.5,
-  },
-  formInput: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: FONTS.sm,
-    color: COLORS.textPrimary,
-    marginBottom: 8,
-  },
-  pillGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 8,
-  },
-  rolePill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.surfaceLight,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  rolePillActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  rolePillText: {
-    fontSize: FONTS.xs,
-    color: COLORS.textSecondary,
-    fontWeight: '600',
-  },
-  rolePillTextActive: {
-    color: '#FFF',
-    fontWeight: '700',
-  },
-  shiftList: {
-    gap: 8,
-    marginBottom: 20,
-  },
-  shiftCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 12,
-    borderRadius: RADIUS.md,
-    gap: 10,
-  },
-  shiftCardActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: '#FFF7ED',
-  },
-  shiftCardText: {
-    fontSize: FONTS.sm,
-    color: COLORS.textPrimary,
-    fontWeight: '500',
-  },
-  shiftCardTextActive: {
-    color: COLORS.primary,
-    fontWeight: '700',
-  },
-  modalFooter: {
-    padding: 16,
-    backgroundColor: COLORS.surface,
+    paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    borderTopColor: COLORS.hairline,
+  },
+  toggleBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: RADIUS.chip,
+  },
+  toggleBtnOn: {
+    backgroundColor: COLORS.softGreen,
+  },
+  toggleBtnOff: {
+    backgroundColor: COLORS.appBg,
+  },
+  toggleText: {
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.bold,
+  },
+  toggleTextOn: {
+    color: COLORS.brandGreenText,
+  },
+  toggleTextOff: {
+    color: COLORS.muted,
+  },
+  iconActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  actionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.chip,
+    backgroundColor: COLORS.appBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 54,
+  },
+  emptyIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: COLORS.softGreen,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: FONTS.h3,
+    fontFamily: FONTS.bold,
+    color: COLORS.ink,
+  },
+  emptySub: {
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
+    marginTop: 4,
+  },
+  // Sheet
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(14, 31, 23, 0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheetContainer: {
+    backgroundColor: COLORS.card,
+    borderTopLeftRadius: RADIUS.sheet,
+    borderTopRightRadius: RADIUS.sheet,
+    padding: 22,
+    maxHeight: '90%',
+  },
+  sheetHandle: {
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.hairline,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sheetTitle: {
+    fontSize: FONTS.h2,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.ink,
+  },
+  sheetCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.appBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fieldLabel: {
+    fontSize: FONTS.overline,
+    fontFamily: FONTS.extraBold,
+    letterSpacing: 0.8,
+    color: COLORS.muted,
+    marginBottom: 6,
+  },
+  sheetInput: {
+    height: 48,
+    borderRadius: RADIUS.chip,
+    backgroundColor: COLORS.appBg,
+    paddingHorizontal: 14,
+    fontSize: FONTS.body,
+    fontFamily: FONTS.medium,
+    color: COLORS.ink,
+    borderWidth: 1,
+    borderColor: COLORS.inputBorder,
+    marginBottom: 12,
+  },
+  roleChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: RADIUS.chip,
+    backgroundColor: COLORS.appBg,
+  },
+  roleChipActive: {
+    backgroundColor: COLORS.brandDarkGreen,
+  },
+  roleChipText: {
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.bold,
+    color: COLORS.ink,
+  },
+  roleChipTextActive: {
+    color: '#FFFFFF',
+  },
+  sheetSaveBtn: {
+    height: 52,
+    borderRadius: RADIUS.button,
+    backgroundColor: COLORS.brandDarkGreen,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 14,
+  },
+  sheetSaveText: {
+    fontSize: FONTS.body,
+    fontFamily: FONTS.extraBold,
+    color: '#FFFFFF',
   },
 });

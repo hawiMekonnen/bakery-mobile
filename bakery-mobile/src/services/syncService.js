@@ -5,10 +5,12 @@ const LAST_SYNC_KEY = '@bakery_last_sync_info';
 const AUTO_SYNC_ENABLED_KEY = '@bakery_auto_sync_enabled';
 
 // The PC's Wi-Fi host IP address
-export const DEFAULT_SERVER_URL = 'http://192.168.0.116:5000';
+export const DEFAULT_SERVER_URL = 'http://10.5.87.175:5000';
 
 // Fallback endpoints for local dev / emulator / phone Wi-Fi
 export const SERVER_CANDIDATES = [
+  'http://10.5.87.175:5000',
+  'http://10.35.195.1:5000',
   'http://192.168.0.116:5000',
   'http://10.0.2.2:5000',
   'http://localhost:5000',
@@ -17,7 +19,10 @@ export const SERVER_CANDIDATES = [
 export async function getServerUrl() {
   try {
     const saved = await AsyncStorage.getItem(SERVER_URL_KEY);
-    return saved && saved.trim() ? saved.trim() : DEFAULT_SERVER_URL;
+    if (saved && saved.trim() && !saved.includes('192.168.56.1')) {
+      return saved.trim();
+    }
+    return DEFAULT_SERVER_URL;
   } catch (e) {
     return DEFAULT_SERVER_URL;
   }

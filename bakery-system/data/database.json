@@ -1,0 +1,21 @@
+{
+  "admin": {
+    "username": "admin",
+    "passwordHash": "$2b$12$F55ibIvFmLae8j2rOqeYnuf5r29sA6L2am3AgIqWBClqD1.l8AaAu",
+    "updatedAt": "2026-11-14T10:13:50.974Z"
+  },
+  "shops": [],
+  "licenses": [],
+  "devices": [],
+  "orders": [],
+  "products": [],
+  "inventory": [],
+  "auditLogs": [],
+  "syncLogs": [],
+  "business": {
+    "name": "Bakery Admin",
+    "currency": "ETB",
+    "taxRate": 0,
+    "updatedAt": "2026-11-01T00:00:00.000Z"
+  }
+}

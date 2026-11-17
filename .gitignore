@@ -17,6 +17,12 @@ build/
 *.key
 *.mobileprovision
 
+# Environment variables
+.env
+*.env
+.env.local
+.env.*.local
+
 # Temporary & Logs
 *.log
 npm-debug.log*
