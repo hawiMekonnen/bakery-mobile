@@ -34,10 +34,11 @@ export const INITIAL_INVENTORY = [];
 export const INITIAL_ORDERS = [];
 
 const DEFAULT_AUTH = {
-  username: '',
-  password: '',
-  businessName: '',
-  role: 'Staff',
+  username: 'admin',
+  password: '123Newadissadmin',
+  businessName: 'My Bakery',
+  brandColor: '#0F382C',
+  role: 'Manager',
   isLoggedIn: false,
 };
 
@@ -54,6 +55,7 @@ const INITIAL_STATE = {
   products: INITIAL_PRODUCTS,
   inventory: INITIAL_INVENTORY,
   orders: INITIAL_ORDERS,
+  stockHistory: [],
   notifications: INITIAL_NOTIFICATIONS,
   auth: DEFAULT_AUTH,
   security: DEFAULT_SECURITY,
@@ -68,6 +70,67 @@ const INITIAL_STATE = {
   ],
   lastActiveDate: new Date().toISOString().slice(0, 10),
 };
+
+// Addis Ababa UTC+3 Timestamp & Hour Window Calculator
+export function getStockTimestampInfo(dateInput = new Date()) {
+  const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  const validD = isNaN(d.getTime()) ? new Date() : d;
+
+  let timeStr = '';
+  let dateStr = '';
+  let hour = validD.getHours();
+  let hourWindow = '';
+
+  try {
+    const timeFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Africa/Addis_Ababa',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+    timeStr = timeFormatter.format(validD);
+
+    const dateFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Africa/Addis_Ababa',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+    dateStr = dateFormatter.format(validD);
+
+    const hourNumFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Africa/Addis_Ababa',
+      hour: 'numeric',
+      hour12: false,
+    });
+    const h24 = parseInt(hourNumFormatter.format(validD), 10);
+    hour = isNaN(h24) ? validD.getHours() : h24;
+  } catch (e) {
+    const h = validD.getHours();
+    const m = validD.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = (h % 12) || 12;
+    const formattedM = m < 10 ? ('0' + m) : m;
+    timeStr = h12 + ':' + formattedM + ' ' + ampm;
+    dateStr = validD.toDateString();
+    hour = h;
+  }
+
+  const startHour12 = (hour % 12) || 12;
+  const startAmPm = hour < 12 ? 'AM' : 'PM';
+  const endH24 = (hour + 1) % 24;
+  const endHour12 = (endH24 % 12) || 12;
+  const endAmPm = endH24 < 12 ? 'AM' : 'PM';
+  hourWindow = `${startHour12}:00 ${startAmPm} - ${endHour12}:00 ${endAmPm}`;
+
+  return {
+    timestamp: validD.toISOString(),
+    timeStr,
+    dateStr,
+    hour,
+    hourWindow,
+  };
+}
 
 // Safe async storage helper functions
 async function safeGetItem(key) {
@@ -129,28 +192,19 @@ function reducer(state, action) {
       return { ...state, ...action.payload };
 
     case 'LOGIN': {
-      const { username, password } = action.payload;
-      const validUsername = state.auth.username || 'admin';
-      const validPassword = state.auth.password || '1234';
-
-      if (
-        (username === validUsername || (username === 'admin' && !state.auth.username)) &&
-        password === validPassword
-      ) {
-        const updated = {
-          ...state,
-          auth: {
-            ...state.auth,
-            isLoggedIn: true,
-            currentUser: username,
-            lastLoginTime: new Date().toISOString(),
-          },
-        };
-        // Persist login state while keeping all existing orders, products, and inventory intact!
-        persistStateImmediate(updated);
-        return updated;
-      }
-      return state;
+      const { username } = action.payload || {};
+      const updated = {
+        ...state,
+        auth: {
+          ...state.auth,
+          isLoggedIn: true,
+          currentUser: username || 'admin',
+          lastLoginTime: new Date().toISOString(),
+        },
+      };
+      // Persist login state while keeping all existing orders, products, and inventory intact!
+      persistStateImmediate(updated);
+      return updated;
     }
 
     case 'LOGOUT': {
@@ -217,7 +271,7 @@ function reducer(state, action) {
     }
 
     case 'UPDATE_CREDENTIALS': {
-      const { newUsername, newPassword, businessName } = action.payload;
+      const { newUsername, newPassword, businessName, brandColor } = action.payload;
       const updated = {
         ...state,
         auth: {
@@ -225,6 +279,21 @@ function reducer(state, action) {
           username: newUsername || state.auth.username,
           password: newPassword || state.auth.password,
           businessName: businessName || state.auth.businessName,
+          brandColor: brandColor || state.auth.brandColor || '#0F382C',
+        },
+      };
+      persistStateImmediate(updated);
+      return updated;
+    }
+
+    case 'UPDATE_BRANDING': {
+      const { businessName, brandColor } = action.payload || {};
+      const updated = {
+        ...state,
+        auth: {
+          ...state.auth,
+          businessName: businessName !== undefined ? businessName : state.auth.businessName,
+          brandColor: brandColor !== undefined ? brandColor : (state.auth.brandColor || '#0F382C'),
         },
       };
       persistStateImmediate(updated);
@@ -439,20 +508,86 @@ function reducer(state, action) {
         minStock: Number(action.payload.minStock) || 0,
         costPerUnit: Number(action.payload.costPerUnit) || 0,
       };
+
+      const timeInfo = getStockTimestampInfo(new Date());
+      const auditLog = {
+        id: 'stk-log-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+        itemId: newItem.id,
+        itemName: newItem.name,
+        unit: newItem.unit || 'unit',
+        action: 'ADD',
+        actionLabel: 'Added New Ingredient',
+        previousStock: 0,
+        newStock: newItem.stock,
+        changeDelta: newItem.stock,
+        costPerUnit: newItem.costPerUnit,
+        minStock: newItem.minStock,
+        timestamp: timeInfo.timestamp,
+        timeStr: timeInfo.timeStr,
+        dateStr: timeInfo.dateStr,
+        hour: timeInfo.hour,
+        hourWindow: timeInfo.hourWindow,
+        user: state.auth?.username || 'admin',
+        note: action.payload.note || `Added ${newItem.stock} ${newItem.unit || 'units'} of ${newItem.name} to stock`,
+      };
+      const updatedHistory = [auditLog, ...(state.stockHistory || [])].slice(0, 1000);
+
       const updated = {
         ...state,
         inventory: [...state.inventory, newItem],
+        stockHistory: updatedHistory,
       };
       persistStateImmediate(updated);
       return updated;
     }
 
     case 'UPDATE_INVENTORY': {
+      const existing = (state.inventory || []).find(item => item.id === action.payload.id);
+      const prevStock = existing ? (Number(existing.stock) || 0) : 0;
+      const newStock = action.payload.stock !== undefined ? (Number(action.payload.stock) || 0) : prevStock;
+      const delta = parseFloat((newStock - prevStock).toFixed(2));
+      const timeInfo = getStockTimestampInfo(new Date());
+
+      let actType = 'UPDATE';
+      let actLabel = 'Material Details Edited';
+      if (delta > 0) {
+        actType = 'RESTOCK';
+        actLabel = 'Stock Increased';
+      } else if (delta < 0) {
+        actType = 'USAGE';
+        actLabel = 'Stock Reduced';
+      }
+
+      const auditLog = {
+        id: 'stk-log-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+        itemId: action.payload.id,
+        itemName: action.payload.name || (existing ? existing.name : 'Ingredient'),
+        unit: action.payload.unit || (existing ? existing.unit : 'unit'),
+        action: actType,
+        actionLabel: actLabel,
+        previousStock: prevStock,
+        newStock: newStock,
+        changeDelta: delta,
+        costPerUnit: action.payload.costPerUnit !== undefined ? Number(action.payload.costPerUnit) : (existing ? existing.costPerUnit : 0),
+        minStock: action.payload.minStock !== undefined ? Number(action.payload.minStock) : (existing ? existing.minStock : 0),
+        timestamp: timeInfo.timestamp,
+        timeStr: timeInfo.timeStr,
+        dateStr: timeInfo.dateStr,
+        hour: timeInfo.hour,
+        hourWindow: timeInfo.hourWindow,
+        user: state.auth?.username || 'admin',
+        note: delta !== 0
+          ? `Stock level changed from ${prevStock} to ${newStock} (${delta > 0 ? '+' : ''}${delta})`
+          : `Ingredient specifications updated`,
+      };
+      const updatedHistory = [auditLog, ...(state.stockHistory || [])].slice(0, 1000);
+
       const updated = {
         ...state,
-        inventory: state.inventory.map(item =>
+        inventory: (state.inventory || []).map(item =>
           item.id === action.payload.id ? { ...item, ...action.payload } : item
         ),
+        stockHistory: updatedHistory,
       };
       persistStateImmediate(updated);
       return updated;
@@ -462,14 +597,42 @@ function reducer(state, action) {
       const { id, mode, amount } = action.payload;
       const numAmount = parseFloat(amount) || 0;
       let alertNotif = null;
+      let loggedEntry = null;
 
-      const updatedInventory = state.inventory.map(item => {
+      const updatedInventory = (state.inventory || []).map(item => {
         if (item.id !== id) return item;
         let newStock = item.stock;
         if (mode === 'set') newStock = Math.max(0, numAmount);
         else if (mode === 'add') newStock = item.stock + numAmount;
         else if (mode === 'sub') newStock = Math.max(0, item.stock - numAmount);
         const finalStock = parseFloat(newStock.toFixed(2));
+        const delta = parseFloat((finalStock - item.stock).toFixed(2));
+
+        const timeInfo = getStockTimestampInfo(new Date());
+        loggedEntry = {
+          id: 'stk-log-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+          itemId: item.id,
+          itemName: item.name,
+          unit: item.unit,
+          action: mode === 'add' ? 'RESTOCK' : mode === 'sub' ? 'USAGE' : 'ADJUST',
+          actionLabel: mode === 'add' ? 'Stock Restocked' : mode === 'sub' ? 'Stock Deducted' : 'Stock Adjusted',
+          previousStock: item.stock,
+          newStock: finalStock,
+          changeDelta: delta,
+          costPerUnit: item.costPerUnit,
+          minStock: item.minStock,
+          timestamp: timeInfo.timestamp,
+          timeStr: timeInfo.timeStr,
+          dateStr: timeInfo.dateStr,
+          hour: timeInfo.hour,
+          hourWindow: timeInfo.hourWindow,
+          user: state.auth?.username || 'admin',
+          note: mode === 'add'
+            ? `Restocked +${numAmount} ${item.unit} (${item.stock} ➔ ${finalStock})`
+            : mode === 'sub'
+            ? `Used/deducted -${numAmount} ${item.unit} (${item.stock} ➔ ${finalStock})`
+            : `Set stock count to ${finalStock} ${item.unit} (was ${item.stock})`,
+        };
 
         if (finalStock <= item.minStock) {
           alertNotif = {
@@ -484,9 +647,14 @@ function reducer(state, action) {
         return { ...item, stock: finalStock };
       });
 
+      const updatedHistory = loggedEntry
+        ? [loggedEntry, ...(state.stockHistory || [])].slice(0, 1000)
+        : (state.stockHistory || []);
+
       const updated = {
         ...state,
         inventory: updatedInventory,
+        stockHistory: updatedHistory,
         notifications: alertNotif
           ? [alertNotif, ...(state.notifications || [])].slice(0, 50)
           : state.notifications,
@@ -496,21 +664,78 @@ function reducer(state, action) {
     }
 
     case 'DELETE_INVENTORY': {
+      const deletedItem = (state.inventory || []).find(item => item.id === action.payload);
+      let updatedHistory = state.stockHistory || [];
+      if (deletedItem) {
+        const timeInfo = getStockTimestampInfo(new Date());
+        const auditLog = {
+          id: 'stk-log-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+          itemId: deletedItem.id,
+          itemName: deletedItem.name,
+          unit: deletedItem.unit,
+          action: 'DELETE',
+          actionLabel: 'Ingredient Deleted',
+          previousStock: deletedItem.stock,
+          newStock: 0,
+          changeDelta: -deletedItem.stock,
+          costPerUnit: deletedItem.costPerUnit,
+          minStock: deletedItem.minStock,
+          timestamp: timeInfo.timestamp,
+          timeStr: timeInfo.timeStr,
+          dateStr: timeInfo.dateStr,
+          hour: timeInfo.hour,
+          hourWindow: timeInfo.hourWindow,
+          user: state.auth?.username || 'admin',
+          note: `Deleted ingredient "${deletedItem.name}" from inventory`,
+        };
+        updatedHistory = [auditLog, ...(state.stockHistory || [])].slice(0, 1000);
+      }
       const updated = {
         ...state,
-        inventory: state.inventory.filter(item => item.id !== action.payload),
+        inventory: (state.inventory || []).filter(item => item.id !== action.payload),
+        stockHistory: updatedHistory,
+      };
+      persistStateImmediate(updated);
+      return updated;
+    }
+
+    case 'LOG_STOCK_EVENT': {
+      const timeInfo = getStockTimestampInfo(action.payload?.timestamp || new Date());
+      const logItem = {
+        id: 'stk-log-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+        timeStr: timeInfo.timeStr,
+        dateStr: timeInfo.dateStr,
+        hour: timeInfo.hour,
+        hourWindow: timeInfo.hourWindow,
+        timestamp: timeInfo.timestamp,
+        user: state.auth?.username || 'admin',
+        ...action.payload,
+      };
+      const updated = {
+        ...state,
+        stockHistory: [logItem, ...(state.stockHistory || [])].slice(0, 1000),
+      };
+      persistStateImmediate(updated);
+      return updated;
+    }
+
+    case 'CLEAR_STOCK_HISTORY': {
+      const updated = {
+        ...state,
+        stockHistory: [],
       };
       persistStateImmediate(updated);
       return updated;
     }
 
     case 'RESTORE_CLOUD_BACKUP': {
-      const { orders, products, inventory, shopName } = action.payload;
+      const { orders, products, inventory, shopName, stockHistory } = action.payload;
       const updated = {
         ...state,
         orders: Array.isArray(orders) ? orders : state.orders,
         products: (Array.isArray(products) && products.length > 0) ? products : state.products,
         inventory: (Array.isArray(inventory) && inventory.length > 0) ? inventory : state.inventory,
+        stockHistory: Array.isArray(stockHistory) ? stockHistory : (state.stockHistory || []),
         auth: {
           ...state.auth,
           businessName: shopName || state.auth.businessName,
@@ -528,7 +753,11 @@ function reducer(state, action) {
       if (Array.isArray(action.payload.orders)) {
         safeSetItem(ORDERS_VAULT_KEY, JSON.stringify(action.payload.orders));
       }
-      return { ...action.payload, auth: { ...(action.payload.auth || state.auth), isLoggedIn: state.auth.isLoggedIn } };
+      return {
+        ...action.payload,
+        stockHistory: Array.isArray(action.payload.stockHistory) ? action.payload.stockHistory : (state.stockHistory || []),
+        auth: { ...(action.payload.auth || state.auth), isLoggedIn: state.auth.isLoggedIn },
+      };
     }
 
     default:
@@ -560,50 +789,73 @@ export function BakeryProvider({ children }) {
 
   const [pendingCredentials, setPendingCredentials] = useState(null);
 
-  // Sign-in gate with admin approval
+  // Admin approval gate on first sign-in & security enforcement
   const requestLoginWithApproval = async ({ username, password }) => {
     try {
       const [cfg, info] = await Promise.all([getCloudConfig(), getDeviceInfo()]);
 
-      // If device is already approved in local storage, login immediately
-      if (cfg.deviceStatus === 'active') {
-        dispatch({ type: 'LOGIN', payload: { username, password } });
+      // Always contact BakerAdmin server to verify real approval status
+      const reqRes = await requestApprovalFromCloud(cfg.serverUrl);
+
+      if (reqRes.success && reqRes.status === 'active') {
+        dispatch({
+          type: 'LOGIN',
+          payload: { username: username || 'admin', password: password || '1234' },
+        });
+        setLockoutState(prev => ({ ...prev, isLocked: false, status: 'active' }));
         return { success: true, status: 'active' };
       }
 
-      // First time sign-in: Submit device access request to cloud server
-      const reqRes = await requestApprovalFromCloud(cfg.serverUrl, username);
+      if (reqRes.status === 'pending') {
+        // Device is pending admin verification: DO NOT LOG IN!
+        // Lock screen engages and polls until admin clicks Approve in BakerAdmin.
+        setPendingCredentials({
+          username: username || 'admin',
+          password: password || '1234',
+        });
+        setLockoutState({
+          isLocked: true,
+          status: 'pending',
+          message: reqRes.message || 'Waiting for administrator approval in BakerAdmin.',
+          licenseKey: cfg.licenseKey,
+          serverUrl: cfg.serverUrl,
+          deviceId: info.deviceId,
+          deviceModel: info.model,
+        });
+        return { success: false, status: 'pending', message: reqRes.message };
+      }
 
       if (reqRes.networkOffline) {
         return {
           success: false,
           offline: true,
           serverUrl: cfg.serverUrl,
-          message: `Cannot reach Admin Server at ${cfg.serverUrl}.\n\nFirst-time sign-in requires a Wi-Fi connection to the BakerAdmin server on your network.`
+          message: 'Admin server unreachable. You must connect to the same Wi-Fi as BakerAdmin to verify administrator approval.',
         };
       }
 
-      if (reqRes.status === 'active') {
-        setLockoutState(prev => ({ ...prev, isLocked: false, status: 'active' }));
-        dispatch({ type: 'LOGIN', payload: { username, password } });
-        return { success: true, status: 'active' };
+      if (reqRes.status === 'suspended' || reqRes.status === 'blocked' || reqRes.status === 'rejected' || reqRes.status === 'unlinked') {
+        setLockoutState({
+          isLocked: true,
+          status: reqRes.status,
+          message: reqRes.message || 'Terminal access restricted by administrator.',
+          licenseKey: cfg.licenseKey,
+          serverUrl: cfg.serverUrl,
+          deviceId: info.deviceId,
+          deviceModel: info.model,
+        });
+        return { success: false, status: reqRes.status, message: reqRes.message };
       }
 
-      // Waiting for admin approval
-      setPendingCredentials({ username, password });
-      setLockoutState({
-        isLocked: true,
-        status: reqRes.status || 'pending',
-        message: reqRes.message || 'Waiting for administrator approval in BakerAdmin.',
-        licenseKey: cfg.licenseKey,
-        serverUrl: cfg.serverUrl,
-        deviceId: info.deviceId,
-        deviceModel: info.model,
-      });
-
-      return { success: false, pending: true, status: reqRes.status || 'pending' };
+      return {
+        success: false,
+        message: reqRes.message || 'Cannot complete terminal authorization.',
+      };
     } catch (err) {
-      return { success: false, error: err.message };
+      return {
+        success: false,
+        message: err.message || 'Authentication error',
+      };
     }
   };
 
@@ -825,6 +1077,38 @@ export function BakeryProvider({ children }) {
         savedInv = savedInv.filter(i => i.name !== 'All-Purpose Flour' && i.name !== 'Phyllo Dough Sheets' && i.name !== 'Pure Acacia Honey');
         const mergedInventory = savedInv;
 
+        let savedStockHistory = (loadedData && Array.isArray(loadedData.stockHistory))
+          ? loadedData.stockHistory
+          : [];
+
+        // If no stockHistory exists yet, create initial creation audit entries for any existing ingredients
+        if (savedStockHistory.length === 0 && mergedInventory.length > 0) {
+          savedStockHistory = mergedInventory.map((item, idx) => {
+            const d = new Date(Date.now() - (mergedInventory.length - idx) * 25 * 60 * 1000);
+            const tInfo = getStockTimestampInfo(d);
+            return {
+              id: 'stk-init-' + item.id + '-' + idx,
+              itemId: item.id,
+              itemName: item.name,
+              unit: item.unit || 'unit',
+              action: 'ADD',
+              actionLabel: 'Added New Ingredient',
+              previousStock: 0,
+              newStock: Number(item.stock) || 0,
+              changeDelta: Number(item.stock) || 0,
+              costPerUnit: item.costPerUnit || 0,
+              minStock: item.minStock || 0,
+              timestamp: tInfo.timestamp,
+              timeStr: tInfo.timeStr,
+              dateStr: tInfo.dateStr,
+              hour: tInfo.hour,
+              hourWindow: tInfo.hourWindow,
+              user: 'admin',
+              note: `Added ${item.stock} ${item.unit || 'units'} of ${item.name} to stock`,
+            };
+          }).reverse();
+        }
+
         const savedAuth = (loadedData && loadedData.auth) ? loadedData.auth : DEFAULT_AUTH;
         const savedSecurity = (loadedData && loadedData.security) ? loadedData.security : DEFAULT_SECURITY;
         const savedSecurityLogs = (loadedData && Array.isArray(loadedData.securityLogs))
@@ -847,6 +1131,7 @@ export function BakeryProvider({ children }) {
           products: mergedProducts,
           inventory: mergedInventory,
           orders: combinedOrders,
+          stockHistory: savedStockHistory,
           notifications: savedNotifs,
           security: savedSecurity,
           securityLogs: savedSecurityLogs,
@@ -854,8 +1139,7 @@ export function BakeryProvider({ children }) {
           auth: {
             ...DEFAULT_AUTH,
             ...savedAuth,
-            // Keep previous login session if active, otherwise preserve credentials
-            isLoggedIn: !!savedAuth.isLoggedIn,
+            isLoggedIn: false,
           },
         };
 

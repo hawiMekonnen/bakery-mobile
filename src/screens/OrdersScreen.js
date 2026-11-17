@@ -1,24 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   TextInput,
   Modal,
   ScrollView,
+  Platform,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBakery } from '../store/BakeryStore';
 import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
-import ScreenHeader from '../components/ScreenHeader';
 import BluetoothPrinterModal from '../components/BluetoothPrinterModal';
 import { isBluetoothConnected, printToBluetoothPrinter, getPrinterPaperWidth } from '../services/bluetoothPrinterService';
 import CalendarModal from '../components/CalendarModal';
 import { printReceipt, shareReceiptPDF } from '../utils/receiptPrinter';
 
-const FILTER_PAYMENTS = ['All', 'Cash', 'Card', 'Mobile'];
+const FILTER_PAYMENTS = [
+  { id: 'All', label: 'All payments', dot: null },
+  { id: 'Cash', label: 'Cash', dot: '#10B981' },
+  { id: 'Card', label: 'Card', dot: '#3B82F6' },
+  { id: 'Mobile', label: 'Mobile', dot: '#8B5CF6' },
+];
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const getFormattedDate = (offsetDays = 0) => {
   const d = new Date();
@@ -26,9 +34,67 @@ const getFormattedDate = (offsetDays = 0) => {
   return d.toISOString().split('T')[0];
 };
 
+const formatGroupDateHeader = (dateStr) => {
+  if (!dateStr || typeof dateStr !== 'string') return 'Recent Orders';
+  try {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const monthIdx = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const d = new Date(year, monthIdx, day);
+      if (!isNaN(d.getTime())) {
+        const weekday = WEEKDAYS[d.getDay()] || '';
+        const month = MONTHS[monthIdx] || '';
+        return `${weekday}, ${month} ${day}, ${year}`;
+      }
+    }
+    return dateStr;
+  } catch {
+    return dateStr || 'Recent Orders';
+  }
+};
+
+const formatOrderTime = (createdAt) => {
+  if (!createdAt) return '';
+  try {
+    const d = new Date(createdAt);
+    if (isNaN(d.getTime())) return '';
+    let h = d.getHours();
+    const m = d.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    h = h ? h : 12;
+    const formattedM = m < 10 ? `0${m}` : m;
+    return `${h}:${formattedM} ${ampm}`;
+  } catch {
+    return '';
+  }
+};
+
+const formatReceiptDateTime = (createdAt) => {
+  if (!createdAt) return '';
+  try {
+    const d = new Date(createdAt);
+    if (isNaN(d.getTime())) return String(createdAt);
+    const month = MONTHS[d.getMonth()] || '';
+    const day = d.getDate();
+    const year = d.getFullYear();
+    let h = d.getHours();
+    const m = d.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    h = h ? h : 12;
+    const formattedM = m < 10 ? `0${m}` : m;
+    return `${month} ${day}, ${year}, ${h}:${formattedM} ${ampm}`;
+  } catch {
+    return String(createdAt);
+  }
+};
+
 export default function OrdersScreen({ navigation }) {
   const { state } = useBakery();
-  const { orders, auth } = state;
+  const { orders = [], auth = {} } = state || {};
 
   const [search, setSearch] = useState('');
   const [filterPayment, setFilterPayment] = useState('All');
@@ -43,26 +109,95 @@ export default function OrdersScreen({ navigation }) {
   const yesterdayStr = getFormattedDate(1);
 
   // Distinct dates in order history
-  const allOrderDates = Array.from(
-    new Set(orders.map(o => (o.createdAt || '').split('T')[0]).filter(Boolean))
-  );
+  const allOrderDates = useMemo(() => {
+    if (!Array.isArray(orders)) return [];
+    return Array.from(
+      new Set(orders.map((o) => (o && o.createdAt ? o.createdAt.split('T')[0] : '')).filter(Boolean))
+    );
+  }, [orders]);
 
   // Filter orders by date, payment method, and search text
-  const filteredOrders = orders.filter(o => {
-    const orderDate = (o.createdAt || '').split('T')[0];
-    const matchesDate = selectedDate === 'All' ? true : orderDate === selectedDate;
-    const matchesPayment =
-      filterPayment === 'All' ||
-      (o.paymentMethod || '').toLowerCase() === filterPayment.toLowerCase();
-    const matchesSearch =
-      (o.id || '').toLowerCase().includes(search.toLowerCase()) ||
-      (o.customerName || '').toLowerCase().includes(search.toLowerCase());
+  const filteredOrders = useMemo(() => {
+    if (!Array.isArray(orders)) return [];
+    return orders.filter((o) => {
+      if (!o) return false;
+      const orderDate = (o.createdAt || '').split('T')[0];
+      const matchesDate = selectedDate === 'All' ? true : orderDate === selectedDate;
+      const matchesPayment =
+        filterPayment === 'All' ||
+        (o.paymentMethod || '').toLowerCase() === filterPayment.toLowerCase();
+      const matchesSearch =
+        (o.id || '').toLowerCase().includes((search || '').toLowerCase()) ||
+        (o.customerName || '').toLowerCase().includes((search || '').toLowerCase());
 
-    return matchesDate && matchesPayment && matchesSearch;
-  });
+      return matchesDate && matchesPayment && matchesSearch;
+    });
+  }, [orders, selectedDate, filterPayment, search]);
 
-  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-  const canGoBack = navigation && typeof navigation.canGoBack === 'function' && navigation.canGoBack();
+  const totalRevenue = useMemo(() => {
+    return filteredOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+  }, [filteredOrders]);
+
+  const avgSale = filteredOrders.length > 0 ? (totalRevenue / filteredOrders.length).toFixed(2) : '0.00';
+
+  const distinctDays = useMemo(() => {
+    return Array.from(new Set(filteredOrders.map((o) => (o.createdAt || '').split('T')[0]).filter(Boolean)));
+  }, [filteredOrders]);
+
+  // Payment totals
+  const { cashTotal, cardTotal, mobileTotal } = useMemo(() => {
+    let cash = 0;
+    let card = 0;
+    let mobile = 0;
+    filteredOrders.forEach((o) => {
+      const p = (o.paymentMethod || '').toLowerCase();
+      const amt = Number(o.total) || 0;
+      if (p === 'cash') cash += amt;
+      else if (p === 'card') card += amt;
+      else mobile += amt;
+    });
+    return { cashTotal: cash, cardTotal: card, mobileTotal: mobile };
+  }, [filteredOrders]);
+
+  // Best seller
+  const bestSeller = useMemo(() => {
+    const counts = {};
+    filteredOrders.forEach((o) => {
+      (o.items || []).forEach((it) => {
+        const name = it.name || 'Bakery Item';
+        const qty = Number(it.quantity) || 1;
+        counts[name] = (counts[name] || 0) + qty;
+      });
+    });
+    let topName = 'No sales';
+    let topQty = 0;
+    Object.entries(counts).forEach(([name, qty]) => {
+      if (qty > topQty) {
+        topName = name;
+        topQty = qty;
+      }
+    });
+    return { name: topName, count: topQty };
+  }, [filteredOrders]);
+
+  // Group filtered orders by Date Header
+  const groupedSections = useMemo(() => {
+    const groups = {};
+    filteredOrders.forEach((order) => {
+      const d = (order.createdAt || '').split('T')[0] || 'Unknown Date';
+      if (!groups[d]) {
+        groups[d] = {
+          dateStr: d,
+          orders: [],
+          total: 0,
+        };
+      }
+      groups[d].orders.push(order);
+      groups[d].total += Number(order.total) || 0;
+    });
+
+    return Object.values(groups).sort((a, b) => b.dateStr.localeCompare(a.dateStr));
+  }, [filteredOrders]);
 
   const openOrderDetail = (order) => {
     setSelectedOrder(order);
@@ -74,11 +209,15 @@ export default function OrdersScreen({ navigation }) {
     setIsPrinting(true);
     try {
       const paperWidth = await getPrinterPaperWidth();
-      const result = await printToBluetoothPrinter(selectedOrder, auth.businessName || 'Bakery', paperWidth);
+      const result = await printToBluetoothPrinter(
+        selectedOrder,
+        auth.businessName || 'Bakery',
+        paperWidth
+      );
       if (result.success) {
         Alert.alert(
           'Receipt Printed',
-          `Receipt #${selectedOrder.id} printed directly to ${result.printerName || 'Bluetooth thermal printer'}.`
+          `Receipt #${selectedOrder.id} printed to ${result.printerName || 'Bluetooth printer'}.`
         );
       } else {
         setBtModalVisible(true);
@@ -97,239 +236,329 @@ export default function OrdersScreen({ navigation }) {
     setIsPrinting(false);
   };
 
-  // Day-by-Day Stepping
-  const handlePrevDay = () => {
-    const base = selectedDate && selectedDate !== 'All' ? new Date(selectedDate + 'T00:00:00') : new Date();
-    base.setDate(base.getDate() - 1);
-    setSelectedDate(base.toISOString().split('T')[0]);
-  };
+  // Safe Segment bar percentages (always numbers > 0)
+  const grandTotalSafe = totalRevenue > 0 ? totalRevenue : 1;
+  const cashFlex = Math.max(0.01, isNaN(cashTotal / grandTotalSafe) ? 0.33 : cashTotal / grandTotalSafe);
+  const cardFlex = Math.max(0.01, isNaN(cardTotal / grandTotalSafe) ? 0.33 : cardTotal / grandTotalSafe);
+  const mobileFlex = Math.max(0.01, isNaN(mobileTotal / grandTotalSafe) ? 0.33 : mobileTotal / grandTotalSafe);
 
-  const handleNextDay = () => {
-    const base = selectedDate && selectedDate !== 'All' ? new Date(selectedDate + 'T00:00:00') : new Date();
-    base.setDate(base.getDate() + 1);
-    setSelectedDate(base.toISOString().split('T')[0]);
-  };
-
-  const getDateLabel = () => {
-    if (selectedDate === 'All') return 'All Dates';
-    if (selectedDate === todayStr) return `Today (${todayStr})`;
-    if (selectedDate === yesterdayStr) return `Yesterday (${yesterdayStr})`;
-    return selectedDate;
-  };
+  const heroSubtitle =
+    filteredOrders.length === 1
+      ? '1 sale'
+      : `${filteredOrders.length} sales across ${distinctDays.length || 1} ${
+          distinctDays.length === 1 ? 'day' : 'days'
+        }`;
 
   return (
     <View style={styles.container}>
-      {/* ─── Screen Header ─── */}
-      <ScreenHeader
-        canGoBack={canGoBack}
-        onBack={() => navigation.goBack()}
-        icon="receipt-outline"
-        title="Order History"
-        subtitle={`${filteredOrders.length} sales • ETB ${totalRevenue.toFixed(2)} total`}
-        rightAction={
+      {/* ─── Top Header ─── */}
+      <View style={styles.headerRow}>
+        <View>
+          <Text style={styles.headerTitle}>History</Text>
+          <Text style={styles.headerSubtitle}>All past receipts</Text>
+        </View>
+
+        <TouchableOpacity
+          style={styles.pickDayBtn}
+          onPress={() => setCalendarVisible(true)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="calendar-outline" size={15} color="#0F382C" style={{ marginRight: 6 }} />
+          <Text style={styles.pickDayText}>
+            {selectedDate === 'All' ? 'Pick a day' : selectedDate}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ─── 1. Hero Card: Dark Green with Concentric Watermark ─── */}
+        <View style={[styles.heroCard, auth?.brandColor ? { backgroundColor: auth.brandColor } : null]}>
+          {/* Subtle Concentric Rings Watermark */}
+          <View style={styles.heroCircleWatermark} pointerEvents="none">
+            <View style={[styles.circleRing, { width: 140, height: 140 }]} />
+            <View style={[styles.circleRing, { width: 220, height: 220 }]} />
+            <View style={[styles.circleRing, { width: 300, height: 300 }]} />
+          </View>
+
+          <Text style={styles.heroOverline}>TOTAL SALES</Text>
+          <Text style={styles.heroAmount}>ETB {totalRevenue.toFixed(2)}</Text>
+          <Text style={styles.heroSub}>{heroSubtitle}</Text>
+
+          {/* Segmented Color Progress Bar */}
+          <View style={styles.segmentedBarTrack}>
+            <View style={[styles.segmentFill, { flex: cashFlex, backgroundColor: '#10B981' }]} />
+            <View style={[styles.segmentFill, { flex: cardFlex, backgroundColor: '#3B82F6' }]} />
+            <View style={[styles.segmentFill, { flex: mobileFlex, backgroundColor: '#8B5CF6' }]} />
+          </View>
+
+          {/* Legend Row: Cash, Card, Mobile */}
+          <View style={styles.heroBreakdownRow}>
+            <View style={styles.heroBreakdownCol}>
+              <View style={styles.heroDotLabelRow}>
+                <View style={[styles.heroLegendDot, { backgroundColor: '#10B981' }]} />
+                <Text style={styles.heroLegendText}>Cash</Text>
+              </View>
+              <Text style={styles.heroLegendAmount}>ETB {cashTotal.toFixed(2)}</Text>
+            </View>
+
+            <View style={styles.heroBreakdownCol}>
+              <View style={styles.heroDotLabelRow}>
+                <View style={[styles.heroLegendDot, { backgroundColor: '#3B82F6' }]} />
+                <Text style={styles.heroLegendText}>Card</Text>
+              </View>
+              <Text style={styles.heroLegendAmount}>ETB {cardTotal.toFixed(2)}</Text>
+            </View>
+
+            <View style={styles.heroBreakdownCol}>
+              <View style={styles.heroDotLabelRow}>
+                <View style={[styles.heroLegendDot, { backgroundColor: '#8B5CF6' }]} />
+                <Text style={styles.heroLegendText}>Mobile</Text>
+              </View>
+              <Text style={styles.heroLegendAmount}>ETB {mobileTotal.toFixed(2)}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ─── 2. Two Metric Cards: AVERAGE SALE & BEST SELLER ─── */}
+        <View style={styles.metricCardsRow}>
+          {/* Average Sale Card */}
+          <View style={styles.metricCard}>
+            <View style={styles.metricIconBoxCash}>
+              <Ionicons name="cash-outline" size={18} color="#10B981" />
+            </View>
+            <Text style={styles.metricOverline}>AVERAGE SALE</Text>
+            <Text style={styles.metricAmount}>ETB {avgSale}</Text>
+            <Text style={styles.metricSub}>per order</Text>
+          </View>
+
+          {/* Best Seller Card */}
+          <View style={styles.metricCard}>
+            <View style={styles.metricIconBoxStar}>
+              <Ionicons name="star-outline" size={18} color="#D97706" />
+            </View>
+            <Text style={styles.metricOverline}>BEST SELLER</Text>
+            <Text style={styles.metricAmount} numberOfLines={1}>{bestSeller.name}</Text>
+            <Text style={styles.metricSub}>{bestSeller.count} sold</Text>
+          </View>
+        </View>
+
+        {/* ─── 3. Search and Filter Row ─── */}
+        <View style={styles.searchRow}>
+          <View style={styles.searchBox}>
+            <Ionicons name="search-outline" size={18} color="#94A3B8" style={{ marginRight: 8 }} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Order number or customer"
+              placeholderTextColor="#94A3B8"
+              value={search}
+              onChangeText={setSearch}
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')}>
+                <Ionicons name="close-circle" size={16} color="#94A3B8" />
+              </TouchableOpacity>
+            )}
+          </View>
+
           <TouchableOpacity
-            style={styles.calendarHeaderBtn}
+            style={styles.filterBtn}
             onPress={() => setCalendarVisible(true)}
             activeOpacity={0.8}
           >
-            <Ionicons name="calendar" size={16} color={COLORS.primary} style={{ marginRight: 5 }} />
-            <Text style={styles.calendarHeaderBtnText}>
-              {selectedDate === 'All' ? 'Pick Any Day' : selectedDate}
-            </Text>
-          </TouchableOpacity>
-        }
-      />
-
-      {/* Search Bar */}
-      <View style={styles.searchSection}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search-outline" size={18} color={COLORS.textMuted} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search by Order # or Customer..."
-            placeholderTextColor={COLORS.textMuted}
-            value={search}
-            onChangeText={setSearch}
-          />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={16} color={COLORS.textMuted} />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* Quick Date Chips */}
-      <View style={styles.dateChipsWrapper}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateChipsContent}>
-          <TouchableOpacity
-            style={[styles.dateChip, selectedDate === 'All' && styles.dateChipActive]}
-            onPress={() => setSelectedDate('All')}
-          >
-            <Text style={[styles.dateChipText, selectedDate === 'All' && styles.dateChipTextActive]}>All Dates</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.dateChip, selectedDate === todayStr && styles.dateChipActive]}
-            onPress={() => setSelectedDate(todayStr)}
-          >
-            <Text style={[styles.dateChipText, selectedDate === todayStr && styles.dateChipTextActive]}>Today</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.dateChip, selectedDate === yesterdayStr && styles.dateChipActive]}
-            onPress={() => setSelectedDate(yesterdayStr)}
-          >
-            <Text style={[styles.dateChipText, selectedDate === yesterdayStr && styles.dateChipTextActive]}>Yesterday</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.dateChip, styles.pickDateChip, selectedDate !== 'All' && selectedDate !== todayStr && selectedDate !== yesterdayStr && styles.dateChipActive]}
-            onPress={() => setCalendarVisible(true)}
-          >
-            <Ionicons
-              name="calendar"
-              size={13}
-              color={selectedDate !== 'All' && selectedDate !== todayStr && selectedDate !== yesterdayStr ? '#FFF' : COLORS.primary}
-              style={{ marginRight: 4 }}
-            />
-            <Text style={[styles.dateChipText, selectedDate !== 'All' && selectedDate !== todayStr && selectedDate !== yesterdayStr && styles.dateChipTextActive]}>
-              {selectedDate !== 'All' && selectedDate !== todayStr && selectedDate !== yesterdayStr ? selectedDate : 'Select Date'}
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-
-      {/* Day Stepper Bar (Active when a single date is chosen) */}
-      {selectedDate !== 'All' && (
-        <View style={styles.dayNavBar}>
-          <TouchableOpacity onPress={handlePrevDay} style={styles.dayNavArrow} activeOpacity={0.7}>
-            <Ionicons name="chevron-back" size={16} color={COLORS.textPrimary} />
-            <Text style={styles.dayNavArrowText}>Prev Day</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => setCalendarVisible(true)} style={styles.dayNavCenter} activeOpacity={0.7}>
-            <Ionicons name="calendar-outline" size={15} color={COLORS.primary} style={{ marginRight: 5 }} />
-            <Text style={styles.dayNavDateText}>{getDateLabel()}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={handleNextDay} style={styles.dayNavArrow} activeOpacity={0.7}>
-            <Text style={styles.dayNavArrowText}>Next Day</Text>
-            <Ionicons name="chevron-forward" size={16} color={COLORS.textPrimary} />
+            <Ionicons name="filter-outline" size={18} color="#0F382C" />
           </TouchableOpacity>
         </View>
-      )}
 
-      {/* Payment Method Filters */}
-      <View style={styles.paymentFilters}>
-        {FILTER_PAYMENTS.map(pay => {
-          const isActive = filterPayment === pay;
-          return (
+        {/* ─── 4. Date Filter Chips ─── */}
+        <View style={styles.chipsScrollWrapper}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
             <TouchableOpacity
-              key={pay}
-              style={[styles.payTab, isActive && styles.payTabActive]}
-              onPress={() => setFilterPayment(pay)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.payTabText, isActive && styles.payTabTextActive]}>
-                {pay}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* Order Cards List */}
-      <FlatList
-        data={filteredOrders}
-        keyExtractor={item => String(item.id)}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconCircle}>
-              <Ionicons name="receipt-outline" size={44} color={COLORS.textMuted} />
-            </View>
-            <Text style={styles.emptyTitle}>
-              {selectedDate !== 'All' ? 'No Orders on This Date' : 'No Sales Recorded Yet'}
-            </Text>
-            <Text style={styles.emptySubtitle}>
-              {selectedDate !== 'All'
-                ? `No sales were completed on ${selectedDate}. You can use "Prev/Next Day" or tap the calendar to view any other date.`
-                : 'Every sale you complete at Point of Sale will appear here.'}
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              {selectedDate !== 'All' && (
-                <TouchableOpacity
-                  style={styles.emptyActionBtnSecondary}
-                  onPress={() => setSelectedDate('All')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.emptyActionSecondaryText}>View All Dates</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity
-                style={styles.emptyActionBtn}
-                onPress={() => setCalendarVisible(true)}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="calendar" size={16} color="#FFF" style={{ marginRight: 6 }} />
-                <Text style={styles.emptyActionText}>Pick Another Date</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        }
-        renderItem={({ item }) => {
-          const isCash = (item.paymentMethod || '').toLowerCase() === 'cash';
-          const isCard = (item.paymentMethod || '').toLowerCase() === 'card';
-          const badgeColor = isCash ? COLORS.cashColor : isCard ? COLORS.cardColor : COLORS.mobileColor;
-          const badgeBg = isCash ? COLORS.successLight : isCard ? COLORS.infoLight : COLORS.purpleLight;
-
-          const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '';
-          const timeStr = item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-
-          return (
-            <TouchableOpacity
-              style={styles.orderCard}
-              onPress={() => openOrderDetail(item)}
+              style={[styles.chip, selectedDate === 'All' && styles.chipActive]}
+              onPress={() => setSelectedDate('All')}
               activeOpacity={0.75}
             >
-              <View style={styles.orderHeader}>
-                <View>
-                  <Text style={styles.orderId}>{item.id}</Text>
-                  <Text style={styles.customerName}>{item.customerName || 'Walk-in Customer'}</Text>
-                </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.orderTotal}>ETB {Number(item.total).toFixed(2)}</Text>
-                  <View style={[styles.payMethodBadge, { backgroundColor: badgeBg }]}>
-                    <Text style={[styles.payMethodText, { color: badgeColor }]}>{item.paymentMethod}</Text>
-                  </View>
-                </View>
-              </View>
+              <Text style={[styles.chipText, selectedDate === 'All' && styles.chipTextActive]}>
+                All dates
+              </Text>
+            </TouchableOpacity>
 
-              {/* Items Summary Pill */}
-              <View style={styles.itemsSummary}>
-                <Text style={styles.itemsSummaryText} numberOfLines={1}>
-                  {(item.items || []).map(i => `${i.quantity}x ${i.name}`).join(' • ')}
+            <TouchableOpacity
+              style={[styles.chip, selectedDate === todayStr && styles.chipActive]}
+              onPress={() => setSelectedDate(todayStr)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.chipText, selectedDate === todayStr && styles.chipTextActive]}>
+                Today
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.chip, selectedDate === yesterdayStr && styles.chipActive]}
+              onPress={() => setSelectedDate(yesterdayStr)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.chipText, selectedDate === yesterdayStr && styles.chipTextActive]}>
+                Yesterday
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.chip,
+                selectedDate !== 'All' && selectedDate !== todayStr && selectedDate !== yesterdayStr && styles.chipActive,
+              ]}
+              onPress={() => setCalendarVisible(true)}
+              activeOpacity={0.75}
+            >
+              <Text
+                style={[
+                  styles.chipText,
+                  selectedDate !== 'All' && selectedDate !== todayStr && selectedDate !== yesterdayStr && styles.chipTextActive,
+                ]}
+              >
+                {selectedDate !== 'All' && selectedDate !== todayStr && selectedDate !== yesterdayStr ? selectedDate : 'Pick date'}
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+
+        {/* ─── 5. Payment Filter Chips ─── */}
+        <View style={styles.chipsScrollWrapper}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
+            {FILTER_PAYMENTS.map((pay) => {
+              const isActive = filterPayment === pay.id;
+              return (
+                <TouchableOpacity
+                  key={pay.id}
+                  style={[styles.chip, isActive && styles.chipActive]}
+                  onPress={() => setFilterPayment(pay.id)}
+                  activeOpacity={0.75}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {pay.dot && !isActive && (
+                      <View style={[styles.paymentDot, { backgroundColor: pay.dot }]} />
+                    )}
+                    {pay.dot && isActive && (
+                      <View style={[styles.paymentDot, { backgroundColor: '#FFFFFF' }]} />
+                    )}
+                    <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
+                      {pay.label}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* ─── 6. Order Groups List ─── */}
+        {groupedSections.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="receipt-outline" size={36} color="#94A3B8" />
+            </View>
+            <Text style={styles.emptyTitle}>
+              {selectedDate !== 'All' ? 'No orders on this day' : 'No sales recorded yet'}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              Orders placed in Point of Sale will automatically appear here.
+            </Text>
+          </View>
+        ) : (
+          groupedSections.map((group) => (
+            <View key={group.dateStr} style={styles.dateGroupWrapper}>
+              {/* Group Header: ● Sunday, Nov 8, 2026 ... 1 sale · ETB 63.00 */}
+              <View style={styles.groupHeaderRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={styles.groupBulletDot} />
+                  <Text style={styles.groupDateHeader}>
+                    {formatGroupDateHeader(group.dateStr)}
+                  </Text>
+                </View>
+                <Text style={styles.groupTotalHeader}>
+                  {group.orders.length} {group.orders.length === 1 ? 'sale' : 'sales'} · ETB {group.total.toFixed(2)}
                 </Text>
               </View>
 
-              <View style={styles.orderFooter}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="calendar-outline" size={12} color={COLORS.textMuted} style={{ marginRight: 4 }} />
-                  <Text style={styles.orderDate}>{dateStr} • {timeStr}</Text>
-                </View>
-                <View style={styles.viewReceiptRow}>
-                  <Text style={styles.viewReceiptText}>View Receipt</Text>
-                  <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
-                </View>
-              </View>
-            </TouchableOpacity>
-          );
-        }}
-      />
+              {/* Order Cards with Green Accent Strip */}
+              {group.orders.map((order) => {
+                const isCash = (order.paymentMethod || '').toLowerCase() === 'cash';
+                const isCard = (order.paymentMethod || '').toLowerCase() === 'card';
+                const badgeBg = isCash ? '#ECFDF5' : isCard ? '#EFF6FF' : '#F5F3FF';
+                const badgeColor = isCash ? '#059669' : isCard ? '#2563EB' : '#7C3AED';
 
-      {/* Full Month Interactive Calendar Modal */}
+                const timeStr = formatOrderTime(order.createdAt);
+                const itemsSummary = (order.items || []).map((i) => `${i.quantity}x ${i.name}`).join(', ');
+
+                return (
+                  <View key={order.id} style={styles.orderCard}>
+                    {/* Left Green Accent Bar */}
+                    <View style={styles.cardLeftStrip} />
+
+                    <View style={styles.cardBody}>
+                      {/* Top Header Row */}
+                      <View style={styles.orderCardHeader}>
+                        <View style={styles.orderIconBox}>
+                          <Ionicons name="receipt-outline" size={17} color="#10B981" />
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <Text style={styles.orderIdBold}>{order.id}</Text>
+                          <Text style={styles.orderMetaText}>
+                            {timeStr ? `${timeStr} · ` : ''}{order.customerName || 'Walk-in customer'}
+                          </Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={styles.orderPriceText}>ETB {Number(order.total || 0).toFixed(2)}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                            {order.syncStatus !== 'synced' && (
+                              <View style={styles.notSyncedBadge}>
+                                <Text style={styles.notSyncedBadgeText}>Not synced</Text>
+                              </View>
+                            )}
+                            <View style={[styles.orderPayBadge, { backgroundColor: badgeBg }]}>
+                              <Text style={[styles.orderPayText, { color: badgeColor }]}>
+                                {order.paymentMethod || 'Cash'}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Items Bubble */}
+                      <View style={styles.itemsBubble}>
+                        <Text style={styles.itemsBubbleText} numberOfLines={1}>
+                          {itemsSummary || '1x Item'}
+                        </Text>
+                      </View>
+
+                      {/* Bottom Footer Row */}
+                      <View style={styles.cardFooterRow}>
+                        <Text style={styles.receiptFooterLabel}>Receipt {order.id}</Text>
+                        <TouchableOpacity
+                          style={styles.viewReceiptBtn}
+                          onPress={() => openOrderDetail(order)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.viewReceiptText}>View receipt</Text>
+                          <Ionicons name="chevron-forward" size={13} color="#059669" style={{ marginLeft: 2 }} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ))
+        )}
+
+        {/* Extra Bottom Padding for floating nav bar */}
+        <View style={{ height: 120 }} />
+      </ScrollView>
+
+      {/* Calendar Modal */}
       <CalendarModal
         visible={calendarVisible}
         onClose={() => setCalendarVisible(false)}
@@ -339,7 +568,7 @@ export default function OrdersScreen({ navigation }) {
         markedDates={allOrderDates}
       />
 
-      {/* Receipt View Modal */}
+      {/* Receipt Modal */}
       {selectedOrder && (
         <Modal
           visible={modalVisible}
@@ -348,116 +577,112 @@ export default function OrdersScreen({ navigation }) {
           onRequestClose={() => setModalVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
-              <View style={styles.modalHeader}>
+            <View style={styles.receiptSheet}>
+              <View style={styles.sheetHandle} />
+
+              <View style={styles.sheetTopRow}>
                 <View>
-                  <Text style={styles.modalTitle}>Receipt {selectedOrder.id}</Text>
-                  <Text style={styles.modalSubtitle}>{selectedOrder.customerName}</Text>
+                  <Text style={styles.sheetReceiptTitle}>Receipt #{selectedOrder.id}</Text>
+                  <Text style={styles.sheetReceiptSub}>
+                    {formatOrderTime(selectedOrder.createdAt)} · {selectedOrder.customerName || 'Walk-in customer'}
+                  </Text>
                 </View>
-                <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtn}>
-                  <Ionicons name="close" size={20} color={COLORS.textPrimary} />
+                <TouchableOpacity
+                  onPress={() => setModalVisible(false)}
+                  style={styles.sheetCloseBtn}
+                >
+                  <Ionicons name="close" size={20} color="#0F172A" />
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={styles.modalScroll}>
-                <View style={styles.receiptPaper}>
-                  <Text style={styles.receiptBrand}>{(auth.businessName || 'BAKERY').toUpperCase()}</Text>
-                  <Text style={styles.receiptSub}>Artisan Bakery & Cafe</Text>
-                  <View style={styles.receiptDashed} />
+              <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
+                <View style={styles.receiptSlipCard}>
+                  {/* 1. Bakery Name at the top */}
+                  <Text style={styles.slipBrand}>
+                    {(auth.businessName || 'BAKERY').toUpperCase()}
+                  </Text>
+                  <View style={styles.slipDivider} />
 
-                  <View style={styles.receiptInfoRow}>
-                    <Text style={styles.receiptInfoLabel}>Order ID:</Text>
-                    <Text style={styles.receiptInfoVal}>{selectedOrder.id}</Text>
+                  {/* 2. Order ID, Date, Payment Type */}
+                  <View style={styles.slipMetaRow}>
+                    <Text style={styles.slipMetaLabel}>Order ID:</Text>
+                    <Text style={styles.slipMetaVal}>#{selectedOrder.id}</Text>
                   </View>
-                  <View style={styles.receiptInfoRow}>
-                    <Text style={styles.receiptInfoLabel}>Date & Time:</Text>
-                    <Text style={styles.receiptInfoVal}>
-                      {new Date(selectedOrder.createdAt).toLocaleString()}
-                    </Text>
+                  <View style={styles.slipMetaRow}>
+                    <Text style={styles.slipMetaLabel}>Date:</Text>
+                    <Text style={styles.slipMetaVal}>{formatReceiptDateTime(selectedOrder.createdAt)}</Text>
                   </View>
-                  <View style={styles.receiptInfoRow}>
-                    <Text style={styles.receiptInfoLabel}>Payment:</Text>
-                    <Text style={styles.receiptInfoVal}>{selectedOrder.paymentMethod}</Text>
+                  <View style={styles.slipMetaRow}>
+                    <Text style={styles.slipMetaLabel}>Payment Type:</Text>
+                    <Text style={styles.slipMetaVal}>{selectedOrder.paymentMethod || 'Cash'}</Text>
                   </View>
 
-                  <View style={styles.receiptDashed} />
+                  <View style={styles.slipDivider} />
 
-                  {/* Items */}
+                  {/* 3. Items and their price */}
                   {(selectedOrder.items || []).map((it, idx) => (
-                    <View key={idx} style={styles.receiptItemRow}>
-                      <View style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}>
-                        <Ionicons name="fast-food-outline" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
-                        <Text style={styles.receiptItemName}>{it.name} x{it.quantity}</Text>
-                      </View>
-                      <Text style={styles.receiptItemPrice}>
+                    <View key={idx} style={styles.slipItemRow}>
+                      <Text style={styles.slipItemName}>
+                        {it.quantity}x {it.name}
+                      </Text>
+                      <Text style={styles.slipItemPrice}>
                         ETB {(Number(it.price) * Number(it.quantity)).toFixed(2)}
                       </Text>
                     </View>
                   ))}
 
-                  <View style={styles.receiptDashed} />
+                  <View style={styles.slipDivider} />
 
-                  <View style={styles.receiptTotalRow}>
-                    <Text style={styles.receiptTotalLabel}>Subtotal</Text>
-                    <Text style={styles.receiptTotalVal}>ETB {Number(selectedOrder.subtotal).toFixed(2)}</Text>
+                  {/* 4. Subtotal amount and Total */}
+                  <View style={styles.slipMetaRow}>
+                    <Text style={styles.slipMetaLabel}>Subtotal</Text>
+                    <Text style={styles.slipMetaVal}>ETB {Number(selectedOrder.subtotal || selectedOrder.total || 0).toFixed(2)}</Text>
                   </View>
-                  <View style={styles.receiptTotalRow}>
-                    <Text style={styles.receiptTotalLabel}>Tax (5%)</Text>
-                    <Text style={styles.receiptTotalVal}>ETB {Number(selectedOrder.tax).toFixed(2)}</Text>
+                  <View style={[styles.slipMetaRow, { marginTop: 4 }]}>
+                    <Text style={styles.slipTotalLabel}>TOTAL</Text>
+                    <Text style={styles.slipTotalVal}>ETB {Number(selectedOrder.total || selectedOrder.subtotal || 0).toFixed(2)}</Text>
                   </View>
-                  <View style={[styles.receiptTotalRow, { marginTop: 4 }]}>
-                    <Text style={styles.receiptGrandTotalLabel}>TOTAL</Text>
-                    <Text style={styles.receiptGrandTotalVal}>ETB {Number(selectedOrder.total).toFixed(2)}</Text>
-                  </View>
+
+                  <View style={styles.slipDivider} />
+
+                  {/* 5. For internal purpose only */}
+                  <Text style={styles.slipInternalNotice}>For internal purpose only</Text>
                 </View>
               </ScrollView>
 
-              {/* Print and Share Buttons */}
-              <View style={styles.modalPrintRow}>
+              {/* Action Buttons */}
+              <View style={styles.receiptActionButtons}>
                 <TouchableOpacity
-                  style={styles.modalPrintBtn}
+                  style={styles.primaryPrintBtn}
                   onPress={handlePrint}
                   disabled={isPrinting}
-                  activeOpacity={0.8}
+                  activeOpacity={0.88}
                 >
-                  <Ionicons name="print" size={17} color="#FFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.modalPrintText}>
+                  <Ionicons name="print-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.primaryPrintText}>
                     {isPrinting ? 'Printing...' : 'Print Receipt'}
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.modalShareBtn}
-                  onPress={handleShare}
-                  disabled={isPrinting}
-                  activeOpacity={0.8}
+                  style={styles.secondaryDoneBtn}
+                  onPress={() => setModalVisible(false)}
+                  activeOpacity={0.88}
                 >
-                  <Ionicons name="share-social-outline" size={17} color={COLORS.primary} style={{ marginRight: 6 }} />
-                  <Text style={styles.modalShareText}>Share PDF</Text>
+                  <Ionicons name="checkmark-outline" size={18} color="#0F382C" style={{ marginRight: 6 }} />
+                  <Text style={styles.secondaryDoneText}>Done</Text>
                 </TouchableOpacity>
               </View>
-
-              <TouchableOpacity
-                style={styles.modalDoneBtn}
-                onPress={() => setModalVisible(false)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.modalDoneText}>Close</Text>
-              </TouchableOpacity>
             </View>
           </View>
         </Modal>
       )}
-          <BluetoothPrinterModal
+
+      {/* Bluetooth Printer Modal */}
+      <BluetoothPrinterModal
         visible={btModalVisible}
         onClose={() => setBtModalVisible(false)}
-        orderToPrint={selectedOrder}
-        businessName={auth.businessName || 'Bakery'}
-        onFallbackSystemPrint={async () => {
-          if (selectedOrder) {
-            await printReceipt(selectedOrder, auth.businessName || 'Bakery');
-          }
-        }}
+        onPrintOrder={selectedOrder}
       />
     </View>
   );
@@ -466,449 +691,572 @@ export default function OrdersScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#F3F4F6',
   },
-  calendarHeaderBtn: {
+  headerRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: COLORS.primaryLight,
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: RADIUS.full,
-    borderWidth: 1,
-    borderColor: COLORS.primary + '33',
+    paddingHorizontal: 18,
+    paddingTop: Platform.OS === 'ios' ? 54 : 36,
+    paddingBottom: 14,
+    backgroundColor: '#F3F4F6',
   },
-  calendarHeaderBtnText: {
-    color: COLORS.primaryDark,
-    fontSize: FONTS.xs,
+  headerTitle: {
+    fontSize: 24,
     fontWeight: '800',
+    color: '#0F172A',
+    letterSpacing: -0.5,
   },
-  searchSection: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 4,
+  headerSubtitle: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#64748B',
+    marginTop: 1,
   },
-  searchBar: {
+  pickDayBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 12,
-    height: 40,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.sm,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.card,
+  },
+  pickDayText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F382C',
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+    gap: 12,
+  },
+
+  /* ─── Hero Card ─── */
+  heroCard: {
+    backgroundColor: '#0F382C',
+    borderRadius: 22,
+    padding: 20,
+    position: 'relative',
+    overflow: 'hidden',
+    ...SHADOWS.card,
+  },
+  heroCircleWatermark: {
+    position: 'absolute',
+    right: -40,
+    top: -40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circleRing: {
+    position: 'absolute',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  heroOverline: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    color: '#A7F3D0',
+    marginBottom: 6,
+  },
+  heroAmount: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  heroSub: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#D1FAE5',
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  segmentedBarTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    flexDirection: 'row',
+    overflow: 'hidden',
+    marginBottom: 14,
+  },
+  segmentFill: {
+    height: '100%',
+  },
+  heroBreakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 4,
+  },
+  heroBreakdownCol: {
+    flex: 1,
+  },
+  heroDotLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 2,
+  },
+  heroLegendDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  heroLegendText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#D1FAE5',
+  },
+  heroLegendAmount: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginTop: 1,
+  },
+
+  /* ─── Metric Cards ─── */
+  metricCardsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  metricCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.card,
+  },
+  metricIconBoxCash: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  metricIconBoxStar: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  metricOverline: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    color: '#64748B',
+    marginBottom: 4,
+  },
+  metricAmount: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  metricSub: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+
+  /* ─── Search and Filter Row ─── */
+  searchRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  searchBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 46,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.card,
   },
   searchInput: {
     flex: 1,
-    marginLeft: 8,
-    fontSize: FONTS.sm,
-    color: COLORS.textPrimary,
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#0F172A',
   },
-  // Date Chips
-  dateChipsWrapper: {
-    paddingVertical: 6,
+  filterBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.card,
   },
-  dateChipsContent: {
-    paddingHorizontal: 16,
+
+  /* ─── Filter Chips ─── */
+  chipsScrollWrapper: {
+    marginVertical: 1,
+  },
+  chipsRow: {
     gap: 8,
   },
-  dateChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 13,
-    paddingVertical: 6,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.surface,
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.card,
   },
-  pickDateChip: {
-    borderColor: COLORS.primary + '4D',
+  chipActive: {
+    backgroundColor: '#0F382C',
+    borderColor: '#0F382C',
   },
-  dateChipActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  dateChipText: {
-    fontSize: FONTS.xs,
+  chipText: {
+    fontSize: 12,
     fontWeight: '700',
-    color: COLORS.textSecondary,
+    color: '#0F172A',
   },
-  dateChipTextActive: {
-    color: '#FFF',
+  chipTextActive: {
+    color: '#FFFFFF',
   },
-  // Day Stepper Bar
-  dayNavBar: {
+  paymentDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+
+  /* ─── Order Groups List ─── */
+  dateGroupWrapper: {
+    marginTop: 6,
+  },
+  groupHeaderRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.surface,
-    marginHorizontal: 16,
-    marginVertical: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.sm,
-  },
-  dayNavArrow: {
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 6,
+    marginBottom: 10,
+    paddingHorizontal: 4,
   },
-  dayNavArrowText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-    marginHorizontal: 2,
+  groupBulletDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+    marginRight: 8,
   },
-  dayNavCenter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primaryLight,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: RADIUS.full,
-  },
-  dayNavDateText: {
-    fontSize: FONTS.xs,
+  groupDateHeader: {
+    fontSize: 13,
     fontWeight: '800',
-    color: COLORS.primaryDark,
+    color: '#0F382C',
   },
-  // Payment Filters
-  paymentFilters: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 6,
-    gap: 8,
-  },
-  payTab: {
-    flex: 1,
-    paddingVertical: 6,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.surface,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  payTabActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  payTabText: {
-    fontSize: FONTS.xs,
+  groupTotalHeader: {
+    fontSize: 12,
     fontWeight: '700',
-    color: COLORS.textSecondary,
+    color: '#64748B',
   },
-  payTabTextActive: {
-    color: '#FFF',
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 110,
-    gap: 10,
-    flexGrow: 1,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 48,
-    paddingHorizontal: 24,
-  },
-  emptyIconCircle: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
-    backgroundColor: COLORS.surfaceSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  emptyTitle: {
-    fontSize: FONTS.lg,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  emptySubtitle: {
-    fontSize: FONTS.sm,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 18,
-  },
-  emptyActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: RADIUS.full,
-    ...SHADOWS.sm,
-  },
-  emptyActionText: {
-    color: '#FFF',
-    fontSize: FONTS.xs,
-    fontWeight: '800',
-  },
-  emptyActionBtnSecondary: {
-    backgroundColor: COLORS.surfaceSubtle,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: RADIUS.full,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  emptyActionSecondaryText: {
-    color: COLORS.textPrimary,
-    fontSize: FONTS.xs,
-    fontWeight: '700',
-  },
+
+  /* ─── Order Cards ─── */
   orderCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.sm,
-  },
-  orderHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginBottom: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.card,
   },
-  orderId: {
-    fontSize: FONTS.md,
+  cardLeftStrip: {
+    width: 4,
+    backgroundColor: '#10B981',
+  },
+  cardBody: {
+    flex: 1,
+    padding: 14,
+  },
+  orderCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  orderIconBox: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orderIdBold: {
+    fontSize: 14,
     fontWeight: '800',
-    color: COLORS.textPrimary,
+    color: '#0F172A',
   },
-  customerName: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
+  orderMetaText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#64748B',
     marginTop: 2,
   },
-  orderTotal: {
-    fontSize: FONTS.md,
+  orderPriceText: {
+    fontSize: 15,
     fontWeight: '800',
-    color: COLORS.primaryDark,
+    color: '#0F172A',
   },
-  payMethodBadge: {
-    paddingHorizontal: 8,
+  notSyncedBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: RADIUS.full,
-    marginTop: 3,
+    borderRadius: 6,
   },
-  payMethodText: {
+  notSyncedBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#D97706',
+  },
+  orderPayBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  orderPayText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  itemsSummary: {
-    backgroundColor: COLORS.surfaceSubtle,
-    borderRadius: RADIUS.sm,
+  itemsBubble: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    marginVertical: 10,
+    marginTop: 10,
   },
-  itemsSummaryText: {
-    fontSize: FONTS.xs,
-    color: COLORS.textSecondary,
+  itemsBubbleText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
   },
-  orderFooter: {
+  cardFooterRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
+    marginTop: 10,
     paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F8FAFC',
   },
-  orderDate: {
+  receiptFooterLabel: {
     fontSize: 11,
-    color: COLORS.textMuted,
+    fontWeight: '500',
+    color: '#94A3B8',
   },
-  viewReceiptRow: {
+  viewReceiptBtn: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   viewReceiptText: {
-    fontSize: FONTS.xs,
-    fontWeight: '700',
-    color: COLORS.primary,
-    marginRight: 2,
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#059669',
   },
-  // Modal Receipt
+
+  /* Empty state */
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  emptyIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: '#64748B',
+    textAlign: 'center',
+    paddingHorizontal: 32,
+  },
+
+  /* ─── Receipt Modal ─── */
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'flex-end',
   },
-  modalCard: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: RADIUS.xl,
-    borderTopRightRadius: RADIUS.xl,
+  receiptSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: 20,
-    maxHeight: '85%',
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
   },
-  modalHeader: {
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E2E8F0',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  sheetTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
-  modalTitle: {
-    fontSize: FONTS.lg,
+  sheetReceiptTitle: {
+    fontSize: 18,
     fontWeight: '800',
-    color: COLORS.textPrimary,
+    color: '#0F172A',
   },
-  modalSubtitle: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
+  sheetReceiptSub: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
+    marginTop: 2,
   },
-  modalCloseBtn: {
+  sheetCloseBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: COLORS.surfaceSubtle,
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  modalScroll: {
-    marginBottom: 14,
-  },
-  receiptPaper: {
-    backgroundColor: COLORS.surfaceSubtle,
-    borderRadius: RADIUS.md,
+  receiptSlipCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: '#E2E8F0',
   },
-  receiptBrand: {
-    fontSize: FONTS.lg,
-    fontWeight: '900',
+  slipBrand: {
+    fontSize: 15,
+    fontWeight: '800',
     textAlign: 'center',
-    color: COLORS.textPrimary,
-    letterSpacing: 1.5,
+    color: '#0F172A',
+    letterSpacing: 1,
   },
-  receiptSub: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
+  slipSub: {
+    fontSize: 11,
+    fontWeight: '500',
     textAlign: 'center',
-    marginBottom: 8,
+    color: '#64748B',
+    marginTop: 2,
   },
-  receiptDashed: {
+  slipDivider: {
     height: 1,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderStyle: 'dashed',
+    backgroundColor: '#E2E8F0',
     marginVertical: 10,
   },
-  receiptInfoRow: {
+  slipMetaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 2,
+    marginBottom: 4,
   },
-  receiptInfoLabel: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
+  slipMetaLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
   },
-  receiptInfoVal: {
-    fontSize: FONTS.xs,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  receiptItemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginVertical: 4,
-  },
-  receiptItemName: {
-    fontSize: FONTS.xs,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  receiptItemPrice: {
-    fontSize: FONTS.xs,
+  slipMetaVal: {
+    fontSize: 12,
     fontWeight: '700',
-    color: COLORS.textPrimary,
+    color: '#0F172A',
   },
-  receiptTotalRow: {
+  slipItemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 2,
+    marginBottom: 6,
   },
-  receiptTotalLabel: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
+  slipItemName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+    flex: 1,
   },
-  receiptTotalVal: {
-    fontSize: FONTS.xs,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  receiptGrandTotalLabel: {
-    fontSize: FONTS.md,
+  slipItemPrice: {
+    fontSize: 13,
     fontWeight: '800',
-    color: COLORS.textPrimary,
+    color: '#0F172A',
+    marginLeft: 8,
   },
-  receiptGrandTotalVal: {
-    fontSize: FONTS.md,
+  slipTotalLabel: {
+    fontSize: 15,
     fontWeight: '800',
-    color: COLORS.primaryDark,
+    color: '#0F172A',
   },
-  modalPrintRow: {
+  slipTotalVal: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#059669',
+  },
+  slipInternalNotice: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    textAlign: 'center',
+    letterSpacing: 0.8,
+    marginTop: 4,
+  },
+  receiptActionButtons: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 10,
+    gap: 12,
+    marginTop: 16,
   },
-  modalPrintBtn: {
+  primaryPrintBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.md,
-    paddingVertical: 12,
-    ...SHADOWS.sm,
+    backgroundColor: '#0F382C',
+    paddingVertical: 14,
+    borderRadius: 14,
   },
-  modalPrintText: {
-    color: '#FFF',
-    fontSize: FONTS.sm,
-    fontWeight: '800',
+  primaryPrintText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
-  modalShareBtn: {
+  secondaryDoneBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.surfaceSubtle,
-    borderRadius: RADIUS.md,
-    paddingVertical: 12,
+    backgroundColor: '#ECFDF5',
+    paddingVertical: 14,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: COLORS.primary + '4D',
+    borderColor: '#A7F3D0',
   },
-  modalShareText: {
-    color: COLORS.primary,
-    fontSize: FONTS.sm,
-    fontWeight: '800',
-  },
-  modalDoneBtn: {
-    backgroundColor: COLORS.surfaceSubtle,
-    borderRadius: RADIUS.md,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  modalDoneText: {
-    color: COLORS.textPrimary,
-    fontSize: FONTS.sm,
+  secondaryDoneText: {
+    fontSize: 14,
     fontWeight: '700',
+    color: '#0F382C',
   },
 });

@@ -9,17 +9,15 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Clipboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, RADIUS, SHADOWS } from '../theme/colors';
+import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
 import {
   checkApprovalStatus,
-  requestApprovalFromCloud,
   saveCloudSettings,
-  getCloudConfig,
-  getRemainingOfflineHours
+  getRemainingOfflineHours,
 } from '../services/cloudSyncService';
-import { Clipboard } from 'react-native';
 
 export default function DeviceLockoutModal({
   visible,
@@ -30,7 +28,7 @@ export default function DeviceLockoutModal({
   deviceModel = '',
   offlineToken = null,
   onAuthorized,
-  onUnlinked
+  onUnlinked,
 }) {
   const [editingSettings, setEditingSettings] = useState(false);
   const [inputUrl, setInputUrl] = useState(serverUrl || '');
@@ -115,12 +113,12 @@ export default function DeviceLockoutModal({
   };
 
   const getStatusBadge = () => {
-    if (isPending) return { label: 'PENDING APPROVAL', color: '#D97706', bg: '#FEF3C7', icon: 'time-outline' };
-    if (isSuspended) return { label: 'TERMINAL SUSPENDED', color: '#EA580C', bg: '#FFEDD5', icon: 'pause-circle-outline' };
-    if (isBlocked) return { label: 'ACCESS BLOCKED', color: '#DC2626', bg: '#FEE2E2', icon: 'close-circle-outline' };
-    if (isUnlinked) return { label: 'DEVICE UNLINKED', color: '#475569', bg: '#F1F5F9', icon: 'unlink-outline' };
-    if (isOfflineExpired) return { label: 'OFFLINE LIMIT EXPIRED', color: '#DC2626', bg: '#FEE2E2', icon: 'cloud-offline-outline' };
-    return { label: 'RESTRICTED', color: '#DC2626', bg: '#FEE2E2', icon: 'shield-outline' };
+    if (isPending) return { label: 'PENDING APPROVAL', color: COLORS.warningText, bg: COLORS.warningBg, icon: 'time-outline' };
+    if (isSuspended) return { label: 'TERMINAL SUSPENDED', color: COLORS.warningText, bg: COLORS.warningBg, icon: 'pause-circle-outline' };
+    if (isBlocked) return { label: 'ACCESS BLOCKED', color: COLORS.dangerText, bg: COLORS.dangerBg, icon: 'close-circle-outline' };
+    if (isUnlinked) return { label: 'DEVICE UNLINKED', color: COLORS.muted, bg: COLORS.appBg, icon: 'unlink-outline' };
+    if (isOfflineExpired) return { label: 'OFFLINE LIMIT EXPIRED', color: COLORS.dangerText, bg: COLORS.dangerBg, icon: 'cloud-offline-outline' };
+    return { label: 'RESTRICTED', color: COLORS.dangerText, bg: COLORS.dangerBg, icon: 'shield-outline' };
   };
 
   const badge = getStatusBadge();
@@ -131,10 +129,10 @@ export default function DeviceLockoutModal({
         <View style={styles.card}>
           {unlockedSuccess ? (
             <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-              <View style={[styles.statusIconBox, { backgroundColor: '#DCFCE7' }]}>
-                <Ionicons name="checkmark-sharp" size={32} color="#16A34A" />
+              <View style={[styles.statusIconBox, { backgroundColor: COLORS.softGreen }]}>
+                <Ionicons name="checkmark-sharp" size={32} color={COLORS.brandGreenText} />
               </View>
-              <Text style={[styles.title, { color: '#16A34A', marginTop: 12 }]}>Terminal Authorized</Text>
+              <Text style={[styles.title, { color: COLORS.brandGreenText, marginTop: 12 }]}>Terminal Authorized</Text>
               <Text style={styles.subtitle}>Unlocking Point-of-Sale...</Text>
             </View>
           ) : (
@@ -155,7 +153,7 @@ export default function DeviceLockoutModal({
 
               <Text style={styles.subtitle}>
                 {isPending && 'This phone requested terminal access. An administrator must approve it in the BakerAdmin dashboard.'}
-                {isSuspended && (lockoutMessage || 'This terminal has been temporarily suspended. Contact your administrator or account manager.')}
+                {isSuspended && (lockoutMessage || 'This terminal has been temporarily suspended. Contact your administrator.')}
                 {isBlocked && (lockoutMessage || 'This device has been permanently blocked from operating on this shop.')}
                 {isUnlinked && 'This terminal was unlinked from its license in BakerAdmin. Local orders remain intact.'}
                 {isOfflineExpired && 'The 72-hour offline tolerance limit has elapsed. Reconnect to Wi-Fi to validate the terminal license.'}
@@ -164,7 +162,7 @@ export default function DeviceLockoutModal({
               {/* Offline Grace Timer if applicable */}
               {remainingHours > 0 && !isOfflineExpired && (
                 <View style={styles.offlineBox}>
-                  <Ionicons name="timer-outline" size={16} color="#D97706" />
+                  <Ionicons name="timer-outline" size={16} color={COLORS.warningText} />
                   <Text style={styles.offlineText}>
                     Offline tolerance active: {remainingHours} hours remaining
                   </Text>
@@ -190,7 +188,7 @@ export default function DeviceLockoutModal({
                     <Ionicons
                       name={copied ? 'checkmark' : 'copy-outline'}
                       size={14}
-                      color={copied ? '#16A34A' : COLORS.textMuted}
+                      color={copied ? COLORS.brandGreenText : COLORS.muted}
                       style={{ marginLeft: 6 }}
                     />
                   </TouchableOpacity>
@@ -206,7 +204,7 @@ export default function DeviceLockoutModal({
                     value={inputUrl}
                     onChangeText={setInputUrl}
                     placeholder="http://192.168.0.116:5000"
-                    placeholderTextColor={COLORS.textMuted}
+                    placeholderTextColor={COLORS.muted}
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
@@ -227,7 +225,7 @@ export default function DeviceLockoutModal({
                   <TouchableOpacity
                     style={[styles.btn, styles.btnPrimary]}
                     onPress={onUnlinked}
-                    activeOpacity={0.8}
+                    activeOpacity={0.88}
                   >
                     <Ionicons name="refresh" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
                     <Text style={styles.btnPrimaryText}>Re-register Terminal</Text>
@@ -237,7 +235,7 @@ export default function DeviceLockoutModal({
                     style={[styles.btn, styles.btnPrimary]}
                     onPress={handleCheckNow}
                     disabled={loading}
-                    activeOpacity={0.8}
+                    activeOpacity={0.88}
                   >
                     {loading ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
@@ -261,99 +259,96 @@ export default function DeviceLockoutModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.82)',
+    backgroundColor: 'rgba(14, 31, 23, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   card: {
     width: '100%',
-    maxWidth: 420,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
+    maxWidth: 400,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
     padding: 24,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
     alignItems: 'center',
-    ...SHADOWS.md,
+    ...SHADOWS.hero,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 5,
-    borderRadius: 6,
+    borderRadius: RADIUS.badge,
     marginBottom: 14,
   },
   statusBadgeText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontFamily: FONTS.bold,
     letterSpacing: 0.5,
   },
   statusIconBox: {
     width: 60,
     height: 60,
-    borderRadius: 8,
+    borderRadius: RADIUS.tile,
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontSize: FONTS.h2,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.ink,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 13,
-    color: '#475569',
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
     textAlign: 'center',
-    lineHeight: 19,
+    lineHeight: 18,
     marginBottom: 16,
   },
   offlineBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: COLORS.warningBg,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 6,
+    borderRadius: RADIUS.chip,
     marginBottom: 16,
     width: '100%',
   },
   offlineText: {
     fontSize: 12,
-    color: '#92400E',
-    fontWeight: '600',
+    color: COLORS.warningText,
+    fontFamily: FONTS.bold,
     flex: 1,
   },
   infoBox: {
     width: '100%',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    backgroundColor: COLORS.appBg,
+    borderRadius: RADIUS.chip,
     marginBottom: 14,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: COLORS.hairline,
   },
   infoLabel: {
     fontSize: 12,
-    color: '#64748B',
-    fontWeight: '500',
+    color: COLORS.muted,
+    fontFamily: FONTS.medium,
   },
   infoValue: {
     fontSize: 12,
-    color: '#0F172A',
-    fontWeight: '600',
+    color: COLORS.ink,
+    fontFamily: FONTS.bold,
   },
   copyBtn: {
     flexDirection: 'row',
@@ -363,7 +358,7 @@ const styles = StyleSheet.create({
   infoIdText: {
     fontSize: 11,
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    color: '#0F172A',
+    color: COLORS.ink,
     fontWeight: '700',
   },
   toggleUrlBtn: {
@@ -372,8 +367,8 @@ const styles = StyleSheet.create({
   },
   toggleUrlText: {
     fontSize: 12,
-    color: '#D97706',
-    fontWeight: '600',
+    color: COLORS.brandGreenText,
+    fontFamily: FONTS.bold,
   },
   editUrlBox: {
     width: '100%',
@@ -381,38 +376,38 @@ const styles = StyleSheet.create({
   },
   editUrlLabel: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#64748B',
+    fontFamily: FONTS.bold,
+    color: COLORS.muted,
     marginBottom: 4,
   },
   urlInput: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    borderWidth: 1.5,
+    borderColor: COLORS.inputBorder,
+    borderRadius: RADIUS.input,
+    paddingHorizontal: 12,
+    height: 46,
     fontSize: 13,
-    color: '#0F172A',
-    backgroundColor: '#FFFFFF',
+    color: COLORS.ink,
+    backgroundColor: COLORS.card,
   },
   btnRow: {
     width: '100%',
     marginTop: 4,
   },
   btn: {
-    height: 44,
-    borderRadius: 6,
+    height: 50,
+    borderRadius: RADIUS.button,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 16,
   },
   btnPrimary: {
-    backgroundColor: '#D97706',
+    backgroundColor: COLORS.brandDarkGreen,
   },
   btnPrimaryText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: FONTS.body,
+    fontFamily: FONTS.extraBold,
   },
 });

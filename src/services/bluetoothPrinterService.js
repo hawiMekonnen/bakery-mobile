@@ -304,11 +304,9 @@ export function buildEscPosBytes(order, businessName = 'Bakery', paperWidth = '5
 
   // 3. Receipt Details (Left aligned)
   addBytes(0x1B, 0x61, 0x00); // Left
-  addLine(padBetween('Receipt #:', String(order.id)));
+  addLine(padBetween('Order ID:', '#' + String(order.id)));
   addLine(padBetween('Date:', dateStr));
-  addLine(padBetween('Cashier:', order.createdBy || order.account || 'Staff'));
-  addLine(padBetween('Payment:', order.paymentMethod || 'Cash'));
-  addLine(padBetween('Security Code:', secCode));
+  addLine(padBetween('Payment Type:', order.paymentMethod || 'Cash'));
   addLine(divider);
   addLine(padBetween('ITEM', 'AMOUNT'));
   addLine(divider);
@@ -322,20 +320,15 @@ export function buildEscPosBytes(order, businessName = 'Bakery', paperWidth = '5
 
   // 5. Totals
   addLine(divider);
-  addLine(padBetween('Subtotal:', 'ETB ' + Number(order.subtotal || 0).toFixed(2)));
-  addLine(padBetween('Tax (5%):', 'ETB ' + Number(order.tax || 0).toFixed(2)));
-  addLine(doubleDivider);
+  addLine(padBetween('Subtotal:', 'ETB ' + Number(order.subtotal || order.total || 0).toFixed(2)));
   addBytes(0x1B, 0x45, 0x01); // Bold ON
-  addLine(padBetween('TOTAL:', 'ETB ' + Number(order.total || 0).toFixed(2)));
+  addLine(padBetween('TOTAL:', 'ETB ' + Number(order.total || order.subtotal || 0).toFixed(2)));
   addBytes(0x1B, 0x45, 0x00); // Bold OFF
   addLine(doubleDivider);
 
   // 6. Footer (Centered)
   addBytes(0x1B, 0x61, 0x01); // Center
-  addLine('VERIFIED AUTHENTIC SALE');
-  addLine(secCode);
-  addLine('THANK YOU FOR YOUR VISIT!');
-  addLine('PLEASE COME AGAIN');
+  addLine('For internal purpose only');
 
   // 7. Paper Feed past tear bar & Cut
   addBytes(0x0A, 0x0A, 0x0A, 0x0A);
@@ -418,9 +411,9 @@ export function generateReceiptHTML(order, businessName = 'Bakery', paperWidth =
       <div class="center bold" style="font-size: 15px;">${businessName.toUpperCase()}</div>
       <div class="center" style="font-size: 9px;">ARTISAN BAKERY & CAFE</div>
       <div class="double-divider"></div>
-      <div>Receipt #: ${order.id}</div>
+      <div>Order ID: #${order.id}</div>
       <div>Date: ${dateStr}</div>
-      <div>Payment: ${order.paymentMethod || 'Cash'}</div>
+      <div>Payment Type: ${order.paymentMethod || 'Cash'}</div>
       <div class="divider"></div>
       <table>
         <thead>
@@ -432,17 +425,11 @@ export function generateReceiptHTML(order, businessName = 'Bakery', paperWidth =
       </table>
       <div class="divider"></div>
       <table>
-        <tr><td>Subtotal:</td><td style="text-align: right;">ETB ${Number(order.subtotal || 0).toFixed(2)}</td></tr>
-        <tr><td>Tax (5%):</td><td style="text-align: right;">ETB ${Number(order.tax || 0).toFixed(2)}</td></tr>
+        <tr><td>Subtotal:</td><td style="text-align: right;">ETB ${Number(order.subtotal || order.total || 0).toFixed(2)}</td></tr>
+        <tr class="bold" style="font-size: 13px;"><td>TOTAL:</td><td style="text-align: right;">ETB ${Number(order.total || order.subtotal || 0).toFixed(2)}</td></tr>
       </table>
       <div class="double-divider"></div>
-      <table>
-        <tr class="bold" style="font-size: 13px;"><td>TOTAL:</td><td style="text-align: right;">ETB ${Number(order.total || 0).toFixed(2)}</td></tr>
-      </table>
-      <div class="double-divider"></div>
-      <div class="center" style="font-size: 9px; margin-top: 4px;">VERIFIED AUTHENTIC SALE</div>
-      <div class="center" style="font-size: 9px;">${secCode}</div>
-      <div class="center bold" style="margin-top: 4px;">THANK YOU FOR YOUR VISIT!</div>
+      <div class="center bold" style="font-size: 11px; margin-top: 6px;">For internal purpose only</div>
     </body>
     </html>
   `;

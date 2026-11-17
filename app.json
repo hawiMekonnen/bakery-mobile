@@ -12,7 +12,7 @@
     },
     "android": {
       "package": "com.skykin.bakerypos",
-      "versionCode": 9,
+      "versionCode": 29,
       "adaptiveIcon": {
         "backgroundColor": "#D97706",
         "foregroundImage": "./assets/icon.png"

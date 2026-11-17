@@ -102,36 +102,22 @@ export function generateReceiptHTML(order, businessName = 'Bakery', paperWidth =
       <body>
         <div class="center">
           <div class="title">${businessName.toUpperCase()}</div>
-          <div class="subtitle">Artisan Bakery & Cafe • Fresh Daily</div>
-          <div style="font-size: 9px; font-weight: 700; color: #555;">*** THERMAL POS SLIP ***</div>
         </div>
 
         <div class="dashed"></div>
 
         <table class="info-table">
           <tr>
-            <td><strong>Receipt #:</strong></td>
-            <td style="text-align: right;">${order.id}</td>
+            <td><strong>Order ID:</strong></td>
+            <td style="text-align: right;">#${order.id}</td>
           </tr>
           <tr>
             <td><strong>Date:</strong></td>
             <td style="text-align: right;">${dateStr}</td>
           </tr>
           <tr>
-            <td><strong>Customer:</strong></td>
-            <td style="text-align: right;">${order.customerName || 'Walk-in'}</td>
-          </tr>
-          <tr>
-            <td><strong>Payment:</strong></td>
+            <td><strong>Payment Type:</strong></td>
             <td style="text-align: right;">${order.paymentMethod || 'Cash'}</td>
-          </tr>
-          <tr>
-            <td><strong>Cashier:</strong></td>
-            <td style="text-align: right;">${order.createdBy || order.account || 'Staff'}</td>
-          </tr>
-          <tr>
-            <td><strong>Security Code:</strong></td>
-            <td style="text-align: right; font-family: monospace; font-weight: bold;">${secCode}</td>
           </tr>
         </table>
 
@@ -154,24 +140,18 @@ export function generateReceiptHTML(order, businessName = 'Bakery', paperWidth =
         <table class="total-table">
           <tr>
             <td>Subtotal:</td>
-            <td style="text-align: right;">ETB ${Number(order.subtotal || 0).toFixed(2)}</td>
-          </tr>
-          <tr>
-            <td>Tax (5%):</td>
-            <td style="text-align: right;">ETB ${Number(order.tax || 0).toFixed(2)}</td>
+            <td style="text-align: right;">ETB ${Number(order.subtotal || order.total || 0).toFixed(2)}</td>
           </tr>
           <tr class="grand-total">
             <td style="padding-top: 4px;">TOTAL:</td>
-            <td style="text-align: right; padding-top: 4px;">ETB ${Number(order.total || 0).toFixed(2)}</td>
+            <td style="text-align: right; padding-top: 4px;">ETB ${Number(order.total || order.subtotal || 0).toFixed(2)}</td>
           </tr>
         </table>
 
         <div class="double-dashed"></div>
 
-        <div class="footer">
-          Thank you for choosing ${businessName}!<br>
-          Please come again soon<br>
-          Retain slip for your records
+        <div class="footer" style="font-weight: 700; letter-spacing: 0.5px; font-size: 11px; margin-top: 8px;">
+          For internal purpose only
         </div>
 
         <div class="tear-cut" style="font-weight: bold; margin-bottom: 3px;">*** SEC-VERIFIED: ${secCode} ***</div>
@@ -191,21 +171,17 @@ export function generateReceiptText(order, businessName = 'Bakery') {
   return `
 ================================
          ${businessName.toUpperCase()}
-   Artisan Bakery & Cafe
 ================================
-Receipt:  ${order.id}
-Date:     ${dateStr}
-Customer: ${order.customerName || 'Walk-in'}
-Payment:  ${order.paymentMethod || 'Cash'}
-Security: ${secCode} (Anti-Tamper Verified)
+Order ID:     #${order.id}
+Date:         ${dateStr}
+Payment Type: ${order.paymentMethod || 'Cash'}
 --------------------------------
 ${itemsText}
 --------------------------------
-Subtotal: ETB ${Number(order.subtotal || 0).toFixed(2)}
-Tax (5%): ETB ${Number(order.tax || 0).toFixed(2)}
-TOTAL:    ETB ${Number(order.total || 0).toFixed(2)}
+Subtotal:     ETB ${Number(order.subtotal || order.total || 0).toFixed(2)}
+TOTAL:        ETB ${Number(order.total || order.subtotal || 0).toFixed(2)}
 ================================
-Thank you for your visit!
+For internal purpose only
 `.trim();
 }
 

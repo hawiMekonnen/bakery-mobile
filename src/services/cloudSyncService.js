@@ -2,7 +2,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 export const APP_VERSION = '1.0.8';
-export const DEFAULT_SERVER_URL = 'http://192.168.0.116:5000';
+
+export const getActiveHostUrl = () => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+    const host = window.location.hostname;
+    if (host && host !== 'localhost' && host !== '127.0.0.1') {
+      return `http://${host}:5000`;
+    }
+    return 'http://localhost:5000';
+  }
+  return 'http://10.128.62.1:5000';
+};
+
+export const DEFAULT_SERVER_URL = getActiveHostUrl();
 export const DEFAULT_LICENSE_KEY = '';
 
 export const STORAGE_KEYS = {
@@ -115,9 +127,22 @@ export async function getCloudConfig() {
 
     const autoSync = autoSyncVal === null ? true : autoSyncVal === 'true';
 
+    // Auto-migrate from dead or virtual adapters to the active reachable host URL
+    let activeServerUrl = savedUrl && savedUrl.trim() ? savedUrl.trim() : getActiveHostUrl();
+    const isOutdated =
+      activeServerUrl.includes('192.168.56.1') ||
+      activeServerUrl.includes('10.5.87.175') ||
+      activeServerUrl.includes('192.168.0.116') ||
+      (Platform.OS === 'web' && (activeServerUrl.includes('192.168.') || activeServerUrl.includes('10.')));
+
+    if (isOutdated) {
+      activeServerUrl = getActiveHostUrl();
+      AsyncStorage.setItem(STORAGE_KEYS.SERVER_URL, activeServerUrl).catch(() => {});
+    }
+
     return {
       deviceId,
-      serverUrl: savedUrl || DEFAULT_SERVER_URL,
+      serverUrl: activeServerUrl,
       licenseKey: savedLicense || DEFAULT_LICENSE_KEY,
       token: token || null,
       offlineToken,
@@ -281,6 +306,12 @@ export async function checkApprovalStatus(customUrl = null) {
       return { success: true, status: data.status, reason: data.reason };
     }
 
+    // If device is not registered yet on the server, auto-register now
+    if (res.ok && data.exists === false) {
+      const regRes = await requestApprovalFromCloud(url);
+      return regRes;
+    }
+
     if (res.status === 403) {
       const status = data.status || 'suspended';
       await setDeviceStatus(status, data.reason || 'Terminal access restricted');
@@ -381,7 +412,7 @@ export function connectToTerminalEventStream(onCommand) {
 }
 
 // ─── 6. BATCH ORDER SYNC (IDEMPOTENT & SCALABLE) ───────────────────
-export async function pushBatchOrders(orders = [], { pendingCount = 0, inventory = [], products = [] } = {}) {
+export async function pushBatchOrders(orders = [], { pendingCount = 0, inventory = [], products = [], stockHistory = [] } = {}) {
   try {
     const config = await getCloudConfig();
     const info = await getDeviceInfo();
@@ -399,7 +430,8 @@ export async function pushBatchOrders(orders = [], { pendingCount = 0, inventory
         orders,
         pendingCount,
         inventoryUpdates: inventory,
-        menuUpdates: products
+        menuUpdates: products,
+        stockHistoryUpdates: stockHistory
       }),
       signal: controller.signal,
     });
@@ -450,7 +482,8 @@ export async function pushCloudSync(state, customUrl = null) {
   return pushBatchOrders(pendingOrders.length > 0 ? pendingOrders : state.orders, {
     pendingCount: pendingOrders.length,
     inventory: state.inventory,
-    products: state.products
+    products: state.products,
+    stockHistory: state.stockHistory || []
   });
 }
 

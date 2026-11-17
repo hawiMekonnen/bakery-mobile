@@ -1,101 +1,213 @@
-// BakerPro Modern Artisan Theme
+// Skyservice Artisan Bakery Theme Design Tokens
+import { Platform } from 'react-native';
+
 export const COLORS = {
-  // Brand
-  primary: '#D97706',       // Warm artisan amber
-  primaryDark: '#B45309',
-  primaryLight: '#FEF3C7',   // Creamy warm glow
-  secondary: '#EA580C',     // Terracotta accent
-  secondaryLight: '#FFEDD5',
-
-  // Surfaces & Backgrounds
-  background: '#F8FAFC',    // Slate-50 clean background
-  surface: '#FFFFFF',       // Card white
-  surfaceSubtle: '#F1F5F9', // Subtle gray card
-  surfaceDark: '#0F172A',   // Slate-900
-
-  // Borders
-  border: '#E2E8F0',
-  borderLight: '#F1F5F9',
-  borderFocus: '#D97706',
-
-  // Typography
-  textPrimary: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#94A3B8',
+  // Brand Colors
+  ink: '#0E1F17',
+  mutedText: '#5E6E65',
+  brandDarkGreen: '#0B3B2A',
+  brandGreen: '#12B76A',
+  greenTextLight: '#0A7A47',
+  softGreen: '#E5F6EC',
+  appBackground: '#F2F4F0',
+  card: '#FFFFFF',
+  hairline: '#EEF2EF',
+  inputBorder: '#DDE5DF',
 
   // Status & Feedback
-  success: '#10B981',
-  successLight: '#D1FAE5',
-  danger: '#EF4444',
-  dangerLight: '#FEE2E2',
-  warning: '#F59E0B',
-  warningLight: '#FEF3C7',
-  info: '#3B82F6',
-  infoLight: '#DBEAFE',
-  purple: '#8B5CF6',
-  purpleLight: '#EDE9FE',
+  warningBg: '#FFF3DC',
+  warningText: '#8A5200',
+  dangerBg: '#FDECEC',
+  dangerText: '#B42318',
+  dangerBorder: '#F4C7C3',
 
-  // Payment colors
-  cashColor: '#10B981',
+  // Payment Colors
+  cashColor: '#12B76A',
   cardColor: '#3B82F6',
   mobileColor: '#8B5CF6',
 
-  // Aliases for compatibility
-  bg: '#F8FAFC',
+  // Compatibility Mappings
+  primary: '#0B3B2A',
+  primaryDark: '#08281D',
+  primaryLight: '#E5F6EC',
+  accent: '#12B76A',
+  secondary: '#12B76A',
+  secondaryLight: '#E5F6EC',
+  background: '#F2F4F0',
+  surface: '#FFFFFF',
+  surfaceSubtle: '#F8FAF7',
+  surfaceDark: '#0B3B2A',
+  border: '#DDE5DF',
+  borderLight: '#EEF2EF',
+  borderFocus: '#12B76A',
+  textPrimary: '#0E1F17',
+  textSecondary: '#5E6E65',
+  textMuted: '#5E6E65',
+  textDisabled: '#9AA8A0',
+  success: '#12B76A',
+  successLight: '#E5F6EC',
+  danger: '#B42318',
+  dangerLight: '#FDECEC',
+  warning: '#8A5200',
+  warningLight: '#FFF3DC',
+  info: '#3B82F6',
+  infoLight: '#EFF6FF',
+
+  // Quick aliases
+  bg: '#F2F4F0',
   bgCard: '#FFFFFF',
-  text: '#0F172A',
-  textSec: '#475569',
+  text: '#0E1F17',
+  textSec: '#5E6E65',
 };
 
 export const FONTS = {
+  fontFamily: Platform.select({
+    ios: 'System',
+    android: 'sans-serif',
+    web: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    default: 'sans-serif',
+  }),
+  fontFamilyBold: Platform.select({
+    ios: 'System',
+    android: 'sans-serif-medium',
+    web: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    default: 'sans-serif-medium',
+  }),
+
+  // Font weights mapped safely for Android, iOS, and Web
+  extraBold: Platform.select({
+    ios: 'System',
+    android: 'sans-serif-black',
+    default: 'sans-serif',
+  }),
+  bold: Platform.select({
+    ios: 'System',
+    android: 'sans-serif-medium',
+    default: 'sans-serif',
+  }),
+  semiBold: Platform.select({
+    ios: 'System',
+    android: 'sans-serif-medium',
+    default: 'sans-serif',
+  }),
+  medium: Platform.select({
+    ios: 'System',
+    android: 'sans-serif',
+    default: 'sans-serif',
+  }),
+  regular: Platform.select({
+    ios: 'System',
+    android: 'sans-serif',
+    default: 'sans-serif',
+  }),
+
+  // Font sizes
+  h1: 28,
+  h2: 22,
+  h3: 18,
+  title: 20,
+  body: 14,
+  caption: 12,
+  overline: 11,
   xs: 11,
-  sm: 13,
-  md: 15,
-  lg: 17,
+  sm: 12,
+  md: 14,
+  lg: 16,
   xl: 20,
   xxl: 24,
-  title: 28,
+  hero: 38,
 
-  regular: { fontWeight: '400' },
-  medium: { fontWeight: '500' },
-  semibold: { fontWeight: '600' },
-  bold: { fontWeight: '700' },
-  extrabold: { fontWeight: '800' },
+  // Weights & Styles
+  screenTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0E1F17',
+    letterSpacing: -0.5,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0E1F17',
+    letterSpacing: -0.3,
+  },
+  bodyNameAmount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0E1F17',
+  },
+  bodyCaption: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#5E6E65',
+  },
+  heroNumber: {
+    fontSize: 38,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -1,
+  },
 };
 
 export const RADIUS = {
-  xs: 4,
-  sm: 6,
-  md: 8,
-  lg: 8,
-  xl: 8,
-  full: 8,
+  xs: 6,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 22,
+  card: 22,
+  hero: 26,
+  input: 16,
+  chip: 12,
+  iconTile: 13,
+  sheet: 28,
+  bottomBar: 24,
+  full: 9999,
 };
 
 export const SHADOWS = {
-  sm: {
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 1 },
+  soft: {
+    shadowColor: '#0A281C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  card: {
+    shadowColor: '#0A281C',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 3,
+    shadowRadius: 10,
     elevation: 2,
   },
+  floatingBar: {
+    shadowColor: '#0A281C',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  sm: {
+    shadowColor: '#0A281C',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
   md: {
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
+    shadowColor: '#0A281C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
     elevation: 3,
   },
   lg: {
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
+    shadowColor: '#0A281C',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.09,
+    shadowRadius: 24,
     elevation: 6,
   },
 };
 
 export const SHADOW = SHADOWS;
-
 export const CURRENCY = 'ETB ';

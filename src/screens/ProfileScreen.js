@@ -10,15 +10,15 @@ import {
   Modal,
   ActivityIndicator,
   Platform,
+  Clipboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBakery } from '../store/BakeryStore';
-import { COLORS, SHADOWS } from '../theme/colors';
-import ScreenHeader from '../components/ScreenHeader';
+import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
 import EulaModal from '../components/EulaModal';
 import BluetoothPrinterModal from '../components/BluetoothPrinterModal';
+import NameYourBakeryModal from '../components/NameYourBakeryModal';
 import { getCloudConfig, getHardwareDeviceId, pushBatchOrders } from '../services/cloudSyncService';
-import { Clipboard } from 'react-native';
 import { getConnectedPrinter, printReceiptDirect } from '../services/bluetoothPrinterService';
 
 export default function ProfileScreen({ navigation }) {
@@ -34,10 +34,10 @@ export default function ProfileScreen({ navigation }) {
   const [clearInputConfirm, setClearInputConfirm] = useState('');
   const [clearPin, setClearPin] = useState('');
 
+  const [bakeryModalVisible, setBakeryModalVisible] = useState(false);
   const [btModalVisible, setBtModalVisible] = useState(false);
   const [connectedBtPrinter, setConnectedBtPrinter] = useState(null);
   const [eulaModalVisible, setEulaModalVisible] = useState(false);
-  const [legalDocType, setLegalDocType] = useState('eula'); // 'eula' | 'tax' | 'ownership'
 
   const [cloudConfig, setCloudConfig] = useState(null);
   const [hardwareId, setHardwareId] = useState('');
@@ -45,9 +45,9 @@ export default function ProfileScreen({ navigation }) {
   const [isSyncingNow, setIsSyncingNow] = useState(false);
 
   useEffect(() => {
-    getCloudConfig().then(cfg => setCloudConfig(cfg));
-    getHardwareDeviceId().then(id => setHardwareId(id));
-    getConnectedPrinter().then(p => setConnectedBtPrinter(p));
+    getCloudConfig().then((cfg) => setCloudConfig(cfg));
+    getHardwareDeviceId().then((id) => setHardwareId(id));
+    getConnectedPrinter().then((p) => setConnectedBtPrinter(p));
   }, []);
 
   const refreshCloud = async () => {
@@ -55,18 +55,16 @@ export default function ProfileScreen({ navigation }) {
     setCloudConfig(cfg);
   };
 
-  const canGoBack = navigation && typeof navigation.canGoBack === 'function' && navigation.canGoBack();
-
-  // Metrics calculation in Addis Ababa local date
+  // Metrics calculation in local time
   const ADDIS_OFFSET_MS = 3 * 3600 * 1000;
   const todayStr = new Date(Date.now() + ADDIS_OFFSET_MS).toISOString().split('T')[0];
-  const todayOrders = (orders || []).filter(o => {
+  const todayOrders = (orders || []).filter((o) => {
     if (!o.createdAt) return false;
     const d = new Date(new Date(o.createdAt).getTime() + ADDIS_OFFSET_MS).toISOString().split('T')[0];
     return d === todayStr;
   });
   const todayRevenue = todayOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-  const unsyncedOrders = (orders || []).filter(o => o.syncStatus !== 'synced');
+  const unsyncedOrders = (orders || []).filter((o) => !o.synced && o.syncStatus !== 'synced');
 
   // Manual Sync Now Action
   const handleSyncNow = async () => {
@@ -75,12 +73,12 @@ export default function ProfileScreen({ navigation }) {
       const res = await pushBatchOrders(unsyncedOrders.length > 0 ? unsyncedOrders : orders, {
         pendingCount: unsyncedOrders.length,
         inventory: inventory || [],
-        products: products || []
+        products: products || [],
       });
 
       if (res.success) {
         if (unsyncedOrders.length > 0) {
-          const syncedIds = unsyncedOrders.map(o => o.id);
+          const syncedIds = unsyncedOrders.map((o) => o.id);
           dispatch({ type: 'MARK_ORDERS_SYNCED', payload: { syncedOrderIds: syncedIds } });
         }
         await refreshCloud();
@@ -172,7 +170,7 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const handleCopyId = () => {
-    Clipboard.setString(hardwareId);
+    Clipboard.setString(hardwareId || 'DEV-WEB-POS-01');
     setCopyIdSuccess(true);
     setTimeout(() => setCopyIdSuccess(false), 2000);
   };
@@ -186,10 +184,12 @@ export default function ProfileScreen({ navigation }) {
       items: [{ name: 'Printer Alignment Test', quantity: 1, price: 0 }],
       subtotal: 0,
       tax: 0,
-      total: 0
+      total: 0,
     };
     try {
-      const res = await printReceiptDirect(testReceiptPayload, { businessName: auth.businessName || 'Bakery POS' });
+      const res = await printReceiptDirect(testReceiptPayload, {
+        businessName: auth.businessName || 'Bakery POS',
+      });
       if (!res.success) {
         Alert.alert('Printer Notice', res.message || 'Configure a Bluetooth printer first.');
       }
@@ -200,421 +200,466 @@ export default function ProfileScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* ─── Enterprise Clean Screen Header (No Emojis, No Header Logout) ─── */}
-      <ScreenHeader
-        canGoBack={canGoBack}
-        onBack={() => navigation.goBack()}
-        title="Profile"
-        subtitle="Terminal Account and Device Controls"
-      />
-
       <ScrollView
-        style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ─── 1. Account Summary Card ─── */}
-        <View style={styles.accountCard}>
-          <View style={styles.accountHeaderRow}>
-            <View style={styles.avatarBox}>
-              <Text style={styles.avatarLetter}>
+        {/* ─── Hero Header matching Reference ─── */}
+        <View style={[styles.heroContainer, auth.brandColor ? { backgroundColor: auth.brandColor } : null]}>
+          {/* Subtle concentric rings */}
+          <View style={[styles.heroRing, { width: 340, height: 340, top: -140, right: -100 }]} />
+          <View style={[styles.heroRing, { width: 220, height: 220, top: -80, right: -40 }]} />
+
+          {/* User Row */}
+          <View style={styles.heroUserRow}>
+            <View style={styles.heroAvatar}>
+              <Text style={styles.heroAvatarText}>
                 {(auth.username || 'A').charAt(0).toUpperCase()}
               </Text>
             </View>
-            <View style={styles.accountTextCol}>
-              <Text style={styles.accountName}>{auth.username || 'Administrator'}</Text>
-              <Text style={styles.accountRole}>{auth.role || 'POS Operator'}</Text>
-              <Text style={styles.accountShop}>{auth.businessName || 'SkyKin Artisan Bakery'}</Text>
+
+            <View style={{ flex: 1, marginLeft: 14 }}>
+              <Text style={styles.heroUsername}>{auth.username || 'admin'}</Text>
+              <Text style={styles.heroUserSub}>
+                {auth.role || 'Manager'} • {auth.businessName || 'Bakery'}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.heroEditBtn}
+              onPress={() => {
+                setNewUsername(auth.username || '');
+                setEditMode('username');
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.heroEditText}>Edit</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Today's 3 Metrics */}
+          <View style={styles.heroStatsRow}>
+            <View style={styles.heroStatCol}>
+              <Text style={styles.heroStatNumber}>{todayOrders.length}</Text>
+              <Text style={styles.heroStatLabel}>Orders today</Text>
+            </View>
+            <View style={styles.heroStatCol}>
+              <Text style={styles.heroStatNumber}>ETB {todayRevenue.toFixed(2)}</Text>
+              <Text style={styles.heroStatLabel}>Sales today</Text>
+            </View>
+            <View style={styles.heroStatCol}>
+              <Text style={styles.heroStatNumber}>{products.length}</Text>
+              <Text style={styles.heroStatLabel}>Products</Text>
             </View>
           </View>
         </View>
 
-        {/* ─── 2. Metric Summary Row (Bordered Card, Neutral Figures) ─── */}
-        <View style={styles.metricsCard}>
-          <View style={styles.metricCell}>
-            <Text style={styles.metricValue}>{todayOrders.length}</Text>
-            <Text style={styles.metricLabel}>Orders Today</Text>
+        {/* ─── Floating License Active Card ─── */}
+        <View style={styles.overlappingCard}>
+          <View style={styles.licenseRow}>
+            <View style={styles.licenseLeft}>
+              <View style={styles.softIconTile}>
+                <Ionicons name="shield-checkmark-outline" size={20} color={COLORS.brandGreenText} />
+              </View>
+              <View style={{ marginLeft: 12 }}>
+                <Text style={styles.licenseTitle}>License active</Text>
+              </View>
+            </View>
+            <View style={styles.activeBadge}>
+              <Text style={styles.activeBadgeText}>Active</Text>
+            </View>
           </View>
-          <View style={[styles.metricCell, styles.metricCellBorder]}>
-            <Text style={[styles.metricValue, { color: COLORS.primary }]}>
-              ETB {todayRevenue.toFixed(2)}
+
+          <View style={styles.cardDivider} />
+
+          <View style={styles.syncRow}>
+            <Text style={styles.syncTitle}>
+              Cloud sync • {unsyncedOrders.length} waiting
             </Text>
-            <Text style={styles.metricLabel}>Sales Today</Text>
-          </View>
-          <View style={styles.metricCell}>
-            <Text style={styles.metricValue}>{products.length}</Text>
-            <Text style={styles.metricLabel}>Products</Text>
+            <TouchableOpacity
+              style={styles.syncNowBtn}
+              onPress={handleSyncNow}
+              disabled={isSyncingNow}
+              activeOpacity={0.8}
+            >
+              {isSyncingNow ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.syncNowText}>Sync now</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* ─── 3. Section: Account ─── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>ACCOUNT</Text>
-          <View style={styles.listCard}>
-            <TouchableOpacity
-              style={styles.listRow}
-              onPress={() => { setNewUsername(auth.username); setEditMode('username'); }}
-              activeOpacity={0.7}
-            >
-              <View style={styles.rowIcon}>
-                <Ionicons name="person-outline" size={17} color="#475569" />
+        {/* ─── Section: BUSINESS ─── */}
+        <View style={styles.sectionWrap}>
+          <Text style={styles.sectionOverline}>BUSINESS</Text>
+          <View style={styles.groupCard}>
+            <View style={styles.cardRow}>
+              <View style={styles.softIconTile}>
+                <Ionicons name="business-outline" size={18} color={COLORS.brandGreenText} />
               </View>
-              <View style={styles.rowBody}>
-                <Text style={styles.rowTitle}>Username</Text>
-                <Text style={styles.rowSubtitle}>{auth.username}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.listRow, styles.listRowBorder]}
-              onPress={() => { setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setEditMode('password'); }}
-              activeOpacity={0.7}
-            >
-              <View style={styles.rowIcon}>
-                <Ionicons name="key-outline" size={17} color="#475569" />
-              </View>
-              <View style={styles.rowBody}>
-                <Text style={styles.rowTitle}>Change Password</Text>
-                <Text style={styles.rowSubtitle}>Account security credentials</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
-            </TouchableOpacity>
-
-            <View style={[styles.listRow, styles.listRowBorder]}>
-              <View style={styles.rowIcon}>
-                <Ionicons name="business-outline" size={17} color="#475569" />
-              </View>
-              <View style={styles.rowBody}>
-                <Text style={styles.rowTitle}>Shop Client</Text>
-                <Text style={styles.rowSubtitle}>{auth.businessName || 'SkyKin Artisan Bakery'}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* ─── 4. Section: Device & Licensing ─── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>DEVICE AND LICENSING</Text>
-          <View style={styles.listCard}>
-            <View style={styles.listRow}>
-              <View style={styles.rowIcon}>
-                <Ionicons name="hardware-chip-outline" size={17} color="#475569" />
-              </View>
-              <View style={styles.rowBody}>
-                <Text style={styles.rowTitle}>Terminal Hardware ID</Text>
-                <Text style={styles.rowSubtitleMono}>{hardwareId || 'IDENTIFYING...'}</Text>
-              </View>
-              <TouchableOpacity onPress={handleCopyId} style={styles.actionPillBtn} activeOpacity={0.7}>
-                <Ionicons name={copyIdSuccess ? 'checkmark' : 'copy-outline'} size={13} color="#475569" />
-                <Text style={styles.actionPillText}>{copyIdSuccess ? 'Copied' : 'Copy'}</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={[styles.listRow, styles.listRowBorder]}>
-              <View style={styles.rowIcon}>
-                <Ionicons name="shield-checkmark-outline" size={17} color="#475569" />
-              </View>
-              <View style={styles.rowBody}>
-                <Text style={styles.rowTitle}>License Status</Text>
-                <Text style={styles.rowSubtitle}>
-                  Key: {cloudConfig?.licenseKey || 'SKY-BAKERY-001'}
-                </Text>
-              </View>
-              <View style={styles.statusBadgeActive}>
-                <Text style={styles.statusBadgeTextActive}>ACTIVE</Text>
-              </View>
-            </View>
-
-            <View style={[styles.listRow, styles.listRowBorder]}>
-              <View style={styles.rowIcon}>
-                <Ionicons name="cloud-upload-outline" size={17} color="#475569" />
-              </View>
-              <View style={styles.rowBody}>
-                <Text style={styles.rowTitle}>Cloud Data Sync</Text>
-                <Text style={styles.rowSubtitle}>
-                  {unsyncedOrders.length > 0
-                    ? `${unsyncedOrders.length} pending orders to upload`
-                    : 'All records synced to BakerAdmin'}
-                </Text>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.rowTitle}>Bakery name</Text>
+                <Text style={styles.rowSub}>{auth.businessName || 'Bakery'}</Text>
               </View>
               <TouchableOpacity
-                onPress={handleSyncNow}
-                disabled={isSyncingNow}
-                style={[styles.btnActionPrimary, isSyncingNow && { opacity: 0.6 }]}
-                activeOpacity={0.8}
+                style={styles.smallEditBtn}
+                onPress={() => setBakeryModalVisible(true)}
               >
-                {isSyncingNow ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <>
-                    <Ionicons name="sync" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
-                    <Text style={styles.btnActionPrimaryText}>Sync Now</Text>
-                  </>
-                )}
+                <Text style={styles.smallEditText}>Edit</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={[styles.listRow, styles.listRowBorder]}>
-              <View style={styles.rowIcon}>
-                <Ionicons name="information-circle-outline" size={17} color="#475569" />
+            <View style={styles.rowDivider} />
+
+            <TouchableOpacity
+              style={styles.cardRow}
+              onPress={() => setBakeryModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.softIconTile}>
+                <Ionicons name="receipt-outline" size={18} color={COLORS.brandGreenText} />
               </View>
-              <View style={styles.rowBody}>
-                <Text style={styles.rowTitle}>Application Version</Text>
-                <Text style={styles.rowSubtitle}>v1.0.8 (BakerAdmin Enterprise POS)</Text>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.rowTitle}>Receipt details</Text>
+                <Text style={styles.rowSub}>Address, phone, branding</Text>
               </View>
-            </View>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.muted} />
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* ─── 5. Section: Receipt Printer ─── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>RECEIPT PRINTER</Text>
-          <View style={styles.listCard}>
+        {/* ─── Section: SECURITY ─── */}
+        <View style={styles.sectionWrap}>
+          <Text style={styles.sectionOverline}>SECURITY</Text>
+          <View style={styles.groupCard}>
             <TouchableOpacity
-              style={styles.listRow}
+              style={styles.cardRow}
+              onPress={() => {
+                setNewUsername(auth.username || '');
+                setEditMode('username');
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.softIconTile}>
+                <Ionicons name="person-outline" size={18} color={COLORS.brandGreenText} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.rowTitle}>Username</Text>
+                <Text style={styles.rowSub}>{auth.username || 'admin'}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.muted} />
+            </TouchableOpacity>
+
+            <View style={styles.rowDivider} />
+
+            <TouchableOpacity
+              style={styles.cardRow}
+              onPress={() => {
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+                setEditMode('password');
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.softIconTile}>
+                <Ionicons name="lock-closed-outline" size={18} color={COLORS.brandGreenText} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.rowTitle}>Change password</Text>
+                <Text style={styles.rowSub}>Account security</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.muted} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ─── Section: DEVICE ─── */}
+        <View style={styles.sectionWrap}>
+          <Text style={styles.sectionOverline}>DEVICE</Text>
+          <View style={styles.groupCard}>
+            <View style={styles.cardRow}>
+              <View style={styles.softIconTile}>
+                <Ionicons name="hardware-chip-outline" size={18} color={COLORS.brandGreenText} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.rowTitle}>Terminal hardware ID</Text>
+                <Text style={styles.rowSubMono} numberOfLines={1}>
+                  {hardwareId || 'DEV-WEB-POS-MVXRIKYQ-1DRL'}
+                </Text>
+              </View>
+              <TouchableOpacity style={styles.smallEditBtn} onPress={handleCopyId}>
+                <Text style={styles.smallEditText}>{copyIdSuccess ? 'Copied' : 'Copy'}</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.rowDivider} />
+
+            <TouchableOpacity
+              style={styles.cardRow}
               onPress={() => setBtModalVisible(true)}
               activeOpacity={0.7}
             >
-              <View style={styles.rowIcon}>
-                <Ionicons name="print-outline" size={17} color="#475569" />
+              <View style={styles.softIconTile}>
+                <Ionicons name="print-outline" size={18} color={COLORS.brandGreenText} />
               </View>
-              <View style={styles.rowBody}>
-                <Text style={styles.rowTitle}>Thermal Printer</Text>
-                <Text style={styles.rowSubtitle}>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.rowTitle}>Thermal printer</Text>
+                <Text style={styles.rowSub}>
                   {connectedBtPrinter ? connectedBtPrinter.name : 'No Bluetooth printer connected'}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+              <Ionicons name="chevron-forward" size={18} color={COLORS.muted} />
             </TouchableOpacity>
 
+            <View style={styles.rowDivider} />
+
             <TouchableOpacity
-              style={[styles.listRow, styles.listRowBorder]}
+              style={styles.cardRow}
               onPress={testPrintReceipt}
               activeOpacity={0.7}
             >
-              <View style={styles.rowIcon}>
-                <Ionicons name="document-text-outline" size={17} color="#475569" />
+              <View style={styles.softIconTile}>
+                <Ionicons name="document-text-outline" size={18} color={COLORS.brandGreenText} />
               </View>
-              <View style={styles.rowBody}>
-                <Text style={styles.rowTitle}>Print Diagnostic Receipt</Text>
-                <Text style={styles.rowSubtitle}>Send test print to check 58mm alignment</Text>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.rowTitle}>Print test receipt</Text>
+                <Text style={styles.rowSub}>Check 58mm alignment</Text>
               </View>
-              <Ionicons name="play-outline" size={16} color="#475569" />
+              <Ionicons name="chevron-forward" size={18} color={COLORS.muted} />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* ─── 6. Section: Legal & Compliance ─── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>LEGAL AND REGULATORY NOTICES</Text>
-          <View style={styles.listCard}>
+        {/* ─── Section: LEGAL ─── */}
+        <View style={styles.sectionWrap}>
+          <Text style={styles.sectionOverline}>LEGAL</Text>
+          <View style={styles.groupCard}>
             <TouchableOpacity
-              style={styles.listRow}
-              onPress={() => { setLegalDocType('eula'); setEulaModalVisible(true); }}
+              style={styles.cardRow}
+              onPress={() => setEulaModalVisible(true)}
               activeOpacity={0.7}
             >
-              <View style={styles.rowIcon}>
-                <Ionicons name="document-outline" size={17} color="#475569" />
+              <View style={styles.softIconTile}>
+                <Ionicons name="shield-outline" size={18} color={COLORS.brandGreenText} />
               </View>
-              <View style={styles.rowBody}>
-                <Text style={styles.rowTitle}>License Agreement (EULA)</Text>
-                <Text style={styles.rowSubtitle}>Internal software terms and operational rules</Text>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.rowTitle}>License agreement (EULA)</Text>
+                <Text style={styles.rowSub}>Software terms and rules</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+              <Ionicons name="chevron-forward" size={18} color={COLORS.muted} />
             </TouchableOpacity>
 
+            <View style={styles.rowDivider} />
+
             <TouchableOpacity
-              style={[styles.listRow, styles.listRowBorder]}
+              style={styles.cardRow}
               onPress={() => {
                 Alert.alert(
-                  'Tax & Regulatory Notice',
-                  'This software is an internal Point-of-Sale sales tracking tool. It is NOT a registered fiscal cash register machine (ERCA / Ministry of Revenue). Generated slips do not constitute official tax invoices.'
+                  'Non-Fiscal Disclaimer',
+                  'This software is an internal Point-of-Sale sales tracking tool. It is not a fiscal cash register machine (ERCA / Ministry of Revenue). Generated slips do not constitute official tax invoices.'
                 );
               }}
               activeOpacity={0.7}
             >
-              <View style={styles.rowIcon}>
-                <Ionicons name="alert-circle-outline" size={17} color="#475569" />
+              <View style={styles.softIconTile}>
+                <Ionicons name="information-circle-outline" size={18} color={COLORS.brandGreenText} />
               </View>
-              <View style={styles.rowBody}>
-                <Text style={styles.rowTitle}>Non-Fiscal Disclaimer</Text>
-                <Text style={styles.rowSubtitle}>Statutory and tax compliance notice</Text>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.rowTitle}>Non-fiscal disclaimer</Text>
+                <Text style={styles.rowSub}>Tax compliance notice</Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+              <Ionicons name="chevron-forward" size={18} color={COLORS.muted} />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* ─── 7. Danger Zone ─── */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionHeader, { color: '#DC2626' }]}>DANGER ZONE</Text>
-          <View style={[styles.listCard, styles.dangerCard]}>
-            <View style={styles.listRow}>
-              <View style={styles.rowIcon}>
-                <Ionicons name="trash-outline" size={17} color="#DC2626" />
+        {/* ─── Section: DANGER ZONE ─── */}
+        <View style={styles.sectionWrap}>
+          <Text style={[styles.sectionOverline, { color: COLORS.dangerText }]}>DANGER ZONE</Text>
+          <View style={styles.dangerGroupCard}>
+            <TouchableOpacity
+              style={styles.cardRow}
+              onPress={handleClearRecords}
+              activeOpacity={0.7}
+            >
+              <View style={styles.dangerIconTile}>
+                <Ionicons name="trash-outline" size={18} color={COLORS.dangerText} />
               </View>
-              <View style={styles.rowBody}>
-                <Text style={[styles.rowTitle, { color: '#DC2626' }]}>Clear Local Sales Records</Text>
-                <Text style={styles.rowSubtitle}>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.rowTitle, { color: COLORS.dangerText }]}>
+                  Clear local sales records
+                </Text>
+                <Text style={styles.rowSub}>
                   {unsyncedOrders.length > 0
                     ? 'Blocked: upload unsynced orders first'
-                    : 'Requires manager PIN and typed confirmation'}
+                    : 'Reset sales database'}
                 </Text>
               </View>
-              <TouchableOpacity
-                onPress={handleClearRecords}
-                style={[styles.btnOutlineDanger, unsyncedOrders.length > 0 && { opacity: 0.5 }]}
-                disabled={unsyncedOrders.length > 0}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.btnOutlineDangerText}>Clear</Text>
-              </TouchableOpacity>
-            </View>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.dangerText} />
+            </TouchableOpacity>
 
-            <View style={[styles.listRow, styles.listRowBorder]}>
-              <View style={styles.rowIcon}>
-                <Ionicons name="log-out-outline" size={17} color="#475569" />
+            <View style={styles.rowDivider} />
+
+            <TouchableOpacity
+              style={styles.cardRow}
+              onPress={handleSignOut}
+              activeOpacity={0.7}
+            >
+              <View style={styles.dangerIconTile}>
+                <Ionicons name="log-out-outline" size={18} color={COLORS.dangerText} />
               </View>
-              <View style={styles.rowBody}>
-                <Text style={styles.rowTitle}>Sign Out</Text>
-                <Text style={styles.rowSubtitle}>End session on this terminal</Text>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.rowTitle, { color: COLORS.dangerText }]}>Sign out</Text>
+                <Text style={styles.rowSub}>End session on this terminal</Text>
               </View>
-              <TouchableOpacity
-                onPress={handleSignOut}
-                style={styles.btnOutlineSecondary}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.btnOutlineSecondaryText}>Sign Out</Text>
-              </TouchableOpacity>
-            </View>
+              <Ionicons name="chevron-forward" size={18} color={COLORS.dangerText} />
+            </TouchableOpacity>
           </View>
         </View>
 
-        <View style={{ height: 40 }} />
+        {/* Bottom space so Danger Zone is never covered by floating tab bar */}
+        <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* ─── Edit Username Modal ─── */}
+      {/* Edit Username Modal */}
       <Modal visible={editMode === 'username'} transparent animationType="fade">
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalDialog}>
-            <Text style={styles.modalTitle}>Update Username</Text>
-            <Text style={styles.modalDesc}>Change the operator username for this device.</Text>
+        <View style={styles.modalOverlay}>
+          <View style={styles.dialogCard}>
+            <Text style={styles.dialogTitle}>Update Username</Text>
+            <Text style={styles.dialogDesc}>Change operator username for this device.</Text>
             <TextInput
-              style={styles.formInput}
+              style={styles.dialogInput}
               value={newUsername}
               onChangeText={setNewUsername}
               placeholder="Enter new username"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={COLORS.muted}
               autoCapitalize="none"
             />
-            <View style={styles.modalActionRow}>
-              <TouchableOpacity style={styles.btnModalSecondary} onPress={() => setEditMode(null)}>
-                <Text style={styles.btnModalSecondaryText}>Cancel</Text>
+            <View style={styles.dialogActions}>
+              <TouchableOpacity style={styles.dialogCancelBtn} onPress={() => setEditMode(null)}>
+                <Text style={styles.dialogCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.btnModalPrimary} onPress={handleSaveUsername}>
-                <Text style={styles.btnModalPrimaryText}>Save</Text>
+              <TouchableOpacity style={styles.dialogConfirmBtn} onPress={handleSaveUsername}>
+                <Text style={styles.dialogConfirmText}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* ─── Edit Password Modal ─── */}
+      {/* Edit Password Modal */}
       <Modal visible={editMode === 'password'} transparent animationType="fade">
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalDialog}>
-            <Text style={styles.modalTitle}>Change Password</Text>
-            <Text style={styles.modalDesc}>Verify current password and set a new password.</Text>
+        <View style={styles.modalOverlay}>
+          <View style={styles.dialogCard}>
+            <Text style={styles.dialogTitle}>Change Password</Text>
+            <Text style={styles.dialogDesc}>Enter current password and set a new password.</Text>
             <TextInput
-              style={styles.formInput}
+              style={styles.dialogInput}
               value={currentPassword}
               onChangeText={setCurrentPassword}
               placeholder="Current password"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={COLORS.muted}
               secureTextEntry
             />
             <TextInput
-              style={[styles.formInput, { marginTop: 10 }]}
+              style={[styles.dialogInput, { marginTop: 10 }]}
               value={newPassword}
               onChangeText={setNewPassword}
-              placeholder="New password (minimum 4 characters)"
-              placeholderTextColor="#94A3B8"
+              placeholder="New password (min 4 chars)"
+              placeholderTextColor={COLORS.muted}
               secureTextEntry
             />
             <TextInput
-              style={[styles.formInput, { marginTop: 10 }]}
+              style={[styles.dialogInput, { marginTop: 10 }]}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               placeholder="Confirm new password"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={COLORS.muted}
               secureTextEntry
             />
-            <View style={styles.modalActionRow}>
-              <TouchableOpacity style={styles.btnModalSecondary} onPress={() => setEditMode(null)}>
-                <Text style={styles.btnModalSecondaryText}>Cancel</Text>
+            <View style={styles.dialogActions}>
+              <TouchableOpacity style={styles.dialogCancelBtn} onPress={() => setEditMode(null)}>
+                <Text style={styles.dialogCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.btnModalPrimary} onPress={handleSavePassword}>
-                <Text style={styles.btnModalPrimaryText}>Update</Text>
+              <TouchableOpacity style={styles.dialogConfirmBtn} onPress={handleSavePassword}>
+                <Text style={styles.dialogConfirmText}>Update</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* ─── Danger Confirmation Modal ─── */}
+      {/* Clear Records Confirmation Modal */}
       <Modal visible={editMode === 'clear'} transparent animationType="fade">
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalDialog}>
-            <Text style={[styles.modalTitle, { color: '#DC2626' }]}>Clear Local Sales Records</Text>
-            <Text style={styles.modalDesc}>
-              This will wipe past order history from this terminal. To authorize, enter the manager PIN or current password and type CLEAR below.
+        <View style={styles.modalOverlay}>
+          <View style={styles.dialogCard}>
+            <Text style={[styles.dialogTitle, { color: COLORS.dangerText }]}>
+              Clear Local Sales Records
+            </Text>
+            <Text style={styles.dialogDesc}>
+              Enter manager PIN or password and type CLEAR to confirm wiping local sales orders.
             </Text>
             <TextInput
-              style={styles.formInput}
+              style={styles.dialogInput}
               value={clearPin}
               onChangeText={setClearPin}
               placeholder="Manager PIN or password"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={COLORS.muted}
               secureTextEntry
             />
             <TextInput
-              style={[styles.formInput, { marginTop: 10 }]}
+              style={[styles.dialogInput, { marginTop: 10 }]}
               value={clearInputConfirm}
               onChangeText={setClearInputConfirm}
               placeholder="Type CLEAR to verify"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={COLORS.muted}
               autoCapitalize="characters"
             />
-            <View style={styles.modalActionRow}>
-              <TouchableOpacity style={styles.btnModalSecondary} onPress={() => setEditMode(null)}>
-                <Text style={styles.btnModalSecondaryText}>Cancel</Text>
+            <View style={styles.dialogActions}>
+              <TouchableOpacity style={styles.dialogCancelBtn} onPress={() => setEditMode(null)}>
+                <Text style={styles.dialogCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.btnModalPrimary, { backgroundColor: '#DC2626' }]}
+                style={[styles.dialogConfirmBtn, { backgroundColor: COLORS.dangerText }]}
                 onPress={handleConfirmClearRecords}
               >
-                <Text style={styles.btnModalPrimaryText}>Authorize Wipe</Text>
+                <Text style={styles.dialogConfirmText}>Authorize Wipe</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
+
+      {/* Name Your Bakery Modal */}
+      <NameYourBakeryModal
+        visible={bakeryModalVisible}
+        initialName={auth.businessName || 'Bakery'}
+        initialColor={auth.brandColor || '#0F382C'}
+        onClose={() => setBakeryModalVisible(false)}
+        onSave={(finalName, finalColor) => {
+          dispatch({
+            type: 'UPDATE_BRANDING',
+            payload: { businessName: finalName, brandColor: finalColor },
+          });
+          setBakeryModalVisible(false);
+          Alert.alert('Branding Updated', `Bakery name saved as "${finalName}".`);
+        }}
+      />
 
       {/* Bluetooth Printer Modal */}
       <BluetoothPrinterModal
         visible={btModalVisible}
         onClose={() => {
           setBtModalVisible(false);
-          getConnectedPrinter().then(p => setConnectedBtPrinter(p));
+          getConnectedPrinter().then((p) => setConnectedBtPrinter(p));
         }}
       />
 
-      {/* Plain text EULA agreement modal */}
-      <EulaModal
-        visible={eulaModalVisible}
-        onClose={() => setEulaModalVisible(false)}
-      />
+      {/* EULA Modal */}
+      <EulaModal visible={eulaModalVisible} onClose={() => setEulaModalVisible(false)} />
     </View>
   );
 }
@@ -622,281 +667,314 @@ export default function ProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  scroll: {
-    flex: 1,
+    backgroundColor: COLORS.appBg,
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingBottom: 20,
   },
-  accountCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 16,
-    marginBottom: 12,
-  },
-  accountHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  avatarLetter: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  accountTextCol: {
-    flex: 1,
-  },
-  accountName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  accountRole: {
-    fontSize: 13,
-    color: '#64748B',
-    marginTop: 1,
-  },
-  accountShop: {
-    fontSize: 12,
-    color: '#D97706',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  metricsCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    paddingVertical: 14,
-    marginBottom: 16,
-  },
-  metricCell: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  metricCellBorder: {
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: '#F1F5F9',
-  },
-  metricValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  metricLabel: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 3,
-    fontWeight: '500',
-  },
-  section: {
-    marginBottom: 16,
-  },
-  sectionHeader: {
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    color: '#64748B',
-    marginBottom: 6,
-    paddingHorizontal: 2,
-  },
-  listCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+  heroContainer: {
+    backgroundColor: COLORS.brandDarkGreen,
+    paddingTop: Platform.OS === 'ios' ? 56 : 28,
+    paddingBottom: 36,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: RADIUS.hero,
+    borderBottomRightRadius: RADIUS.hero,
     overflow: 'hidden',
   },
-  dangerCard: {
-    borderColor: '#FCA5A5',
+  heroRing: {
+    position: 'absolute',
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: 'rgba(18, 183, 106, 0.15)',
   },
-  listRow: {
+  heroUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  heroAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: RADIUS.tile,
+    backgroundColor: COLORS.brandGreen,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontFamily: FONTS.extraBold,
+  },
+  heroUsername: {
+    fontSize: FONTS.h2,
+    fontFamily: FONTS.extraBold,
+    color: '#FFFFFF',
+  },
+  heroUserSub: {
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.medium,
+    color: 'rgba(255, 255, 255, 0.75)',
+    marginTop: 2,
+  },
+  heroEditBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: RADIUS.chip,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  heroEditText: {
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
+  },
+  heroStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingTop: 8,
+  },
+  heroStatCol: {
+    alignItems: 'flex-start',
+  },
+  heroStatNumber: {
+    fontSize: 20,
+    fontFamily: FONTS.extraBold,
+    color: '#FFFFFF',
+  },
+  heroStatLabel: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginTop: 2,
+  },
+  overlappingCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
+    marginHorizontal: 16,
+    marginTop: -22,
+    padding: 16,
+    ...SHADOWS.card,
+  },
+  licenseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  licenseLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  licenseTitle: {
+    fontSize: FONTS.body,
+    fontFamily: FONTS.bold,
+    color: COLORS.ink,
+  },
+  licenseSub: {
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
+    marginTop: 2,
+  },
+  activeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: RADIUS.badge,
+    backgroundColor: COLORS.softGreen,
+  },
+  activeBadgeText: {
+    fontSize: 11,
+    fontFamily: FONTS.bold,
+    color: COLORS.brandGreenText,
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: COLORS.hairline,
+    marginVertical: 12,
+  },
+  syncRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  syncTitle: {
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.bold,
+    color: COLORS.ink,
+  },
+  syncNowBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: RADIUS.chip,
+    backgroundColor: COLORS.brandDarkGreen,
+  },
+  syncNowText: {
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
+  },
+  sectionWrap: {
+    marginTop: 20,
+    paddingHorizontal: 16,
+  },
+  sectionOverline: {
+    fontSize: FONTS.overline,
+    fontFamily: FONTS.extraBold,
+    letterSpacing: 0.8,
+    color: COLORS.muted,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  groupCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
+    ...SHADOWS.card,
+  },
+  dangerGroupCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
+    borderWidth: 1.5,
+    borderColor: COLORS.dangerBorder,
+    ...SHADOWS.card,
+  },
+  cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    minHeight: 52,
+    paddingVertical: 13,
   },
-  listRowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+  rowDivider: {
+    height: 1,
+    backgroundColor: COLORS.hairline,
+    marginLeft: 66,
   },
-  rowIcon: {
-    width: 28,
-    height: 28,
-    justifyContent: 'center',
+  softIconTile: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.tile,
+    backgroundColor: COLORS.softGreen,
     alignItems: 'center',
-    marginRight: 10,
+    justifyContent: 'center',
   },
-  rowBody: {
-    flex: 1,
+  dangerIconTile: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.tile,
+    backgroundColor: COLORS.dangerBg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rowTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0F172A',
+    fontSize: FONTS.body,
+    fontFamily: FONTS.bold,
+    color: COLORS.ink,
   },
-  rowSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 1,
+  rowSub: {
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
+    marginTop: 2,
   },
-  rowSubtitleMono: {
+  rowSubMono: {
     fontSize: 11,
-    color: '#0F172A',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    fontWeight: '600',
-    marginTop: 1,
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
+    marginTop: 2,
   },
-  actionPillBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    gap: 4,
-  },
-  actionPillText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#475569',
-  },
-  statusBadgeActive: {
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  statusBadgeTextActive: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#16A34A',
-    letterSpacing: 0.5,
-  },
-  btnActionPrimary: {
-    backgroundColor: '#D97706',
-    flexDirection: 'row',
-    alignItems: 'center',
+  smallEditBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
+    borderRadius: RADIUS.chip,
+    backgroundColor: COLORS.appBg,
   },
-  btnActionPrimaryText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+  smallEditText: {
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.bold,
+    color: COLORS.brandDarkGreen,
   },
-  btnOutlineDanger: {
+  signOutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEE2E2',
+    borderRadius: RADIUS.card,
+    paddingVertical: 14,
     borderWidth: 1,
-    borderColor: '#DC2626',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderColor: '#FECACA',
+    ...SHADOWS.card,
   },
-  btnOutlineDangerText: {
-    fontSize: 12,
-    fontWeight: '600',
+  signOutText: {
+    fontSize: 14,
+    fontFamily: FONTS.bold,
     color: '#DC2626',
   },
-  btnOutlineSecondary: {
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  btnOutlineSecondaryText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#475569',
-  },
-  modalBackdrop: {
+  // Dialogs
+  modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    backgroundColor: 'rgba(14, 31, 23, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
-  modalDialog: {
+  dialogCard: {
     width: '100%',
-    maxWidth: 400,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    maxWidth: 380,
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
+    padding: 22,
+    ...SHADOWS.hero,
   },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
+  dialogTitle: {
+    fontSize: FONTS.h2,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.ink,
     marginBottom: 4,
   },
-  modalDesc: {
-    fontSize: 13,
-    color: '#64748B',
+  dialogDesc: {
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
+    marginBottom: 16,
     lineHeight: 18,
-    marginBottom: 14,
   },
-  formInput: {
+  dialogInput: {
+    height: 50,
+    borderRadius: RADIUS.input,
+    backgroundColor: COLORS.appBg,
+    paddingHorizontal: 14,
+    fontSize: FONTS.body,
+    fontFamily: FONTS.medium,
+    color: COLORS.ink,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#0F172A',
-    backgroundColor: '#FFFFFF',
+    borderColor: COLORS.inputBorder,
   },
-  modalActionRow: {
+  dialogActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
     gap: 10,
     marginTop: 18,
   },
-  btnModalSecondary: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
+  dialogCancelBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: RADIUS.chip,
+    backgroundColor: COLORS.appBg,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  btnModalSecondaryText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#475569',
+  dialogCancelText: {
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.bold,
+    color: COLORS.ink,
   },
-  btnModalPrimary: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: '#D97706',
+  dialogConfirmBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: RADIUS.chip,
+    backgroundColor: COLORS.brandDarkGreen,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  btnModalPrimaryText: {
-    fontSize: 13,
-    fontWeight: '600',
+  dialogConfirmText: {
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.bold,
     color: '#FFFFFF',
   },
 });

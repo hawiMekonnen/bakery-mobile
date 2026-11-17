@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, RADIUS, SHADOWS } from '../theme/colors';
+import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
 
 export const EULA_STORAGE_KEY = '@skykin_eula_accepted_v1';
 
@@ -71,12 +71,12 @@ export default function EulaModal({
           {/* Header */}
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.title}>License Agreement & Terms of Service</Text>
-              <Text style={styles.subtitle}>Please review the agreement to continue</Text>
+              <Text style={styles.title}>License Agreement & Terms</Text>
+              <Text style={styles.subtitle}>Please review the operational terms</Text>
             </View>
             {!isFirstTimeSetup && (
               <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                <Ionicons name="close" size={20} color={COLORS.textSecondary} />
+                <Ionicons name="close" size={20} color={COLORS.ink} />
               </TouchableOpacity>
             )}
           </View>
@@ -90,7 +90,7 @@ export default function EulaModal({
 
             <Text style={styles.sectionHeading}>1. Grant of License</Text>
             <Text style={styles.plainText}>
-              SkyKin Technologies PLC grants you a non-exclusive, non-transferable, revocable license to use this internal Point-of-Sale and Inventory Management Application solely for your internal business operations on authorized devices.
+              Skyservice Bakery POS grants you a non-exclusive, non-transferable, revocable license to use this internal Point-of-Sale and Inventory Management Application solely for your internal business operations on authorized devices.
             </Text>
 
             <Text style={styles.sectionHeading}>2. Intellectual Property & Restrictions</Text>
@@ -119,39 +119,41 @@ export default function EulaModal({
             </Text>
           </ScrollView>
 
-          {/* Footer with Checkbox & Button */}
+          {/* Footer Checkbox & Accept Button */}
           <View style={styles.footer}>
-            <TouchableOpacity
-              style={styles.checkboxRow}
-              onPress={() => setAgreed(!agreed)}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.checkbox, agreed && styles.checkboxActive]}>
-                {agreed && <Ionicons name="checkmark" size={15} color="#FFF" />}
-              </View>
-              <Text style={styles.checkboxLabel}>
-                I accept the License Agreement and Terms of Service.
-              </Text>
-            </TouchableOpacity>
-
-            <View style={styles.actionRow}>
-              {!isFirstTimeSetup && (
-                <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-                  <Text style={styles.cancelBtnText}>Close</Text>
-                </TouchableOpacity>
-              )}
-
+            {isFirstTimeSetup && (
               <TouchableOpacity
-                style={[styles.acceptBtn, (!agreed && isFirstTimeSetup) && styles.acceptBtnDisabled]}
-                onPress={handleConfirmAccept}
-                disabled={!agreed && isFirstTimeSetup}
-                activeOpacity={0.85}
+                style={styles.checkboxRow}
+                onPress={() => setAgreed(!agreed)}
+                activeOpacity={0.8}
               >
-                <Text style={styles.acceptBtnText}>
-                  {isFirstTimeSetup ? 'Accept & Continue to POS' : 'Confirm'}
+                <View style={[styles.checkbox, agreed && styles.checkboxActive]}>
+                  {agreed && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+                </View>
+                <Text style={styles.checkboxLabel}>
+                  I confirm that I have read and agree to all software license terms and notices.
                 </Text>
               </TouchableOpacity>
-            </View>
+            )}
+
+            {isFirstTimeSetup ? (
+              <TouchableOpacity
+                style={[styles.acceptBtn, !agreed && { opacity: 0.5 }]}
+                onPress={handleConfirmAccept}
+                disabled={!agreed}
+                activeOpacity={0.88}
+              >
+                <Text style={styles.acceptBtnText}>Accept & Continue</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.acceptBtn}
+                onPress={onClose}
+                activeOpacity={0.88}
+              >
+                <Text style={styles.acceptBtnText}>Understood</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
@@ -162,70 +164,74 @@ export default function EulaModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: 'rgba(14, 31, 23, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 18,
+    padding: 20,
   },
   modalBox: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
     width: '100%',
-    maxWidth: 480,
-    maxHeight: '85%',
+    maxWidth: 440,
+    maxHeight: '80%',
+    backgroundColor: COLORS.card,
+    borderRadius: RADIUS.card,
     padding: 22,
-    ...SHADOWS.lg,
+    ...SHADOWS.hero,
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    marginBottom: 12,
+    borderBottomColor: COLORS.hairline,
   },
   title: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
+    fontSize: FONTS.h3,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.ink,
   },
   subtitle: {
-    fontSize: 12,
-    color: COLORS.textMuted,
+    fontSize: FONTS.caption,
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
     marginTop: 2,
   },
   closeBtn: {
-    padding: 6,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.appBg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   body: {
-    marginVertical: 10,
-    maxHeight: 340,
-    paddingRight: 6,
+    paddingVertical: 14,
   },
   noticeHeading: {
     fontSize: 13,
-    fontWeight: '800',
-    color: '#B45309',
+    fontFamily: FONTS.extraBold,
+    color: COLORS.warningText,
     marginBottom: 4,
   },
   sectionHeading: {
     fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginTop: 14,
+    fontFamily: FONTS.extraBold,
+    color: COLORS.ink,
+    marginTop: 12,
     marginBottom: 4,
   },
   plainText: {
-    fontSize: 12.5,
-    color: COLORS.textSecondary,
-    lineHeight: 19,
+    fontSize: 12,
+    fontFamily: FONTS.medium,
+    color: COLORS.muted,
+    lineHeight: 18,
+    marginBottom: 6,
   },
   footer: {
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    marginTop: 10,
+    borderTopColor: COLORS.hairline,
   },
   checkboxRow: {
     flexDirection: 'row',
@@ -235,56 +241,35 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 22,
     height: 22,
-    borderRadius: 5,
-    borderWidth: 2,
-    borderColor: COLORS.borderDark || '#CBD5E1',
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: COLORS.inputBorder,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.appBg,
   },
   checkboxActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    backgroundColor: COLORS.brandGreen,
+    borderColor: COLORS.brandGreen,
   },
   checkboxLabel: {
-    fontSize: 13,
-    color: COLORS.textPrimary,
-    fontWeight: '600',
     flex: 1,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-  },
-  cancelBtn: {
-    paddingVertical: 11,
-    paddingHorizontal: 18,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.background,
-  },
-  cancelBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    color: COLORS.ink,
+    lineHeight: 16,
   },
   acceptBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
+    height: 50,
+    borderRadius: RADIUS.button,
+    backgroundColor: COLORS.brandDarkGreen,
     justifyContent: 'center',
-    ...SHADOWS.sm,
-  },
-  acceptBtnDisabled: {
-    backgroundColor: '#CBD5E1',
+    alignItems: 'center',
   },
   acceptBtnText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#FFF',
+    fontSize: FONTS.body,
+    fontFamily: FONTS.extraBold,
+    color: '#FFFFFF',
   },
 });

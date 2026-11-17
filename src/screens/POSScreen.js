@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,12 @@ import {
   Modal,
   FlatList,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useBakery } from '../store/BakeryStore';
 import { COLORS, FONTS, RADIUS, SHADOWS } from '../theme/colors';
-import ScreenHeader from '../components/ScreenHeader';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BluetoothPrinterModal from '../components/BluetoothPrinterModal';
 import { isBluetoothConnected, printToBluetoothPrinter, getPrinterPaperWidth } from '../services/bluetoothPrinterService';
 import { pushSyncData } from '../services/syncService';
@@ -27,34 +28,60 @@ const PAYMENT_METHODS = [
   { id: 'Mobile', label: 'Mobile', icon: 'phone-portrait-outline' },
 ];
 
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const formatReceiptDateTime = (dateStr) => {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return String(dateStr);
+    const month = MONTHS_SHORT[d.getMonth()] || '';
+    const day = d.getDate();
+    const year = d.getFullYear();
+    let h = d.getHours();
+    const m = d.getMinutes();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    h = h ? h : 12;
+    const formattedM = m < 10 ? `0${m}` : m;
+    return `${month} ${day}, ${year}, ${h}:${formattedM} ${ampm}`;
+  } catch {
+    return String(dateStr);
+  }
+};
+
 export default function POSScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
+  const cartBottomPosition = Math.max(insets.bottom, 12) + 78;
+
   const { state, dispatch } = useBakery();
-  const { products, auth } = state;
+  const { products = [], auth = {} } = state;
 
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState([]);
-  const [cartModalVisible, setCartModalVisible] = useState(false);
+  const [checkoutSheetVisible, setCheckoutSheetVisible] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [amountReceived, setAmountReceived] = useState('');
   const [customerName, setCustomerName] = useState('');
-  const [notes, setNotes] = useState('');
   const [receiptModalVisible, setReceiptModalVisible] = useState(false);
   const [lastCompletedOrder, setLastCompletedOrder] = useState(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [btModalVisible, setBtModalVisible] = useState(false);
 
-  const filteredProducts = products.filter(p => {
-    const matchesCat = selectedCategory === 'All' || p.category === selectedCategory;
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCat && matchesSearch;
-  });
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      const matchesCat = selectedCategory === 'All' || p.category === selectedCategory;
+      const matchesSearch = (p.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCat && matchesSearch;
+    });
+  }, [products, selectedCategory, searchQuery]);
 
   const doAddToCart = (product) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
+    setCart((prev) => {
+      const existing = prev.find((item) => item.id === product.id);
       if (existing) {
-        return prev.map(item =>
+        return prev.map((item) =>
           item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
@@ -69,10 +96,10 @@ export default function POSScreen({ navigation }) {
     if (remaining <= 0) {
       Alert.alert(
         'Item Sold Out',
-        `${product.name} is marked as Sold Out (0 remaining). Prepare more in the Daily Items Sold tracker, or add anyway?`,
+        `${product.name} is marked as Sold Out (0 remaining). Prepare more in Daily Items Sold tracker, or add anyway?`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Add Anyway', onPress: () => doAddToCart(product) }
+          { text: 'Add Anyway', onPress: () => doAddToCart(product) },
         ]
       );
       return;
@@ -81,52 +108,55 @@ export default function POSScreen({ navigation }) {
   };
 
   const changeQuantityBy = (id, delta) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.id === id);
+    setCart((prev) => {
+      const existing = prev.find((item) => item.id === id);
       if (!existing) return prev;
       const nextQty = existing.quantity + delta;
       if (nextQty <= 0) {
-        return prev.filter(item => item.id !== id);
+        return prev.filter((item) => item.id !== id);
       }
-      return prev.map(item =>
+      return prev.map((item) =>
         item.id === id ? { ...item, quantity: nextQty } : item
       );
     });
   };
 
-  const setDirectQuantity = (id, text) => {
-    const clean = text.replace(/[^0-9]/g, '');
-    const qty = clean === '' ? 0 : parseInt(clean, 10);
-    setCart(prev => {
-      const existing = prev.find(item => item.id === id);
-      if (!existing) return prev;
-      return prev.map(item =>
-        item.id === id ? { ...item, quantity: qty } : item
-      );
-    });
-  };
-
-  const handleBlurQuantity = (id, qty) => {
-    if (!qty || qty <= 0) {
-      setCart(prev => prev.filter(item => item.id !== id));
-    }
-  };
-
   const clearCart = () => {
     setCart([]);
     setCustomerName('');
-    setNotes('');
     setPaymentMethod('Cash');
     setAmountReceived('');
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const tax = subtotal * 0.05;
-  const total = subtotal + tax;
-  const totalItemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const subtotal = useMemo(() => {
+    return cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0);
+  }, [cart]);
+
+  const tax = 0;
+  const total = subtotal;
+  const totalItemsCount = useMemo(() => {
+    return cart.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+  }, [cart]);
+
   const parsedReceived = parseFloat(amountReceived);
   const effectiveReceived = isNaN(parsedReceived) ? total : parsedReceived;
   const changeDue = Math.max(0, effectiveReceived - total);
+
+  // Quick cash tender presets: Exact, next 10, next 50, 100
+  const cashPresets = useMemo(() => {
+    const t = total;
+    if (t <= 0) return [40, 50, 100];
+    const exactCeil = Math.ceil(t);
+    const p1 = Math.ceil(t / 10) * 10;
+    const p2 = Math.ceil(t / 50) * 50;
+    const p3 = Math.ceil(t / 100) * 100;
+    const set = new Set([
+      p1 > exactCeil ? p1 : exactCeil + 5,
+      p2 > exactCeil ? p2 : exactCeil + 10,
+      p3 > exactCeil ? p3 : exactCeil + 50,
+    ]);
+    return Array.from(set).slice(0, 3);
+  }, [total]);
 
   const handleCheckout = () => {
     if (cart.length === 0) {
@@ -140,29 +170,27 @@ export default function POSScreen({ navigation }) {
       createdAt: new Date().toISOString(),
       customerName: customerName.trim() || 'Walk-in Customer',
       paymentMethod,
-      notes: notes.trim(),
       status: 'Completed',
       subtotal: parseFloat(subtotal.toFixed(2)),
       tax: parseFloat(tax.toFixed(2)),
       total: parseFloat(total.toFixed(2)),
       amountReceived: parseFloat(effectiveReceived.toFixed(2)),
       changeDue: parseFloat(changeDue.toFixed(2)),
-      items: cart.map(item => ({
+      items: cart.map((item) => ({
         id: item.id,
         name: item.name,
         price: item.price,
         quantity: item.quantity,
-        emoji: item.emoji || '',
       })),
     };
 
     dispatch({ type: 'ADD_ORDER', payload: newOrder });
 
-    // Auto-sync order to server in background
+    // Auto-sync in background
     pushSyncData({ ...state, orders: [newOrder, ...(state.orders || [])] }).catch(() => {});
 
     setLastCompletedOrder(newOrder);
-    setCartModalVisible(false);
+    setCheckoutSheetVisible(false);
     clearCart();
     setReceiptModalVisible(true);
   };
@@ -172,11 +200,15 @@ export default function POSScreen({ navigation }) {
     setIsPrinting(true);
     try {
       const paperWidth = await getPrinterPaperWidth();
-      const result = await printToBluetoothPrinter(lastCompletedOrder, auth.businessName || 'Bakery', paperWidth);
+      const result = await printToBluetoothPrinter(
+        lastCompletedOrder,
+        auth.businessName || 'Bakery',
+        paperWidth
+      );
       if (result.success) {
         Alert.alert(
           'Receipt Printed',
-          `Receipt #${lastCompletedOrder.id} printed directly to ${result.printerName || 'Bluetooth thermal printer'}.`
+          `Receipt #${lastCompletedOrder.id} printed to ${result.printerName || 'Bluetooth printer'}.`
         );
       } else {
         setBtModalVisible(true);
@@ -197,59 +229,83 @@ export default function POSScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* ─── Interactive Screen Header ─── */}
-      <ScreenHeader
-        canGoBack
-        onBack={() => navigation.goBack()}
-        icon="cart-outline"
-        title="Point of Sale"
-        subtitle={`${products.length} products • Quick register`}
-        rightAction={
-          <TouchableOpacity
-            style={[styles.headerCartBtn, cart.length > 0 && styles.headerCartBtnActive]}
-            onPress={() => setCartModalVisible(true)}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="cart" size={17} color={cart.length > 0 ? '#FFF' : COLORS.textPrimary} />
-            <Text style={[styles.headerCartText, cart.length > 0 && { color: '#FFF' }]}>
-              {totalItemsCount} | ETB {total.toFixed(0)}
-            </Text>
-          </TouchableOpacity>
-        }
-      />
+      {/* ─── Top Header (New sale · Walk-in customer) ─── */}
+      <View style={styles.topHeader}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="chevron-back" size={20} color="#0F172A" />
+        </TouchableOpacity>
 
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={18} color={COLORS.textMuted} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search menu items..."
-          placeholderTextColor={COLORS.textMuted}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={18} color={COLORS.textMuted} />
+        <View style={styles.headerTitleWrap}>
+          <Text style={styles.headerTitle}>New sale</Text>
+          <TouchableOpacity
+            style={styles.customerPickerBtn}
+            onPress={() => setCheckoutSheetVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="person-outline" size={12} color="#059669" style={{ marginRight: 4 }} />
+            <Text style={styles.customerPickerText}>
+              {customerName.trim() ? customerName : 'Walk-in customer'}
+            </Text>
+            <Ionicons name="chevron-down" size={12} color="#059669" style={{ marginLeft: 2 }} />
           </TouchableOpacity>
-        )}
+        </View>
+
+        <TouchableOpacity
+          style={styles.headerReceiptBtn}
+          onPress={() => setCheckoutSheetVisible(true)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="receipt-outline" size={18} color="#0F172A" />
+          {totalItemsCount > 0 && (
+            <View style={styles.headerBadge}>
+              <Text style={styles.headerBadgeText}>{totalItemsCount}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
       </View>
 
-      {/* Category Pills */}
-      <View style={styles.categoryWrapper}>
+      {/* ─── Search Bar & Layout Button ─── */}
+      <View style={styles.searchRow}>
+        <View style={styles.searchBox}>
+          <Ionicons name="search-outline" size={18} color="#94A3B8" style={{ marginRight: 8 }} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search menu"
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={16} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <TouchableOpacity style={styles.gridBtn} activeOpacity={0.8}>
+          <Ionicons name="apps-outline" size={18} color="#0F382C" />
+        </TouchableOpacity>
+      </View>
+
+      {/* ─── Category Chips ─── */}
+      <View style={styles.categoriesContainer}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryContent}
+          contentContainerStyle={styles.categoriesList}
         >
-          {CATEGORIES.map(cat => {
+          {CATEGORIES.map((cat) => {
             const isActive = selectedCategory === cat;
             return (
               <TouchableOpacity
                 key={cat}
-                style={[styles.categoryPill, isActive && styles.categoryPillActive]}
+                style={[styles.categoryChip, isActive && styles.categoryChipActive]}
                 onPress={() => setSelectedCategory(cat)}
-                activeOpacity={0.7}
+                activeOpacity={0.75}
               >
                 <Text style={[styles.categoryText, isActive && styles.categoryTextActive]}>
                   {cat}
@@ -260,346 +316,466 @@ export default function POSScreen({ navigation }) {
         </ScrollView>
       </View>
 
-      {/* Products Grid */}
+      {/* ─── Subheader: MENU · Tap + to add to cart ─── */}
+      <View style={styles.menuSubheaderRow}>
+        <Text style={styles.menuOverline}>MENU</Text>
+        <Text style={styles.menuHint}>Tap + to add to cart</Text>
+      </View>
+
+      {/* ─── 2-Column Product Grid matching reference ─── */}
       <FlatList
         data={filteredProducts}
-        keyExtractor={item => String(item.id)}
+        keyExtractor={(item) => String(item.id)}
         numColumns={2}
-        columnWrapperStyle={styles.columnWrapper}
-        contentContainerStyle={styles.listContent}
+        columnWrapperStyle={styles.productRow}
+        contentContainerStyle={styles.productListContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 60, paddingHorizontal: 20 }}>
-            <Ionicons name="fast-food-outline" size={48} color={COLORS.textMuted} />
-            <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.textPrimary, marginTop: 12, marginBottom: 4 }}>No Menu Items Found</Text>
-            <Text style={{ fontSize: 13, color: COLORS.textMuted, textAlign: 'center', lineHeight: 18 }}>
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="fast-food-outline" size={36} color="#94A3B8" />
+            </View>
+            <Text style={styles.emptyTitle}>No menu items found</Text>
+            <Text style={styles.emptySubtitle}>
               {products.length === 0
-                ? "Your catalog is empty. Add menu items in BakerAdmin or under the Products tab to start selling."
-                : "No products match your search query."}
+                ? 'Your catalog is empty. Add products in Bakery Menu to start selling.'
+                : 'No items match your search filter.'}
             </Text>
           </View>
         }
         renderItem={({ item }) => {
-          const inCart = cart.find(c => c.id === item.id);
+          const inCart = cart.find((c) => c.id === item.id);
           const inCartQty = inCart ? inCart.quantity : 0;
+          const isSavory = item.category === 'Savory';
+          const topTileBg = isSavory ? '#ECFDF5' : '#FEF3C7';
+          const tagColor = isSavory ? '#10B981' : '#D97706';
 
           return (
-            <TouchableOpacity
-              style={[styles.productCard, inCartQty > 0 && styles.productCardActive]}
-              onPress={() => addToCart(item)}
-              activeOpacity={0.75}
-            >
-              <View style={styles.productTop}>
-                <View style={styles.emojiCircle}>
-                  <Ionicons name="pricetag-outline" size={20} color={COLORS.primary} />
-                </View>
-                {inCartQty > 0 && (
-                  <View style={styles.inCartPill}>
-                    <Text style={styles.inCartPillText}>{inCartQty}</Text>
+            <View style={[styles.productCard, inCartQty > 0 && styles.productCardActive]}>
+              {/* Top Half: Tinted Container with Category & In Cart Badge & Tag Icon */}
+              <View style={[styles.cardTopHalf, { backgroundColor: topTileBg }]}>
+                <View style={styles.topBadgeRow}>
+                  <View style={styles.catBadgePill}>
+                    <Text style={styles.catBadgePillText}>{item.category || 'Menu'}</Text>
                   </View>
-                )}
-              </View>
 
-              <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2, marginBottom: 4 }}>
-                <Text style={styles.productCategory}>{item.category}</Text>
-                {(() => {
-                  const pPrep = typeof item.preparedCount === 'number' ? item.preparedCount : 30;
-                  const pSold = Number(item.soldCount) || 0;
-                  const pRem = Math.max(0, pPrep - pSold);
-                  if (pRem === 0) {
-                    return (
-                      <View style={{ backgroundColor: '#FEE2E2', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-                        <Text style={{ fontSize: 9, fontWeight: '800', color: '#DC2626' }}>Sold Out</Text>
-                      </View>
-                    );
-                  }
-                  if (pRem <= 5) {
-                    return (
-                      <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-                        <Text style={{ fontSize: 9, fontWeight: '800', color: '#D97706' }}>{pRem} left</Text>
-                      </View>
-                    );
-                  }
-                  return (
-                    <View style={{ backgroundColor: '#DCFCE7', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}>
-                      <Text style={{ fontSize: 9, fontWeight: '800', color: '#16A34A' }}>{pRem} left</Text>
+                  {inCartQty > 0 && (
+                    <View style={styles.inCartPill}>
+                      <Ionicons name="checkmark" size={11} color="#FFFFFF" style={{ marginRight: 2 }} />
+                      <Text style={styles.inCartPillText}>In cart</Text>
                     </View>
-                  );
-                })()}
+                  )}
+                </View>
+
+                {/* Big Tag Icon */}
+                <View style={styles.centerIconWrap}>
+                  <Ionicons name="pricetag-outline" size={28} color={tagColor} />
+                </View>
               </View>
 
-              <View style={styles.productBottomRow}>
-                <Text style={styles.productPrice}>ETB {Number(item.price).toFixed(2)}</Text>
-                {inCartQty > 0 ? (
-                  <View style={styles.cardStepper}>
+              {/* Bottom Half: Name & Price & Stepper */}
+              <View style={styles.cardBottomHalf}>
+                <Text style={styles.productName} numberOfLines={2}>
+                  {item.name}
+                </Text>
+
+                <View style={styles.productBottomRow}>
+                  <Text style={styles.productPrice}>
+                    ETB {Number(item.price).toFixed(2)}
+                  </Text>
+
+                  {inCartQty > 0 ? (
+                    <View style={styles.inlineStepper}>
+                      <TouchableOpacity
+                        style={styles.stepperSubBtn}
+                        onPress={() => changeQuantityBy(item.id, -1)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="remove" size={13} color="#475569" />
+                      </TouchableOpacity>
+                      <Text style={styles.stepperQtyText}>{inCartQty}</Text>
+                      <TouchableOpacity
+                        style={styles.stepperAddBtn}
+                        onPress={() => changeQuantityBy(item.id, 1)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="add" size={13} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
                     <TouchableOpacity
-                      style={styles.cardStepBtn}
-                      onPress={(e) => {
-                        e.stopPropagation?.();
-                        changeQuantityBy(item.id, -1);
-                      }}
-                      activeOpacity={0.7}
+                      style={styles.addMiniSquareBtn}
+                      onPress={() => addToCart(item)}
+                      activeOpacity={0.75}
                     >
-                      <Ionicons name="remove" size={12} color={COLORS.textPrimary} />
+                      <Ionicons name="add" size={17} color="#10B981" />
                     </TouchableOpacity>
-                    <TextInput
-                      style={styles.cardStepInput}
-                      value={String(inCartQty)}
-                      keyboardType="number-pad"
-                      selectTextOnFocus
-                      onChangeText={(txt) => setDirectQuantity(item.id, txt)}
-                      onBlur={() => handleBlurQuantity(item.id, inCartQty)}
-                    />
-                    <TouchableOpacity
-                      style={styles.cardStepBtn}
-                      onPress={(e) => {
-                        e.stopPropagation?.();
-                        changeQuantityBy(item.id, 1);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Ionicons name="add" size={12} color={COLORS.textPrimary} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View style={styles.addIconCircle}>
-                    <Ionicons name="add" size={16} color="#FFF" />
-                  </View>
-                )}
+                  )}
+                </View>
               </View>
-            </TouchableOpacity>
+            </View>
           );
         }}
       />
 
-      {/* Bottom Cart Floating Bar if items are added */}
+      {/* ─── Bottom Floating Sticky Cart Bar ─── */}
       {cart.length > 0 && (
-        <View style={styles.floatingCartBar}>
-          <View>
-            <Text style={styles.floatingCartCount}>{totalItemsCount} items selected</Text>
-            <Text style={styles.floatingCartTotal}>ETB {total.toFixed(2)} total</Text>
+        <View style={[styles.floatingCartBar, { bottom: cartBottomPosition }]}>
+          <View style={styles.floatingCartLeft}>
+            <View style={styles.cartIconCircle}>
+              <Ionicons name="cart-outline" size={20} color="#10B981" />
+              {totalItemsCount > 0 && (
+                <View style={styles.cartIconBadge}>
+                  <Text style={styles.cartIconBadgeText}>{totalItemsCount}</Text>
+                </View>
+              )}
+            </View>
+
+            <View style={{ marginLeft: 10 }}>
+              <Text style={styles.cartTotalTaxLabel}>Total</Text>
+              <Text style={styles.cartTotalAmount}>ETB {total.toFixed(2)}</Text>
+            </View>
           </View>
+
           <TouchableOpacity
-            style={styles.floatingCheckoutBtn}
-            onPress={() => setCartModalVisible(true)}
-            activeOpacity={0.85}
+            style={[styles.checkoutBtn, auth.brandColor ? { backgroundColor: auth.brandColor } : null]}
+            onPress={() => setCheckoutSheetVisible(true)}
+            activeOpacity={0.88}
           >
-            <Text style={styles.floatingCheckoutText}>Review & Pay →</Text>
+            <Text style={styles.checkoutBtnText}>Checkout</Text>
+            <Ionicons name="chevron-forward" size={15} color="#FFFFFF" style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         </View>
       )}
 
-      {/* Cart & Checkout Modal */}
+      {/* ─── Checkout and Cart Bottom Sheet Modal ─── */}
       <Modal
-        visible={cartModalVisible}
+        visible={checkoutSheetVisible}
         transparent
         animationType="slide"
-        onRequestClose={() => setCartModalVisible(false)}
+        onRequestClose={() => setCheckoutSheetVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.cartModalCard}>
-            <View style={styles.modalHeader}>
+          <View style={styles.sheetContainer}>
+            {/* Sheet Handle */}
+            <View style={styles.sheetHandle} />
+
+            {/* Header */}
+            <View style={styles.sheetHeaderRow}>
               <View>
-                <Text style={styles.modalTitle}>Current Register Cart</Text>
-                <Text style={styles.modalSubtitle}>{totalItemsCount} items ready for sale</Text>
+                <Text style={styles.sheetMainTitle}>Checkout and cart</Text>
+                <Text style={styles.sheetMainSubtitle}>
+                  {totalItemsCount} {totalItemsCount === 1 ? 'item' : 'items'} ready for billing
+                </Text>
               </View>
-              <TouchableOpacity onPress={() => setCartModalVisible(false)} style={styles.modalCloseBtn}>
-                <Ionicons name="close" size={20} color={COLORS.textPrimary} />
+              <TouchableOpacity
+                onPress={() => setCheckoutSheetVisible(false)}
+                style={styles.sheetCloseSquareBtn}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close" size={18} color="#0F172A" />
               </TouchableOpacity>
             </View>
 
             {cart.length === 0 ? (
-              <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-                <Ionicons name="cart-outline" size={44} color={COLORS.textMuted} style={{ marginBottom: 8 }} />
-                <Text style={{ fontSize: FONTS.md, fontWeight: '700', color: COLORS.textPrimary }}>Cart is empty</Text>
-                <Text style={{ fontSize: FONTS.xs, color: COLORS.textMuted, marginTop: 4 }}>Tap any product card to add to order</Text>
+              <View style={styles.emptySheetWrap}>
+                <Ionicons name="cart-outline" size={44} color="#94A3B8" />
+                <Text style={styles.emptySheetTitle}>Your cart is empty</Text>
+                <Text style={styles.emptySheetText}>Tap items on menu to add</Text>
               </View>
             ) : (
-              <ScrollView style={{ maxHeight: 280 }}>
-                {cart.map(item => (
-                  <View key={item.id} style={styles.cartItemRow}>
-                    <View style={{ width: 32, height: 32, borderRadius: 6, backgroundColor: COLORS.primaryLight, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}><Ionicons name="fast-food-outline" size={16} color={COLORS.primary} /></View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cartItemName}>{item.name}</Text>
-                      <Text style={styles.cartItemPrice}>ETB {Number(item.price).toFixed(2)} each</Text>
-                    </View>
-                    <View style={styles.qtyControl}>
-                      <TouchableOpacity onPress={() => changeQuantityBy(item.id, -1)} style={styles.qtyBtn}>
-                        <Ionicons name="remove" size={14} color={COLORS.textPrimary} />
-                      </TouchableOpacity>
-                      <TextInput
-                        style={styles.qtyInput}
-                        value={String(item.quantity)}
-                        keyboardType="number-pad"
-                        selectTextOnFocus
-                        onChangeText={(txt) => setDirectQuantity(item.id, txt)}
-                        onBlur={() => handleBlurQuantity(item.id, item.quantity)}
-                      />
-                      <TouchableOpacity onPress={() => changeQuantityBy(item.id, 1)} style={styles.qtyBtn}>
-                        <Ionicons name="add" size={14} color={COLORS.textPrimary} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))}
-              </ScrollView>
-            )}
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 480 }}>
+                {/* Cart Items List */}
+                <View style={{ gap: 8, marginBottom: 14 }}>
+                  {cart.map((item) => (
+                    <View key={item.id} style={styles.cartRowCard}>
+                      <View style={styles.cartRowIconBox}>
+                        <Ionicons name="pricetag-outline" size={16} color="#10B981" />
+                      </View>
+                      <View style={{ flex: 1, marginLeft: 10 }}>
+                        <Text style={styles.cartRowItemName} numberOfLines={1}>
+                          {item.name}
+                        </Text>
+                        <Text style={styles.cartRowItemPrice}>
+                          ETB {Number(item.price).toFixed(2)} each
+                        </Text>
+                      </View>
 
-            {cart.length > 0 && (
-              <View style={styles.checkoutForm}>
-                <Text style={styles.formLabel}>PAYMENT METHOD</Text>
-                <View style={styles.paymentMethodRow}>
-                  {PAYMENT_METHODS.map(m => (
-                    <TouchableOpacity
-                      key={m.id}
-                      style={[styles.payMethodBtn, paymentMethod === m.id && styles.payMethodBtnActive]}
-                      onPress={() => setPaymentMethod(m.id)}
-                    >
-                      <Ionicons name={m.icon} size={15} color={paymentMethod === m.id ? '#FFF' : COLORS.textPrimary} style={{ marginRight: 6 }} />
-                      <Text style={[styles.payMethodText, paymentMethod === m.id && { color: '#FFF' }]}>{m.label}</Text>
-                    </TouchableOpacity>
+                      {/* Stepper */}
+                      <View style={styles.cartRowStepper}>
+                        <TouchableOpacity
+                          style={styles.cartStepSub}
+                          onPress={() => changeQuantityBy(item.id, -1)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="remove" size={14} color="#475569" />
+                        </TouchableOpacity>
+                        <Text style={styles.cartStepQty}>{item.quantity}</Text>
+                        <TouchableOpacity
+                          style={styles.cartStepAdd}
+                          onPress={() => changeQuantityBy(item.id, 1)}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="add" size={14} color="#FFFFFF" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                   ))}
                 </View>
 
+                {/* Customer Name (Optional) */}
+                <Text style={styles.formSectionLabel}>Customer name (optional)</Text>
                 <TextInput
-                  style={styles.customerInput}
-                  placeholder="Customer Name (optional)"
-                  placeholderTextColor={COLORS.textMuted}
+                  style={styles.formInputBox}
+                  placeholder="e.g. Walk-in Customer"
+                  placeholderTextColor="#94A3B8"
                   value={customerName}
                   onChangeText={setCustomerName}
                 />
 
+                {/* Payment Method Selector */}
+                <Text style={[styles.formSectionLabel, { marginTop: 14 }]}>Payment method</Text>
+                <View style={styles.paymentMethodRow}>
+                  {PAYMENT_METHODS.map((m) => {
+                    const isSelected = paymentMethod === m.id;
+                    return (
+                      <TouchableOpacity
+                        key={m.id}
+                        style={[
+                          styles.paymentMethodBtn,
+                          isSelected && styles.paymentMethodBtnActive,
+                        ]}
+                        onPress={() => setPaymentMethod(m.id)}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons
+                          name={m.icon}
+                          size={16}
+                          color={isSelected ? '#059669' : '#475569'}
+                          style={{ marginRight: 6 }}
+                        />
+                        <Text
+                          style={[
+                            styles.paymentMethodText,
+                            isSelected && styles.paymentMethodTextActive,
+                          ]}
+                        >
+                          {m.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Cash Received Container (if Cash is selected) */}
                 {paymentMethod === 'Cash' && (
-                  <View style={{ marginBottom: 12 }}>
-                    <Text style={styles.formLabel}>AMOUNT RECEIVED (ETB)</Text>
-                    <View style={{ flexDirection: 'row', gap: 6, marginBottom: 8 }}>
-                      <TextInput
-                        style={[styles.customerInput, { flex: 1, marginBottom: 0, fontWeight: '700' }]}
-                        placeholder={`e.g. ${total.toFixed(0)}`}
-                        placeholderTextColor={COLORS.textMuted}
-                        keyboardType="decimal-pad"
-                        value={amountReceived}
-                        onChangeText={setAmountReceived}
-                      />
+                  <View style={styles.cashTenderContainer}>
+                    <Text style={styles.cashTenderLabel}>Cash received (ETB)</Text>
+                    <TextInput
+                      style={styles.cashTenderInput}
+                      placeholder={total.toFixed(0)}
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="decimal-pad"
+                      value={amountReceived}
+                      onChangeText={setAmountReceived}
+                    />
+
+                    {/* Quick Preset Tender Chips */}
+                    <View style={styles.cashPresetsRow}>
                       <TouchableOpacity
-                        style={styles.quickAmountBtn}
-                        onPress={() => setAmountReceived(total.toFixed(0))}
-                        activeOpacity={0.8}
+                        style={[
+                          styles.presetChip,
+                          amountReceived === total.toFixed(2) && styles.presetChipActive,
+                        ]}
+                        onPress={() => setAmountReceived(total.toFixed(2))}
+                        activeOpacity={0.75}
                       >
-                        <Text style={styles.quickAmountText}>Exact</Text>
+                        <Text
+                          style={[
+                            styles.presetChipText,
+                            amountReceived === total.toFixed(2) && styles.presetChipTextActive,
+                          ]}
+                        >
+                          Exact
+                        </Text>
                       </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.quickAmountBtn}
-                        onPress={() => {
-                          const base = parseFloat(amountReceived) || total;
-                          setAmountReceived(String(Math.ceil(base / 100) * 100 || 100));
-                        }}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={styles.quickAmountText}>Round</Text>
-                      </TouchableOpacity>
+
+                      {cashPresets.map((val) => {
+                        const valStr = String(val);
+                        const isPresetActive = amountReceived === valStr;
+                        return (
+                          <TouchableOpacity
+                            key={val}
+                            style={[
+                              styles.presetChip,
+                              isPresetActive && styles.presetChipActive,
+                            ]}
+                            onPress={() => setAmountReceived(valStr)}
+                            activeOpacity={0.75}
+                          >
+                            <Text
+                              style={[
+                                styles.presetChipText,
+                                isPresetActive && styles.presetChipTextActive,
+                              ]}
+                            >
+                              ETB {val}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
 
-                    <View style={styles.changeDueRow}>
-                      <Text style={styles.changeDueLabel}>Change Due</Text>
-                      <Text style={[styles.changeDueVal, { color: effectiveReceived >= total ? COLORS.success : '#EF4444' }]}>
+                    {/* Change Due Green Banner */}
+                    <View style={styles.changeDueBanner}>
+                      <Text style={styles.changeDueBannerLabel}>Change due</Text>
+                      <Text style={styles.changeDueBannerAmount}>
                         ETB {changeDue.toFixed(2)}
                       </Text>
                     </View>
                   </View>
                 )}
 
-                <View style={styles.cartSummaryRow}>
-                  <Text style={styles.cartSummaryLabel}>Subtotal</Text>
-                  <Text style={styles.cartSummaryVal}>ETB {subtotal.toFixed(2)}</Text>
-                </View>
-                <View style={styles.cartSummaryRow}>
-                  <Text style={styles.cartSummaryLabel}>Tax (5%)</Text>
-                  <Text style={styles.cartSummaryVal}>ETB {tax.toFixed(2)}</Text>
-                </View>
-                <View style={[styles.cartSummaryRow, { marginTop: 4 }]}>
-                  <Text style={styles.cartGrandTotalLabel}>TOTAL DUE</Text>
-                  <Text style={styles.cartGrandTotalVal}>ETB {total.toFixed(2)}</Text>
+                {/* Order Cost Summary Card */}
+                <View style={styles.summaryCard}>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryTotalLabel}>Total due</Text>
+                    <Text style={styles.summaryTotalVal}>ETB {total.toFixed(2)}</Text>
+                  </View>
                 </View>
 
+                {/* Complete Sale Button */}
                 <TouchableOpacity
-                  style={styles.completeOrderBtn}
+                  style={styles.completeSalePrimaryBtn}
                   onPress={handleCheckout}
-                  activeOpacity={0.85}
+                  activeOpacity={0.88}
                 >
-                  <Ionicons name="checkmark-circle" size={18} color="#FFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.completeOrderText}>Complete Sale (ETB {total.toFixed(2)})</Text>
+                  <Ionicons name="checkmark" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.completeSalePrimaryText}>
+                    Complete sale · ETB {total.toFixed(2)}
+                  </Text>
                 </TouchableOpacity>
-              </View>
+              </ScrollView>
             )}
           </View>
         </View>
       </Modal>
 
-      {/* Sale Complete Receipt & Printing Modal */}
+      {/* ─── Receipt Modal ─── */}
       {lastCompletedOrder && (
         <Modal
           visible={receiptModalVisible}
           transparent
-          animationType="fade"
+          animationType="slide"
           onRequestClose={() => setReceiptModalVisible(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.receiptSuccessCard}>
-              <View style={styles.successIconCircle}>
-                <Ionicons name="checkmark" size={32} color="#FFF" />
-              </View>
-              <Text style={styles.successTitle}>Payment Completed</Text>
-              <Text style={styles.successSub}>Order {lastCompletedOrder.id} successfully recorded</Text>
-              <Text style={styles.successAmount}>ETB {Number(lastCompletedOrder.total).toFixed(2)}</Text>
-              <Text style={styles.successMethod}>Paid via {lastCompletedOrder.paymentMethod}</Text>
+            <View style={styles.receiptSheetContainer}>
+              <View style={styles.sheetHandle} />
 
-              {/* Receipt Print & Share Actions */}
-              <View style={styles.printActionRow}>
+              <View style={styles.receiptSheetHeader}>
+                <View>
+                  <Text style={styles.receiptSheetTitle}>Receipt #{lastCompletedOrder.id}</Text>
+                  <Text style={styles.receiptSheetSub}>
+                    {new Date(lastCompletedOrder.createdAt).toLocaleString()}
+                  </Text>
+                </View>
                 <TouchableOpacity
-                  style={styles.printBtn}
+                  onPress={() => setReceiptModalVisible(false)}
+                  style={styles.sheetCloseSquareBtn}
+                >
+                  <Ionicons name="close" size={18} color="#0F172A" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={{ maxHeight: 300 }} showsVerticalScrollIndicator={false}>
+                <View style={styles.receiptSlipCard}>
+                  {/* 1. Bakery Name at the top */}
+                  <Text style={styles.slipBrand}>
+                    {(auth.businessName || 'BAKERY').toUpperCase()}
+                  </Text>
+                  <View style={styles.slipDivider} />
+
+                  {/* 2. Order ID, Date, Payment Type */}
+                  <View style={styles.slipMetaRow}>
+                    <Text style={styles.slipMetaLabel}>Order ID:</Text>
+                    <Text style={styles.slipMetaVal}>#{lastCompletedOrder.id}</Text>
+                  </View>
+                  <View style={styles.slipMetaRow}>
+                    <Text style={styles.slipMetaLabel}>Date:</Text>
+                    <Text style={styles.slipMetaVal}>{formatReceiptDateTime(lastCompletedOrder.createdAt)}</Text>
+                  </View>
+                  <View style={styles.slipMetaRow}>
+                    <Text style={styles.slipMetaLabel}>Payment Type:</Text>
+                    <Text style={styles.slipMetaVal}>{lastCompletedOrder.paymentMethod || 'Cash'}</Text>
+                  </View>
+
+                  <View style={styles.slipDivider} />
+
+                  {/* 3. Items and their price */}
+                  {(lastCompletedOrder.items || []).map((it, idx) => (
+                    <View key={idx} style={styles.slipItemRow}>
+                      <Text style={styles.slipItemName}>
+                        {it.quantity}x {it.name}
+                      </Text>
+                      <Text style={styles.slipItemPrice}>
+                        ETB {(Number(it.price) * Number(it.quantity)).toFixed(2)}
+                      </Text>
+                    </View>
+                  ))}
+
+                  <View style={styles.slipDivider} />
+
+                  {/* 4. Subtotal amount and Total */}
+                  <View style={styles.slipMetaRow}>
+                    <Text style={styles.slipMetaLabel}>Subtotal</Text>
+                    <Text style={styles.slipMetaVal}>ETB {Number(lastCompletedOrder.subtotal || lastCompletedOrder.total || 0).toFixed(2)}</Text>
+                  </View>
+                  <View style={[styles.slipMetaRow, { marginTop: 4 }]}>
+                    <Text style={styles.slipTotalLabel}>TOTAL</Text>
+                    <Text style={styles.slipTotalVal}>ETB {Number(lastCompletedOrder.total || lastCompletedOrder.subtotal || 0).toFixed(2)}</Text>
+                  </View>
+
+                  <View style={styles.slipDivider} />
+
+                  {/* 5. For internal purpose only */}
+                  <Text style={styles.slipInternalNotice}>For internal purpose only</Text>
+                </View>
+              </ScrollView>
+
+              {/* Action Buttons */}
+              <View style={styles.receiptActionButtons}>
+                <TouchableOpacity
+                  style={styles.primaryPrintBtn}
                   onPress={handlePrint}
                   disabled={isPrinting}
-                  activeOpacity={0.8}
+                  activeOpacity={0.88}
                 >
-                  <Ionicons name="print" size={18} color="#FFF" style={{ marginRight: 6 }} />
-                  <Text style={styles.printBtnText}>
+                  <Ionicons name="print-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+                  <Text style={styles.primaryPrintText}>
                     {isPrinting ? 'Printing...' : 'Print Receipt'}
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.shareBtn}
-                  onPress={handleShare}
-                  disabled={isPrinting}
-                  activeOpacity={0.8}
+                  style={styles.secondaryDoneBtn}
+                  onPress={() => setReceiptModalVisible(false)}
+                  activeOpacity={0.88}
                 >
-                  <Ionicons name="share-social-outline" size={18} color={COLORS.primary} style={{ marginRight: 6 }} />
-                  <Text style={styles.shareBtnText}>Share PDF</Text>
+                  <Ionicons name="checkmark-outline" size={18} color="#0F382C" style={{ marginRight: 6 }} />
+                  <Text style={styles.secondaryDoneText}>Done</Text>
                 </TouchableOpacity>
               </View>
-
-              <TouchableOpacity
-                style={styles.doneBtn}
-                onPress={() => setReceiptModalVisible(false)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.doneBtnText}>New Order</Text>
-              </TouchableOpacity>
             </View>
           </View>
         </Modal>
       )}
-          <BluetoothPrinterModal
+
+      {/* Bluetooth Printer Modal */}
+      <BluetoothPrinterModal
         visible={btModalVisible}
         onClose={() => setBtModalVisible(false)}
-        orderToPrint={lastCompletedOrder}
-        businessName={auth.businessName || 'Bakery'}
-        onFallbackSystemPrint={async () => {
-          if (lastCompletedOrder) {
-            await printReceipt(lastCompletedOrder, auth.businessName || 'Bakery');
-          }
-        }}
+        onPrintOrder={lastCompletedOrder}
       />
     </View>
   );
@@ -608,528 +784,821 @@ export default function POSScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#F3F4F6',
   },
-  headerCartBtn: {
+
+  /* ─── Top Header ─── */
+  topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surfaceSubtle,
-    borderRadius: RADIUS.full,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  headerCartBtnActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  headerCartText: {
-    fontSize: FONTS.xs,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    marginLeft: 4,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    height: 42,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.sm,
-  },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: FONTS.sm,
-    color: COLORS.textPrimary,
-  },
-  categoryWrapper: {
-    marginBottom: 8,
-  },
-  categoryContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  categoryPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: RADIUS.full,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  categoryPillActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  categoryText: {
-    fontSize: FONTS.xs,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-  },
-  categoryTextActive: {
-    color: '#FFF',
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 120,
-    gap: 12,
-  },
-  columnWrapper: {
-    gap: 12,
-  },
-  productCard: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.sm,
-  },
-  productCardActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: '#FFFDF9',
-  },
-  productTop: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 52 : 36,
+    paddingBottom: 14,
+    backgroundColor: '#F3F4F6',
   },
-  emojiCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.surfaceSubtle,
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.card,
+  },
+  headerTitleWrap: {
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontFamily: FONTS.extraBold,
+    color: '#0F172A',
+    letterSpacing: -0.4,
+  },
+  customerPickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  customerPickerText: {
+    fontSize: 12,
+    fontFamily: FONTS.bold,
+    color: '#059669',
+  },
+  headerReceiptBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    position: 'relative',
+    ...SHADOWS.card,
+  },
+  headerBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#10B981',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  productEmoji: {
-    fontSize: 26,
+  headerBadgeText: {
+    fontSize: 10,
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
+  },
+
+  /* ─── Search and Layout Button Row ─── */
+  searchRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 10,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  searchBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    height: 44,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.card,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: FONTS.medium,
+    color: '#0F172A',
+  },
+  gridBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.card,
+  },
+
+  /* ─── Category Chips ─── */
+  categoriesContainer: {
+    marginBottom: 10,
+  },
+  categoriesList: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  categoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.card,
+  },
+  categoryChipActive: {
+    backgroundColor: '#0F382C',
+    borderColor: '#0F382C',
+  },
+  categoryText: {
+    fontSize: 12,
+    fontFamily: FONTS.bold,
+    color: '#0F172A',
+  },
+  categoryTextActive: {
+    color: '#FFFFFF',
+  },
+
+  /* ─── Subheader ─── */
+  menuSubheaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+    marginBottom: 8,
+  },
+  menuOverline: {
+    fontSize: 11,
+    fontFamily: FONTS.extraBold,
+    letterSpacing: 0.8,
+    color: '#64748B',
+  },
+  menuHint: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    color: '#64748B',
+  },
+
+  /* ─── Product 2-Column Grid ─── */
+  productListContent: {
+    paddingHorizontal: 12,
+    paddingBottom: 220,
+  },
+  productRow: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+    marginBottom: 12,
+  },
+  productCard: {
+    width: '48.5%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.card,
+  },
+  productCardActive: {
+    borderColor: '#10B981',
+    borderWidth: 2,
+  },
+  cardTopHalf: {
+    height: 105,
+    padding: 10,
+    justifyContent: 'space-between',
+  },
+  topBadgeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  catBadgePill: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  catBadgePillText: {
+    fontSize: 10,
+    fontFamily: FONTS.bold,
+    color: '#0F172A',
   },
   inCartPill: {
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.full,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#10B981',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
   inCartPillText: {
-    color: '#FFF',
     fontSize: 10,
-    fontWeight: '800',
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
+  },
+  centerIconWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  cardBottomHalf: {
+    padding: 12,
   },
   productName: {
-    fontSize: FONTS.sm,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginBottom: 2,
-  },
-  productCategory: {
-    fontSize: 10,
-    color: COLORS.textMuted,
-    marginBottom: 8,
+    fontSize: 13,
+    fontFamily: FONTS.bold,
+    color: '#0F172A',
+    minHeight: 34,
   },
   productBottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 2,
+    marginTop: 6,
   },
   productPrice: {
-    fontSize: FONTS.sm,
-    fontWeight: '800',
-    color: COLORS.primaryDark,
+    fontSize: 13,
+    fontFamily: FONTS.extraBold,
+    color: '#059669',
   },
-  addIconCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Floating Cart Bar
-  floatingCartBar: {
-    position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
-    backgroundColor: COLORS.surfaceDark,
-    borderRadius: RADIUS.xl,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    ...SHADOWS.lg,
-  },
-  floatingCartCount: {
-    fontSize: FONTS.xs,
-    color: 'rgba(255,255,255,0.7)',
-    fontWeight: '600',
-  },
-  floatingCartTotal: {
-    fontSize: FONTS.md,
-    fontWeight: '800',
-    color: '#FFF',
-  },
-  floatingCheckoutBtn: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: RADIUS.full,
-  },
-  floatingCheckoutText: {
-    color: '#FFF',
-    fontSize: FONTS.xs,
-    fontWeight: '800',
-  },
-  // Cart Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
-    justifyContent: 'flex-end',
-  },
-  cartModalCard: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: RADIUS.xl,
-    borderTopRightRadius: RADIUS.xl,
-    padding: 20,
-    maxHeight: '90%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  modalTitle: {
-    fontSize: FONTS.lg,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  modalSubtitle: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
-  },
-  modalCloseBtn: {
+  addMiniSquareBtn: {
     width: 32,
     height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.surfaceSubtle,
+    borderRadius: 10,
+    backgroundColor: '#ECFDF5',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cartItemRow: {
+  inlineStepper: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
+    gap: 4,
   },
-  cartItemName: {
-    fontSize: FONTS.sm,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  cartItemPrice: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
-  },
-  qtyControl: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surfaceSubtle,
-    borderRadius: RADIUS.md,
-    padding: 3,
-  },
-  qtyBtn: {
-    width: 26,
-    height: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.sm,
-  },
-  qtyText: {
-    width: 24,
-    textAlign: 'center',
-    fontSize: FONTS.xs,
-    fontWeight: '700',
-  },
-  qtyInput: {
-    minWidth: 40,
-    maxWidth: 60,
-    height: 28,
-    paddingHorizontal: 4,
-    paddingVertical: 0,
-    textAlign: 'center',
-    fontSize: FONTS.xs,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-    backgroundColor: '#FFF',
-    borderRadius: RADIUS.sm,
-    marginHorizontal: 3,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  cardStepper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surfaceSubtle,
-    borderRadius: RADIUS.md,
-    padding: 2,
-    borderWidth: 1,
-    borderColor: COLORS.primaryLight,
-  },
-  cardStepBtn: {
+  stepperSubBtn: {
     width: 24,
     height: 24,
-    borderRadius: RADIUS.sm,
-    backgroundColor: '#FFF',
+    borderRadius: 6,
+    backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
   },
-  cardStepInput: {
-    minWidth: 32,
-    maxWidth: 50,
-    height: 24,
-    paddingHorizontal: 2,
-    paddingVertical: 0,
-    textAlign: 'center',
+  stepperQtyText: {
     fontSize: 12,
-    fontWeight: '800',
-    color: COLORS.primaryDark,
-    backgroundColor: '#FFF',
-    borderRadius: RADIUS.sm,
-    marginHorizontal: 2,
+    fontFamily: FONTS.extraBold,
+    color: '#0F172A',
+    minWidth: 16,
+    textAlign: 'center',
+  },
+  stepperAddBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  /* ─── Bottom Floating Sticky Cart Bar ─── */
+  floatingCartBar: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: '#E2E8F0',
+    zIndex: 99,
+    elevation: 10,
+    ...SHADOWS.card,
   },
-  checkoutForm: {
-    marginTop: 14,
+  floatingCartLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  formLabel: {
+  cartIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  cartIconBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#0F382C',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cartIconBadgeText: {
     fontSize: 10,
-    fontWeight: '800',
-    color: COLORS.textMuted,
-    letterSpacing: 0.5,
-    marginBottom: 8,
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
   },
+  cartTotalTaxLabel: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    color: '#64748B',
+  },
+  cartTotalAmount: {
+    fontSize: 17,
+    fontFamily: FONTS.extraBold,
+    color: '#0F172A',
+  },
+  checkoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F382C',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
+  },
+  checkoutBtnText: {
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
+  },
+
+  /* ─── Checkout Sheet Modal ─── */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheetContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    maxHeight: '90%',
+  },
+  sheetHandle: {
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#CBD5E1',
+    alignSelf: 'center',
+    marginBottom: 14,
+  },
+  sheetHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sheetMainTitle: {
+    fontSize: 20,
+    fontFamily: FONTS.extraBold,
+    color: '#0F172A',
+    letterSpacing: -0.4,
+  },
+  sheetMainSubtitle: {
+    fontSize: 12,
+    fontFamily: FONTS.medium,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  sheetCloseSquareBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  /* Cart Row */
+  cartRowCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  cartRowIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cartRowItemName: {
+    fontSize: 13,
+    fontFamily: FONTS.bold,
+    color: '#0F172A',
+  },
+  cartRowItemPrice: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  cartRowStepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  cartStepSub: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cartStepQty: {
+    fontSize: 13,
+    fontFamily: FONTS.extraBold,
+    color: '#0F172A',
+    minWidth: 16,
+    textAlign: 'center',
+  },
+  cartStepAdd: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  /* Form Section */
+  formSectionLabel: {
+    fontSize: 12,
+    fontFamily: FONTS.bold,
+    color: '#334155',
+    marginBottom: 6,
+  },
+  formInputBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 14,
+    height: 46,
+    fontSize: 13,
+    fontFamily: FONTS.medium,
+    color: '#0F172A',
+  },
+
+  /* Payment Method Row */
   paymentMethodRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+  },
+  paymentMethodBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+  paymentMethodBtnActive: {
+    borderColor: '#10B981',
+    backgroundColor: '#ECFDF5',
+  },
+  paymentMethodText: {
+    fontSize: 12,
+    fontFamily: FONTS.bold,
+    color: '#475569',
+  },
+  paymentMethodTextActive: {
+    color: '#059669',
+  },
+
+  /* Cash Tender Container */
+  cashTenderContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 14,
+  },
+  cashTenderLabel: {
+    fontSize: 11,
+    fontFamily: FONTS.bold,
+    color: '#64748B',
+    marginBottom: 6,
+  },
+  cashTenderInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 14,
+    height: 48,
+    fontSize: 18,
+    fontFamily: FONTS.extraBold,
+    color: '#0F172A',
+    marginBottom: 10,
+  },
+  cashPresetsRow: {
     flexDirection: 'row',
     gap: 8,
     marginBottom: 12,
   },
-  payMethodBtn: {
+  presetChip: {
     flex: 1,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  presetChipActive: {
+    borderColor: '#10B981',
+    backgroundColor: '#ECFDF5',
+  },
+  presetChipText: {
+    fontSize: 12,
+    fontFamily: FONTS.bold,
+    color: '#0F172A',
+  },
+  presetChipTextActive: {
+    color: '#059669',
+  },
+  changeDueBanner: {
+    backgroundColor: '#ECFDF5',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  changeDueBannerLabel: {
+    fontSize: 13,
+    fontFamily: FONTS.bold,
+    color: '#0F172A',
+  },
+  changeDueBannerAmount: {
+    fontSize: 17,
+    fontFamily: FONTS.extraBold,
+    color: '#059669',
+  },
+
+  /* Summary Card */
+  summaryCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 14,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    fontFamily: FONTS.medium,
+    color: '#64748B',
+  },
+  summaryVal: {
+    fontSize: 13,
+    fontFamily: FONTS.bold,
+    color: '#0F172A',
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 8,
+  },
+  summaryTotalLabel: {
+    fontSize: 14,
+    fontFamily: FONTS.extraBold,
+    color: '#0F172A',
+  },
+  summaryTotalVal: {
+    fontSize: 18,
+    fontFamily: FONTS.extraBold,
+    color: '#0F172A',
+  },
+
+  /* Complete Sale Primary Button */
+  completeSalePrimaryBtn: {
+    backgroundColor: '#10B981',
+    borderRadius: 14,
+    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    backgroundColor: COLORS.surfaceSubtle,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    marginBottom: Platform.OS === 'ios' ? 20 : 6,
+    ...SHADOWS.card,
   },
-  payMethodBtnActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+  completeSalePrimaryText: {
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
   },
-  payMethodText: {
-    fontSize: FONTS.xs,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
+
+  /* Empty state */
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 48,
   },
-  customerInput: {
-    backgroundColor: COLORS.surfaceSubtle,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    fontSize: FONTS.xs,
-    color: COLORS.textPrimary,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+  emptyIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 12,
   },
-  cartSummaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 2,
+  emptyTitle: {
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+    color: '#0F172A',
+    marginBottom: 4,
   },
-  cartSummaryLabel: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
-  },
-  cartSummaryVal: {
-    fontSize: FONTS.xs,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  cartGrandTotalLabel: {
-    fontSize: FONTS.sm,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  cartGrandTotalVal: {
-    fontSize: FONTS.md,
-    fontWeight: '800',
-    color: COLORS.primaryDark,
-  },
-  quickAmountBtn: {
-    backgroundColor: COLORS.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  quickAmountText: {
+  emptySubtitle: {
     fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
+    fontFamily: FONTS.regular,
+    color: '#64748B',
+    textAlign: 'center',
+    paddingHorizontal: 32,
   },
-  changeDueRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  emptySheetWrap: {
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
-    borderRadius: RADIUS.sm,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 40,
+  },
+  emptySheetTitle: {
+    fontSize: 16,
+    fontFamily: FONTS.bold,
+    color: '#0F172A',
+    marginTop: 10,
+  },
+  emptySheetText: {
+    fontSize: 13,
+    fontFamily: FONTS.medium,
+    color: '#64748B',
     marginTop: 4,
   },
-  changeDueLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
+
+  /* Receipt Modal */
+  receiptSheetContainer: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
   },
-  changeDueVal: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  completeOrderBtn: {
+  receiptSheetHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.md,
-    minHeight: 48,
-    paddingVertical: 13,
-    marginTop: 12,
-    ...SHADOWS.sm,
-  },
-  completeOrderText: {
-    color: '#FFF',
-    fontSize: FONTS.sm,
-    fontWeight: '800',
-  },
-  // Success Receipt Modal
-  receiptSuccessCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.xl,
-    padding: 24,
-    marginHorizontal: 20,
-    alignItems: 'center',
-    alignSelf: 'center',
-    marginVertical: 'auto',
-    width: '90%',
-    ...SHADOWS.lg,
-  },
-  successIconCircle: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: COLORS.success,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  successTitle: {
-    fontSize: FONTS.xl,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  successSub: {
-    fontSize: FONTS.xs,
-    color: COLORS.textMuted,
-    marginTop: 2,
-  },
-  successAmount: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: COLORS.primaryDark,
-    marginVertical: 10,
-  },
-  successMethod: {
-    fontSize: FONTS.xs,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
     marginBottom: 16,
   },
-  printActionRow: {
-    flexDirection: 'row',
-    gap: 10,
-    width: '100%',
-    marginBottom: 12,
+  receiptSheetTitle: {
+    fontSize: 18,
+    fontFamily: FONTS.extraBold,
+    color: '#0F172A',
   },
-  printBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.md,
-    paddingVertical: 12,
-    ...SHADOWS.sm,
+  receiptSheetSub: {
+    fontSize: 12,
+    fontFamily: FONTS.medium,
+    color: '#64748B',
+    marginTop: 2,
   },
-  printBtnText: {
-    color: '#FFF',
-    fontSize: FONTS.sm,
-    fontWeight: '800',
-  },
-  shareBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.surfaceSubtle,
-    borderRadius: RADIUS.md,
-    paddingVertical: 12,
+  receiptSlipCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 16,
     borderWidth: 1,
-    borderColor: COLORS.primary + '4D',
+    borderColor: '#E2E8F0',
   },
-  shareBtnText: {
-    color: COLORS.primary,
-    fontSize: FONTS.sm,
-    fontWeight: '800',
+  slipBrand: {
+    fontSize: 15,
+    fontFamily: FONTS.extraBold,
+    textAlign: 'center',
+    color: '#0F172A',
+    letterSpacing: 1,
   },
-  doneBtn: {
-    backgroundColor: COLORS.surfaceSubtle,
-    borderRadius: RADIUS.md,
-    paddingVertical: 11,
-    width: '100%',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
+  slipSub: {
+    fontSize: 11,
+    fontFamily: FONTS.medium,
+    textAlign: 'center',
+    color: '#64748B',
+    marginTop: 2,
   },
-  doneBtnText: {
-    color: COLORS.textPrimary,
-    fontSize: FONTS.sm,
+  slipDivider: {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 10,
+  },
+  slipMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  slipMetaLabel: {
+    fontSize: 12,
+    fontFamily: FONTS.medium,
+    color: '#64748B',
+  },
+  slipMetaVal: {
+    fontSize: 12,
+    fontFamily: FONTS.bold,
+    color: '#0F172A',
+  },
+  slipItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  slipItemName: {
+    fontSize: 13,
+    fontFamily: FONTS.bold,
+    color: '#0F172A',
+    flex: 1,
+  },
+  slipItemPrice: {
+    fontSize: 13,
+    fontFamily: FONTS.extraBold,
+    color: '#0F172A',
+    marginLeft: 8,
+  },
+  slipTotalLabel: {
+    fontSize: 15,
+    fontFamily: FONTS.extraBold,
+    color: '#0F172A',
+  },
+  slipTotalVal: {
+    fontSize: 16,
+    fontFamily: FONTS.extraBold,
+    color: '#059669',
+  },
+  slipInternalNotice: {
+    fontSize: 11,
     fontWeight: '700',
+    color: '#64748B',
+    textAlign: 'center',
+    letterSpacing: 0.8,
+    marginTop: 4,
+  },
+  receiptActionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  primaryPrintBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0F382C',
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  primaryPrintText: {
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+    color: '#FFFFFF',
+  },
+  secondaryDoneBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ECFDF5',
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  secondaryDoneText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F382C',
   },
 });
